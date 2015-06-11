@@ -153,7 +153,7 @@ void Source::load() {
         if (res.status != Response::Successful) {
             std::stringstream message;
             message <<  "Failed to load [" << info.url << "]: " << res.message;
-            emitSourceLoadingFailed(message.str());
+            emitSourceLoadingFailed(std::make_exception_ptr(std::runtime_error(message.str())));
             return;
         }
 
@@ -163,7 +163,7 @@ void Source::load() {
         if (d.HasParseError()) {
             std::stringstream message;
             message << "Failed to parse [" << info.url << "]: " << d.GetErrorOffset() << " - " << d.GetParseError();
-            emitSourceLoadingFailed(message.str());
+            emitSourceLoadingFailed(std::make_exception_ptr(std::runtime_error(message.str())));
             return;
         }
 
@@ -553,8 +553,8 @@ void Source::tileLoadingCompleteCallback(const TileID& normalized_id, const Tran
         return;
     }
 
-    if (data->getState() == TileData::State::obsolete && !data->getError().empty()) {
-        emitTileLoadingFailed(data->getError());
+    if (data->getState() == TileData::State::obsolete && data->getError()) {
+        emitTileLoadingFailed(normalized_id, data->getError());
         return;
     }
 
@@ -568,12 +568,11 @@ void Source::emitSourceLoaded() {
     }
 }
 
-void Source::emitSourceLoadingFailed(const std::string& message) {
+void Source::emitSourceLoadingFailed(std::exception_ptr error) {
     if (!observer_) {
         return;
     }
 
-    auto error = std::make_exception_ptr(util::SourceLoadingException(message));
     observer_->onSourceLoadingFailed(error);
 }
 
@@ -583,12 +582,11 @@ void Source::emitTileLoaded(bool isNewTile) {
     }
 }
 
-void Source::emitTileLoadingFailed(const std::string& message) {
+void Source::emitTileLoadingFailed(const TileID&, std::exception_ptr error) {
     if (!observer_) {
         return;
     }
 
-    auto error = std::make_exception_ptr(util::TileLoadingException(message));
     observer_->onTileLoadingFailed(error);
 }
 
