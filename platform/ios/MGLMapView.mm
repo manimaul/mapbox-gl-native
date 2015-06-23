@@ -1445,20 +1445,33 @@ std::chrono::steady_clock::duration secondsAsDuration(float duration)
     [self setZoomLevel:zoomLevel animated:NO];
 }
 
-- (void)zoomToSouthWestCoordinate:(CLLocationCoordinate2D)southWestCoordinate northEastCoordinate:(CLLocationCoordinate2D)northEastCoordinate animated:(BOOL)animated
+- (MGLCoordinateBounds)visibleCoordinateBounds
+{
+    mbgl::LatLngBounds bounds = self.viewportBounds;
+    return MGLCoordinateBoundsMake(MGLLocationCoordinate2DFromLatLng(bounds.sw),
+                                   MGLLocationCoordinate2DFromLatLng(bounds.ne));
+}
+
+- (void)setVisibleCoordinateBounds:(MGLCoordinateBounds)bounds animated:(BOOL)animated
 {
     // NOTE: does not disrupt tracking mode
-
-    CLLocationCoordinate2D center = CLLocationCoordinate2DMake((northEastCoordinate.latitude + southWestCoordinate.latitude) / 2, (northEastCoordinate.longitude + southWestCoordinate.longitude) / 2);
-
-    CGFloat scale = _mbglMap->getScale();
-    CGFloat scaleX = _mbglMap->getWidth() / (northEastCoordinate.longitude - southWestCoordinate.longitude);
-    CGFloat scaleY = _mbglMap->getHeight() / (northEastCoordinate.latitude - southWestCoordinate.latitude);
+    
+    // Calculate the center point, respecting the projection.
+    mbgl::vec2<double> northEastPoint = _mbglMap->pixelForLatLng(MGLLatLngFromLocationCoordinate2D(bounds.ne));
+    mbgl::vec2<double> southWestPoint = _mbglMap->pixelForLatLng(MGLLatLngFromLocationCoordinate2D(bounds.sw));
+    mbgl::vec2<double> centerPoint = (northEastPoint + southWestPoint) * 0.5;
+    CLLocationCoordinate2D centerCoordinate = MGLLocationCoordinate2DFromLatLng(_mbglMap->latLngForPixel(centerPoint));
+    
+    // Calculate the zoom level.
+    CGSize boundsSize = CGSizeMake(northEastPoint.x - southWestPoint.x,
+                                   northEastPoint.y - southWestPoint.y);
+    CGPoint scale = CGPointMake(_mbglMap->getWidth() / boundsSize.width,
+                                _mbglMap->getHeight() / boundsSize.height);
     CGFloat minZoom = _mbglMap->getMinZoom();
     CGFloat maxZoom = _mbglMap->getMaxZoom();
-    CGFloat zoomLevel = MAX(MIN(log(scale * MIN(scaleX, scaleY)) / log(2), maxZoom), minZoom);
+    CGFloat zoomLevel = MAX(MIN(log2f(_mbglMap->getScale() * MIN(scale.x, scale.y)), maxZoom), minZoom);
 
-    [self setCenterCoordinate:center zoomLevel:zoomLevel animated:animated];
+    [self setCenterCoordinate:centerCoordinate zoomLevel:zoomLevel animated:animated];
 }
 
 - (CLLocationDirection)direction
@@ -2212,7 +2225,7 @@ CLLocationCoordinate2D MGLLocationCoordinate2DFromLatLng(mbgl::LatLng latLng)
                     desiredSouthWest.longitude != actualSouthWest.longitude)
                 {
                     // assumes we won't disrupt tracking mode
-                    [self zoomToSouthWestCoordinate:desiredSouthWest northEastCoordinate:desiredNorthEast animated:YES];
+                    [self setVisibleCoordinateBounds:MGLCoordinateBoundsMake(desiredSouthWest, desiredNorthEast) animated:YES];
                 }
             }
         }
