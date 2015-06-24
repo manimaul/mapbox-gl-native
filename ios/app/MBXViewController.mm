@@ -143,7 +143,20 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
     }
     else if (buttonIndex == actionSheet.firstOtherButtonIndex + 1)
     {
-        [self.mapView resetPosition];
+//        [self.mapView resetPosition];
+        // Colorado
+        CLLocationCoordinate2D coordinates[] = {
+            CLLocationCoordinate2DMake(37, -109+2/60+48/(60*60)),
+            CLLocationCoordinate2DMake(37, -102.05),
+            CLLocationCoordinate2DMake(41, -102.05),
+            CLLocationCoordinate2DMake(41, -109+2/60+48/(60*60)),
+        };
+        MGLPolygon *colorado = [MGLPolygon polygonWithCoordinates:coordinates count:sizeof(coordinates) / sizeof(CLLocationCoordinate2D)];
+        [self.mapView setVisibleCoordinateBounds:MGLCoordinateBoundsMake(coordinates[0], coordinates[2])
+                                     edgePadding:UIEdgeInsetsMake(32, 16, 0, 16)
+                                        animated:YES];
+        [self.mapView removeAnnotations:self.mapView.annotations];
+        [self.mapView addAnnotation:colorado];
     }
     else if (buttonIndex == actionSheet.firstOtherButtonIndex + 2)
     {
