@@ -158,17 +158,18 @@ void Map::fitBounds(LatLngBounds bounds, EdgeInsets padding, Duration duration) 
     double scaleY = (getHeight() - padding.top - padding.bottom) / size.y;
     double minZoom = getMinZoom();
     double maxZoom = getMaxZoom();
-    double zoom = std::log2(getScale() * std::fmin(scaleX, scaleY));
+    double minScale = std::fmin(scaleX, scaleY);
+    double zoom = std::log2(getScale() * minScale);
     zoom = std::fmax(std::fmin(zoom, maxZoom), minZoom);
 
     // Calculate the center point of a virtual bounds that is extended in all directions by padding.
     vec2<double> paddedNEPixel = {
-        nePixel.x + padding.right / scaleX,
-        nePixel.y + padding.top / scaleY,
+        nePixel.x + padding.right / minScale,
+        nePixel.y + padding.top / minScale,
     };
     vec2<double> paddedSWPixel = {
-        swPixel.x - padding.left / scaleX,
-        swPixel.y - padding.bottom / scaleY,
+        swPixel.x - padding.left / minScale,
+        swPixel.y - padding.bottom / minScale,
     };
     vec2<double> centerPixel = (paddedNEPixel + paddedSWPixel) * 0.5;
     LatLng centerLatLng = latLngForPixel(centerPixel);
