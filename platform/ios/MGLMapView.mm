@@ -1471,6 +1471,14 @@ mbgl::LatLngBounds MGLLatLngBoundsFromCoordinateBounds(MGLCoordinateBounds coord
     // NOTE: does not disrupt tracking mode
     CGFloat duration = animated ? MGLAnimationDuration : 0;
     
+    // Accommodate top and bottom bars.
+    UIViewController *viewController = self.viewControllerForLayoutGuides;
+    if (viewController)
+    {
+        insets.top += viewController.topLayoutGuide.length;
+        insets.bottom += viewController.bottomLayoutGuide.length;
+    }
+    
     mbgl::EdgeInsets mbglInsets = {insets.top, insets.left, insets.bottom, insets.right};
     _mbglMap->fitBounds(MGLLatLngBoundsFromCoordinateBounds(bounds), mbglInsets, secondsAsDuration(duration));
     
