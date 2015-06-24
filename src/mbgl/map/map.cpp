@@ -147,6 +147,9 @@ void Map::setLatLngZoom(LatLng latLng, double zoom, Duration duration) {
 }
 
 void Map::fitBounds(LatLngBounds bounds, Duration duration) {
+    // Zoom level calculation below assumes no rotation.
+    setBearing(0);
+
     // Calculate the center point, respecting the projection.
     vec2<double> nePixel = pixelForLatLng(bounds.ne);
     vec2<double> swPixel = pixelForLatLng(bounds.sw);
