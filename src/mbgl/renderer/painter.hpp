@@ -134,12 +134,12 @@ public:
 
     bool needsAnimation() const;
 
+    void updateRenderOrder(const Style& style);
+
 private:
     void setup();
     void setupShaders();
     mat4 translatedMatrix(const mat4& matrix, const std::array<float, 2> &translation, const TileID &id, TranslateAnchorType anchor);
-
-    std::vector<RenderItem> determineRenderOrder(const Style& style);
 
     template <class Iterator>
     void renderPass(RenderPass,
@@ -160,10 +160,6 @@ private:
                    void (SymbolBucket::*drawSDF)(SDFShader&));
 
     void setDepthSublayer(int n);
-
-public:
-    void useProgram(GLuint program);
-    void lineWidth(GLfloat lineWidth);
 
 public:
     mat4 projMatrix;
@@ -194,9 +190,6 @@ private:
 
     gl::Config config;
 
-    GLuint gl_program = 0;
-    GLfloat gl_lineWidth = 0;
-    std::array<uint16_t, 2> gl_viewport = {{ 0, 0 }};
     RenderPass pass = RenderPass::Opaque;
     Color background = {{ 0, 0, 0, 0 }};
 
@@ -204,6 +197,8 @@ private:
     GLsizei currentLayer;
     float depthRangeSize;
     const float depthEpsilon = 1.0f / (1 << 16);
+
+    std::vector<RenderItem> order;
 
 public:
     FrameHistory frameHistory;
@@ -259,14 +254,6 @@ public:
     };
 
     VertexArrayObject tileBorderArray;
-
-    // Framebuffer management
-    std::vector<GLuint> fbos;
-    std::vector<GLuint> fbos_color;
-    GLuint fbo_depth_stencil;
-    int fbo_level = -1;
-    bool fbo_depth_stencil_valid = false;
-
 };
 
 }

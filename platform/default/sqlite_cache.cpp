@@ -113,7 +113,11 @@ void SQLiteCache::Impl::get(const Resource &resource, Callback callback) {
         if (getStmt->run()) {
             // There is data.
             auto response = std::make_unique<Response>();
-            response->status = Response::Status(getStmt->get<int>(0));
+            const auto status = getStmt->get<int>(0);
+            if (status > 1) {
+                // Status codes > 1 indicate an error
+                response->error = std::make_unique<Response::Error>(Response::Error::Reason(status));
+            }
             response->modified = getStmt->get<int64_t>(1);
             response->etag = getStmt->get<std::string>(2);
             response->expires = getStmt->get<int64_t>(3);
@@ -128,6 +132,9 @@ void SQLiteCache::Impl::get(const Resource &resource, Callback callback) {
         }
     } catch (mapbox::sqlite::Exception& ex) {
         Log::Error(Event::Database, ex.code, ex.what());
+        callback(nullptr);
+    } catch (std::runtime_error& ex) {
+        Log::Error(Event::Database, "%s", ex.what());
         callback(nullptr);
     }
 }
@@ -164,7 +171,11 @@ void SQLiteCache::Impl::put(const Resource& resource, std::shared_ptr<const Resp
 
         const auto canonicalURL = util::mapbox::canonicalURL(resource.url);
         putStmt->bind(1 /* url */, canonicalURL.c_str());
-        putStmt->bind(2 /* status */, int(response->status));
+        if (response->error) {
+            putStmt->bind(2 /* status */, int(response->error->reason));
+        } else {
+            putStmt->bind(2 /* status */, 1 /* success */);
+        }
         putStmt->bind(3 /* kind */, int(resource.kind));
         putStmt->bind(4 /* modified */, response->modified);
         putStmt->bind(5 /* etag */, response->etag.c_str());
@@ -192,6 +203,8 @@ void SQLiteCache::Impl::put(const Resource& resource, std::shared_ptr<const Resp
         putStmt->run();
     } catch (mapbox::sqlite::Exception& ex) {
         Log::Error(Event::Database, ex.code, ex.what());
+    } catch (std::runtime_error& ex) {
+        Log::Error(Event::Database, "%s", ex.what());
     }
 }
 

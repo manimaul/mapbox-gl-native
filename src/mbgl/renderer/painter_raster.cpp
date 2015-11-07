@@ -12,7 +12,7 @@ void Painter::renderRaster(RasterBucket& bucket, const RasterLayer& layer, const
     const RasterPaintProperties& properties = layer.properties;
 
     if (bucket.hasData()) {
-        useProgram(rasterShader->program);
+        config.program = rasterShader->program;
         rasterShader->u_matrix = matrix;
         rasterShader->u_buffer = 0;
         rasterShader->u_opacity = properties.opacity;
@@ -22,8 +22,10 @@ void Painter::renderRaster(RasterBucket& bucket, const RasterLayer& layer, const
         rasterShader->u_contrast_factor = contrastFactor(properties.contrast);
         rasterShader->u_spin_weights = spinWeights(properties.hue_rotate);
 
-        config.stencilTest = true;
-        config.depthTest = true;
+        config.stencilOp.reset();
+        config.stencilTest = GL_TRUE;
+        config.depthFunc.reset();
+        config.depthTest = GL_TRUE;
         setDepthSublayer(0);
         bucket.drawRaster(*rasterShader, tileStencilBuffer, coveringRasterArray);
     }

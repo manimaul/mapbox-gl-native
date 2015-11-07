@@ -92,25 +92,7 @@ void Painter::setupShaders() {
 }
 
 void Painter::resize() {
-    if (gl_viewport != frame.framebufferSize) {
-        gl_viewport = frame.framebufferSize;
-        assert(gl_viewport[0] > 0 && gl_viewport[1] > 0);
-        MBGL_CHECK_ERROR(glViewport(0, 0, gl_viewport[0], gl_viewport[1]));
-    }
-}
-
-void Painter::useProgram(GLuint program) {
-    if (gl_program != program) {
-        MBGL_CHECK_ERROR(glUseProgram(program));
-        gl_program = program;
-    }
-}
-
-void Painter::lineWidth(GLfloat line_width) {
-    if (gl_lineWidth != line_width) {
-        MBGL_CHECK_ERROR(glLineWidth(line_width));
-        gl_lineWidth = line_width;
-    }
+    config.viewport = { 0, 0, frame.framebufferSize[0], frame.framebufferSize[1] };
 }
 
 void Painter::changeMatrix() {
@@ -128,11 +110,14 @@ void Painter::changeMatrix() {
 
 void Painter::clear() {
     MBGL_DEBUG_GROUP("clear");
+    config.stencilFunc.reset();
     config.stencilTest = GL_TRUE;
     config.stencilMask = 0xFF;
     config.depthTest = GL_FALSE;
     config.depthMask = GL_TRUE;
     config.clearColor = { background[0], background[1], background[2], background[3] };
+    config.clearStencil = 0;
+    config.clearDepth = 1;
     MBGL_CHECK_ERROR(glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 }
 
@@ -145,10 +130,6 @@ void Painter::prepareTile(const Tile& tile) {
 void Painter::render(const Style& style, TransformState state_, const FrameData& frame_) {
     state = state_;
     frame = frame_;
-
-    if (data.contextMode == GLContextMode::Shared) {
-        config.restore();
-    }
 
     glyphAtlas = style.glyphAtlas.get();
     spriteAtlas = style.spriteAtlas.get();
@@ -163,9 +144,6 @@ void Painter::render(const Style& style, TransformState state_, const FrameData&
 
     resize();
     changeMatrix();
-
-    // Figure out what buckets we have to draw and what order we have to draw them in.
-    const auto order = determineRenderOrder(style);
 
     // - UPLOAD PASS -------------------------------------------------------------------------------
     // Uploads all required buffers and images before we do any actual rendering.
@@ -184,7 +162,6 @@ void Painter::render(const Style& style, TransformState state_, const FrameData&
             }
         }
     }
-
 
     // - CLIPPING MASKS ----------------------------------------------------------------------------
     // Draws the clipping masks to the stencil buffer.
@@ -249,7 +226,7 @@ void Painter::render(const Style& style, TransformState state_, const FrameData&
     }
 
     if (data.contextMode == GLContextMode::Shared) {
-        config.save();
+        config.setDirty();
     }
 }
 
@@ -259,6 +236,8 @@ void Painter::renderPass(RenderPass pass_,
                          GLsizei i, int8_t increment) {
     pass = pass_;
 
+    const double zoom = state.getZoom();
+
     MBGL_DEBUG_GROUP(pass == RenderPass::Opaque ? "opaque" : "translucent");
 
     if (debug::renderTree) {
@@ -266,12 +245,24 @@ void Painter::renderPass(RenderPass pass_,
                   pass == RenderPass::Opaque ? "opaque" : "translucent");
     }
 
-    config.blend = pass == RenderPass::Translucent;
+    if (pass == RenderPass::Translucent) {
+        config.blendFunc.reset();
+        config.blend = GL_TRUE;
+    } else {
+        config.blend = GL_FALSE;
+    }
 
     for (; it != end; ++it, i += increment) {
         currentLayer = i;
         const auto& item = *it;
         if (item.bucket && item.tile) {
+            // Skip this layer if it's outside the range of min/maxzoom.
+            // This may occur when there /is/ a bucket created for this layer, but the min/max-zoom
+            // is set to a fractional value, or value that is larger than the source maxzoom.
+            if (item.layer.minZoom > zoom ||
+                item.layer.maxZoom <= zoom) {
+                continue;
+            }
             if (item.layer.hasRenderPass(pass)) {
                 MBGL_DEBUG_GROUP(item.layer.id + " - " + std::string(item.tile->id));
                 prepareTile(*item.tile);
@@ -288,8 +279,8 @@ void Painter::renderPass(RenderPass pass_,
     }
 }
 
-std::vector<RenderItem> Painter::determineRenderOrder(const Style& style) {
-    std::vector<RenderItem> order;
+void Painter::updateRenderOrder(const Style& style) {
+    order.clear();
 
     for (const auto& layerPtr : style.layers) {
         const auto& layer = *layerPtr;
@@ -315,15 +306,6 @@ std::vector<RenderItem> Painter::determineRenderOrder(const Style& style) {
         Source* source = style.getSource(layer.source);
         if (!source) {
             Log::Warning(Event::Render, "can't find source for layer '%s'", layer.id.c_str());
-            continue;
-        }
-
-        // Skip this layer if it's outside the range of min/maxzoom.
-        // This may occur when there /is/ a bucket created for this layer, but the min/max-zoom
-        // is set to a fractional value, or value that is larger than the source maxzoom.
-        const double zoom = state.getZoom();
-        if (layer.minZoom > zoom ||
-            layer.maxZoom <= zoom) {
             continue;
         }
 
@@ -359,8 +341,6 @@ std::vector<RenderItem> Painter::determineRenderOrder(const Style& style) {
             }
         }
     }
-
-    return order;
 }
 
 void Painter::renderBackground(const BackgroundLayer& layer) {
@@ -376,7 +356,7 @@ void Painter::renderBackground(const BackgroundLayer& layer) {
         SpriteAtlasPosition imagePosB = spriteAtlas->getPosition(properties.image.to, true);
         float zoomFraction = state.getZoomFraction();
 
-        useProgram(patternShader->program);
+        config.program = patternShader->program;
         patternShader->u_matrix = identityMatrix;
         patternShader->u_pattern_tl_a = imagePosA.tl;
         patternShader->u_pattern_br_a = imagePosA.br;
@@ -426,8 +406,9 @@ void Painter::renderBackground(const BackgroundLayer& layer) {
         spriteAtlas->bind(true);
     }
 
-    config.stencilTest = false;
-    config.depthTest = true;
+    config.stencilTest = GL_FALSE;
+    config.depthFunc.reset();
+    config.depthTest = GL_TRUE;
     config.depthRange = { 1.0f, 1.0f };
 
     MBGL_CHECK_ERROR(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));

@@ -16,12 +16,21 @@ HOST_VERSION ?= $(BUILD_VERSION)
 export MASON_PLATFORM=$(HOST)
 export MASON_PLATFORM_VERSION=$(HOST_VERSION)
 
+ifneq (,$(wildcard scripts/$(HOST)/$(HOST_VERSION)/configure.sh))
+	CONFIGURE_FILES += scripts/$(HOST)/$(HOST_VERSION)/configure.sh
+endif
+
 HOST_SLUG = $(HOST)-$(HOST_VERSION)
 CONFIGURE_FILES = scripts/$(HOST)/configure.sh
 ifneq (,$(wildcard scripts/$(HOST)/$(HOST_VERSION)/configure.sh))
 	CONFIGURE_FILES += scripts/$(HOST)/$(HOST_VERSION)/configure.sh
 endif
 
+ifneq (,$(findstring clang,$(CXX)))
+	CXX_HOST = "clang"
+else ifneq (,$(findstring g++,$(CXX)))
+	CXX_HOST = "g++"
+endif
 
 # Text formatting
 TEXT_BOLD = \033[1m
@@ -34,13 +43,10 @@ default: ;
 
 #### Dependencies ##############################################################
 
+ifneq (,$(wildcard .git/.))
 SUBMODULES += .mason/mason.sh
 .mason/mason.sh:
 	./scripts/flock.py .git/Submodule.lock git submodule update --init .mason
-
-SUBMODULES += src/mbgl/util/geojsonvt/geojsonvt.hpp
-src/mbgl/util/geojsonvt/geojsonvt.hpp:
-	./scripts/flock.py .git/Submodule.lock git submodule update --init src/mbgl/util/geojsonvt
 
 ifeq ($(HOST),ios)
 SUBMODULES += platform/ios/vendor/SMCalloutView/SMCalloutView.h
@@ -50,6 +56,7 @@ platform/ios/vendor/SMCalloutView/SMCalloutView.h:
 SUBMODULES += test/ios/KIF/KIF.xcodeproj
 test/ios/KIF/KIF.xcodeproj:
 	./scripts/flock.py .git/Submodule.lock git submodule update --init test/ios/KIF
+endif
 endif
 
 # Wildcard targets get removed after build by default, but we want to preserve the config.
@@ -70,6 +77,7 @@ GYP_FLAGS += -Dcache_lib=$(CACHE)
 GYP_FLAGS += -Dheadless_lib=$(HEADLESS)
 GYP_FLAGS += -Dtest=$(BUILD_TEST)
 GYP_FLAGS += -Drender=$(BUILD_RENDER)
+GYP_FLAGS += -Dcxx_host=$(CXX_HOST)
 GYP_FLAGS += --depth=.
 GYP_FLAGS += -Goutput_dir=.
 GYP_FLAGS += --generator-output=./build/$(HOST_SLUG)

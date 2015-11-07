@@ -97,6 +97,9 @@ void MapContext::setStyleURL(const std::string& url) {
     styleJSON.clear();
 
     style = std::make_unique<Style>(data);
+    if (painter) {
+        painter->updateRenderOrder(*style);
+    }
 
     const size_t pos = styleURL.rfind('/');
     std::string base = "";
@@ -112,14 +115,17 @@ void MapContext::setStyleURL(const std::string& url) {
         }
         styleRequest = nullptr;
 
-        if (res.status == Response::Successful) {
-            loadStyleJSON(*res.data, base);
-        } else if (res.status == Response::NotFound && styleURL.find("mapbox://") == 0) {
-            Log::Error(Event::Setup, "style %s could not be found or is an incompatible legacy map or style", styleURL.c_str());
+        if (res.error) {
+            if (res.error->reason == Response::Error::Reason::NotFound && styleURL.find("mapbox://") == 0) {
+                Log::Error(Event::Setup, "style %s could not be found or is an incompatible legacy map or style", styleURL.c_str());
+            } else {
+                Log::Error(Event::Setup, "loading style failed: %s", res.error->message.c_str());
+                data.loading = false;
+            }
         } else {
-            Log::Error(Event::Setup, "loading style failed: %s", res.message.c_str());
-            data.loading = false;
+            loadStyleJSON(*res.data, base);
         }
+
     });
 }
 
@@ -132,6 +138,9 @@ void MapContext::setStyleJSON(const std::string& json, const std::string& base) 
     styleJSON = json;
 
     style = std::make_unique<Style>(data);
+    if (painter) {
+        painter->updateRenderOrder(*style);
+    }
 
     loadStyleJSON(json, base);
 }
@@ -239,7 +248,11 @@ bool MapContext::renderSync(const TransformState& state, const FrameData& frame)
     // Cleanup OpenGL objects that we abandoned since the last render call.
     glObjectStore.performCleanup();
 
-    if (!painter) painter = std::make_unique<Painter>(data);
+    if (!painter) {
+        painter = std::make_unique<Painter>(data);
+        painter->updateRenderOrder(*style);
+    }
+
     painter->render(*style, transformState, frame);
 
     if (data.mode == MapMode::Still) {
@@ -310,6 +323,10 @@ void MapContext::setSprite(const std::string& name, std::shared_ptr<const Sprite
 
 void MapContext::onTileDataChanged() {
     assert(util::ThreadContext::currentlyOn(util::ThreadType::Map));
+
+    if (painter) {
+        painter->updateRenderOrder(*style);
+    }
 
     updateFlags |= Update::Repaint;
     asyncUpdate->send();

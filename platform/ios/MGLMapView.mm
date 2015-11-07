@@ -53,6 +53,7 @@ const CGFloat MGLMinimumPitch = 0;
 const CGFloat MGLMaximumPitch = 60;
 const CLLocationDegrees MGLAngularFieldOfView = M_PI / 6.;
 const std::string spritePrefix = "com.mapbox.sprites.";
+const NSUInteger MGLTargetFrameInterval = 2;  //Target FPS will be 60 divided by this value
 
 NSString *const MGLAnnotationIDKey = @"MGLAnnotationIDKey";
 NSString *const MGLAnnotationSymbolKey = @"MGLAnnotationSymbolKey";
@@ -124,6 +125,9 @@ mbgl::util::UnitBezier MGLUnitBezierForMediaTimingFunction(CAMediaTimingFunction
 
     CLLocationDegrees _pendingLatitude;
     CLLocationDegrees _pendingLongitude;
+
+    CADisplayLink *_displayLink;
+    BOOL _needsDisplayRefresh;
 }
 
 #pragma mark - Setup & Teardown -
@@ -225,6 +229,12 @@ std::chrono::steady_clock::duration secondsAsDuration(float duration)
 
     // setup mbgl map
     _mbglMap = new mbgl::Map(*_mbglView, *_mbglFileSource, mbgl::MapMode::Continuous);
+
+    // setup refresh driver
+    _displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(updateFromDisplayLink)];
+    _displayLink.frameInterval = MGLTargetFrameInterval;
+    [_displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
+    _needsDisplayRefresh = YES;
 
     // start paused if in IB
     if (_isTargetingInterfaceBuilder || background) {
@@ -386,7 +396,7 @@ std::chrono::steady_clock::duration secondsAsDuration(float duration)
     //
     _glView = [[GLKView alloc] initWithFrame:self.bounds context:_context];
     _glView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    _glView.enableSetNeedsDisplay = YES;
+    _glView.enableSetNeedsDisplay = NO;
     _glView.drawableStencilFormat = GLKViewDrawableStencilFormat8;
     _glView.drawableDepthFormat = GLKViewDrawableDepthFormat16;
     _glView.contentScaleFactor = [UIScreen instancesRespondToSelector:@selector(nativeScale)] ? [[UIScreen mainScreen] nativeScale] : [[UIScreen mainScreen] scale];
@@ -733,6 +743,25 @@ std::chrono::steady_clock::duration secondsAsDuration(float duration)
 }
 
 #pragma mark - Life Cycle -
+
+- (void)updateFromDisplayLink
+{
+    MGLAssertIsMainThread();
+
+    if (_needsDisplayRefresh)
+    {
+        _needsDisplayRefresh = NO;
+
+        [self.glView display];
+    }
+}
+
+- (void)invalidate
+{
+    MGLAssertIsMainThread();
+
+    _needsDisplayRefresh = YES;
+}
 
 - (void)willTerminate
 {
@@ -1424,6 +1453,11 @@ std::chrono::steady_clock::duration secondsAsDuration(float duration)
     }
 }
 
+- (BOOL)calloutViewShouldHighlight:(__unused SMCalloutView *)calloutView
+{
+    return [self.delegate respondsToSelector:@selector(mapView:tapOnCalloutForAnnotation:)];
+}
+
 - (void)calloutViewClicked:(__unused SMCalloutView *)calloutView
 {
     if ([self.delegate respondsToSelector:@selector(mapView:tapOnCalloutForAnnotation:)])
@@ -1616,6 +1650,7 @@ std::chrono::steady_clock::duration secondsAsDuration(float duration)
 
 - (void)_setCenterCoordinate:(CLLocationCoordinate2D)centerCoordinate zoomLevel:(double)zoomLevel direction:(CLLocationDirection)direction animated:(BOOL)animated
 {
+    NSTimeInterval duration = animated ? MGLAnimationDuration : 0;
     mbgl::CameraOptions options;
     options.center = MGLLatLngFromLocationCoordinate2D(centerCoordinate);
     options.zoom = fmaxf(zoomLevel, self.currentMinimumZoom);
@@ -1625,14 +1660,25 @@ std::chrono::steady_clock::duration secondsAsDuration(float duration)
     }
     if (animated)
     {
-        options.duration = secondsAsDuration(MGLAnimationDuration);
+        options.duration = secondsAsDuration(duration);
         options.easing = MGLUnitBezierForMediaTimingFunction(nil);
     }
     _mbglMap->easeTo(options);
 
     [self unrotateIfNeededAnimated:animated];
 
-    [self notifyMapChange:(animated ? mbgl::MapChangeRegionDidChangeAnimated : mbgl::MapChangeRegionDidChange)];
+    if (animated)
+    {
+        __weak MGLMapView *weakSelf = self;
+        [self animateWithDelay:duration animations:^
+         {
+             [weakSelf notifyMapChange:mbgl::MapChangeRegionDidChangeAnimated];
+         }];
+    }
+    else
+    {
+        [self notifyMapChange:mbgl::MapChangeRegionDidChange];
+    }
 }
 
 + (NS_SET_OF(NSString *) *)keyPathsForValuesAffectingZoomLevel
@@ -1746,7 +1792,18 @@ mbgl::LatLngBounds MGLLatLngBoundsFromCoordinateBounds(MGLCoordinateBounds coord
 
     [self unrotateIfNeededAnimated:duration > 0];
 
-    [self notifyMapChange:(duration > 0 ? mbgl::MapChangeRegionDidChangeAnimated : mbgl::MapChangeRegionDidChange)];
+    if (duration > 0)
+    {
+        __weak MGLMapView *weakSelf = self;
+        [self animateWithDelay:duration animations:^
+         {
+             [weakSelf notifyMapChange:mbgl::MapChangeRegionDidChangeAnimated];
+         }];
+    }
+    else
+    {
+        [self notifyMapChange:mbgl::MapChangeRegionDidChange];
+    }
 }
 
 + (NS_SET_OF(NSString *) *)keyPathsForValuesAffectingDirection
@@ -1771,8 +1828,19 @@ mbgl::LatLngBounds MGLLatLngBoundsFromCoordinateBounds(MGLCoordinateBounds coord
     CGFloat duration = (animated ? MGLAnimationDuration : 0);
 
     _mbglMap->setBearing(direction, secondsAsDuration(duration));
-
-    [self notifyMapChange:(animated ? mbgl::MapChangeRegionDidChangeAnimated : mbgl::MapChangeRegionDidChange)];
+    
+    if (animated)
+    {
+        __weak MGLMapView *weakSelf = self;
+        [self animateWithDelay:duration animations:^
+         {
+             [weakSelf notifyMapChange:mbgl::MapChangeRegionDidChangeAnimated];
+         }];
+    }
+    else
+    {
+        [self notifyMapChange:mbgl::MapChangeRegionDidChange];
+    }
 }
 
 - (void)setDirection:(CLLocationDirection)direction
@@ -1913,6 +1981,19 @@ mbgl::LatLngBounds MGLLatLngBoundsFromCoordinateBounds(MGLCoordinateBounds coord
         options.easing = MGLUnitBezierForMediaTimingFunction(function);
     }
     _mbglMap->easeTo(options);
+    
+    if (duration > 0)
+    {
+        __weak MGLMapView *weakSelf = self;
+        [self animateWithDelay:duration animations:^
+         {
+             [weakSelf notifyMapChange:mbgl::MapChangeRegionDidChangeAnimated];
+         }];
+    }
+    else
+    {
+        [self notifyMapChange:mbgl::MapChangeRegionDidChange];
+    }
 }
 
 - (CLLocationCoordinate2D)convertPoint:(CGPoint)point toCoordinateFromView:(nullable UIView *)view
@@ -3104,12 +3185,6 @@ CLLocationCoordinate2D MGLLocationCoordinate2DFromLatLng(mbgl::LatLng latLng)
     return path;
 }
 
-- (void)invalidate
-{
-    MGLAssertIsMainThread();
-    [self.glView setNeedsDisplay];
-}
-
 - (BOOL)isFullyLoaded
 {
     return _mbglMap->isFullyLoaded();
@@ -3303,6 +3378,8 @@ class MBGLView : public mbgl::View
 
 - (void)setStyleURL__:(nullable NSString *)URLString
 {
+    URLString = [URLString stringByTrimmingCharactersInSet:
+                 [NSCharacterSet whitespaceAndNewlineCharacterSet]];
     NSURL *url = URLString.length ? [NSURL URLWithString:URLString] : nil;
     if (URLString.length && !url)
     {

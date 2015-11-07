@@ -53,10 +53,12 @@ if [[ "${BUILD_FOR_DEVICE}" == true ]]; then
         ARCHS="arm64 armv7 armv7s" \
         ONLY_ACTIVE_ARCH=NO \
         GCC_GENERATE_DEBUGGING_SYMBOLS=${GCC_GENERATE_DEBUGGING_SYMBOLS} \
-        -project ./build/ios-all/mbgl.xcodeproj \
+        ENABLE_BITCODE=YES \
+        DEPLOYMENT_POSTPROCESSING=YES \
+        -project ./build/ios-all/gyp/mbgl.xcodeproj \
         -configuration ${BUILDTYPE} \
         -target everything \
-        -jobs ${JOBS} | xcpretty -c
+        -jobs ${JOBS}
 fi
 
 step "Building iOS Simulator targets..."
@@ -64,25 +66,27 @@ xcodebuild -sdk iphonesimulator${IOS_SDK_VERSION} \
     ARCHS="x86_64 i386" \
     ONLY_ACTIVE_ARCH=NO \
     GCC_GENERATE_DEBUGGING_SYMBOLS=${GCC_GENERATE_DEBUGGING_SYMBOLS} \
-    -project ./build/ios-all/mbgl.xcodeproj \
+    -project ./build/ios-all/gyp/mbgl.xcodeproj \
     -configuration ${BUILDTYPE} \
     -target everything \
-    -jobs ${JOBS} | xcpretty -c
+    -jobs ${JOBS}
 
 
 step "Building static library..."
 LIBS=(core.a platform-ios.a asset-fs.a cache-sqlite.a http-nsurl.a)
 if [[ "${BUILD_FOR_DEVICE}" == true ]]; then
     libtool -static -no_warning_for_no_symbols \
+        `find mason_packages/ios-${IOS_SDK_VERSION} -type f -name libuv.a` \
+        `find mason_packages/ios-${IOS_SDK_VERSION} -type f -name libgeojsonvt.a` \
         -o ${OUTPUT}/static/lib${NAME}.a \
-        ${LIBS[@]/#/build/${BUILDTYPE}-iphoneos/libmbgl-} \
-        ${LIBS[@]/#/build/${BUILDTYPE}-iphonesimulator/libmbgl-} \
-        `find mason_packages/ios-${IOS_SDK_VERSION} -type f -name libuv.a`
+        ${LIBS[@]/#/gyp/build/${BUILDTYPE}-iphoneos/libmbgl-} \
+        ${LIBS[@]/#/gyp/build/${BUILDTYPE}-iphonesimulator/libmbgl-}
 else
     libtool -static -no_warning_for_no_symbols \
+        `find mason_packages/ios-${IOS_SDK_VERSION} -type f -name libuv.a` \
+        `find mason_packages/ios-${IOS_SDK_VERSION} -type f -name libgeojsonvt.a` \
         -o ${OUTPUT}/static/lib${NAME}.a \
-        ${LIBS[@]/#/build/${BUILDTYPE}-iphonesimulator/libmbgl-} \
-        `find mason_packages/ios-${IOS_SDK_VERSION} -type f -name libuv.a`
+        ${LIBS[@]/#/gyp/build/${BUILDTYPE}-iphonesimulator/libmbgl-}
 fi
 echo "Created ${OUTPUT}/static/lib${NAME}.a"
 

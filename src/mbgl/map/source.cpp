@@ -155,9 +155,9 @@ void Source::load() {
         }
         req = nullptr;
 
-        if (res.status != Response::Successful) {
+        if (res.error) {
             std::stringstream message;
-            message <<  "Failed to load [" << info.url << "]: " << res.message;
+            message <<  "Failed to load [" << info.url << "]: " << res.error->message;
             emitSourceLoadingFailed(message.str());
             return;
         }
@@ -527,9 +527,14 @@ bool Source::update(MapData& data,
 }
 
 void Source::updateTilePtrs() {
-    tilePtrs.clear();
+    std::vector<Tile*> newPtrs;
     for (const auto& pair : tiles) {
-        tilePtrs.push_back(pair.second.get());
+        newPtrs.push_back(pair.second.get());
+    }
+
+    if (tilePtrs != newPtrs) {
+        tilePtrs.swap(newPtrs);
+        emitTileLoaded(true);
     }
 }
 

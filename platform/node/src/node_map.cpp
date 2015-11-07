@@ -17,6 +17,7 @@ namespace node_mbgl {
 struct NodeMap::RenderOptions {
     double zoom = 0;
     double bearing = 0;
+    double pitch = 0;
     double latitude = 0;
     double longitude = 0;
     unsigned int width = 512;
@@ -106,20 +107,21 @@ NAN_METHOD(NodeMap::New) {
 
     auto options = info[0]->ToObject();
 
-    // Check that 'request', 'cancel' and 'ratio' are defined.
+    // Check that 'request' is set. If 'cancel' is set it must be a
+    // function and if 'ratio' is set it must be a number.
     if (!Nan::Has(options, Nan::New("request").ToLocalChecked()).FromJust()
      || !Nan::Get(options, Nan::New("request").ToLocalChecked()).ToLocalChecked()->IsFunction()) {
         return Nan::ThrowError("Options object must have a 'request' method");
     }
 
-    if ( Nan::Has(options, Nan::New("cancel").ToLocalChecked()).FromJust()
+    if (Nan::Has(options, Nan::New("cancel").ToLocalChecked()).FromJust()
      && !Nan::Get(options, Nan::New("cancel").ToLocalChecked()).ToLocalChecked()->IsFunction()) {
         return Nan::ThrowError("Options object 'cancel' property must be a function");
     }
 
-    if (!Nan::Has(options, Nan::New("ratio").ToLocalChecked()).FromJust()
-     || !Nan::Get(options, Nan::New("ratio").ToLocalChecked()).ToLocalChecked()->IsNumber()) {
-        return Nan::ThrowError("Options object must have a numerical 'ratio' property");
+    if (Nan::Has(options, Nan::New("ratio").ToLocalChecked()).FromJust()
+     && !Nan::Get(options, Nan::New("ratio").ToLocalChecked()).ToLocalChecked()->IsNumber()) {
+        return Nan::ThrowError("Options object 'ratio' property must be a number");
     }
 
     try {
@@ -204,10 +206,14 @@ std::unique_ptr<NodeMap::RenderOptions> NodeMap::ParseOptions(v8::Local<v8::Obje
         options->bearing = Nan::Get(obj, Nan::New("bearing").ToLocalChecked()).ToLocalChecked()->NumberValue();
     }
 
+    if (Nan::Has(obj, Nan::New("pitch").ToLocalChecked()).FromJust()) {
+        options->pitch = Nan::Get(obj, Nan::New("pitch").ToLocalChecked()).ToLocalChecked()->NumberValue();
+    }
+
     if (Nan::Has(obj, Nan::New("center").ToLocalChecked()).FromJust()) {
         auto center = Nan::Get(obj, Nan::New("center").ToLocalChecked()).ToLocalChecked().As<v8::Array>();
-        if (center->Length() > 0) { options->latitude = Nan::Get(center, 0).ToLocalChecked()->NumberValue(); }
-        if (center->Length() > 1) { options->longitude = Nan::Get(center, 1).ToLocalChecked()->NumberValue(); }
+        if (center->Length() > 0) { options->longitude = Nan::Get(center, 0).ToLocalChecked()->NumberValue(); }
+        if (center->Length() > 1) { options->latitude = Nan::Get(center, 1).ToLocalChecked()->NumberValue(); }
     }
 
     if (Nan::Has(obj, Nan::New("width").ToLocalChecked()).FromJust()) {
@@ -238,7 +244,7 @@ std::unique_ptr<NodeMap::RenderOptions> NodeMap::ParseOptions(v8::Local<v8::Obje
  * @param {number} [options.zoom=0]
  * @param {number} [options.width=512]
  * @param {number} [options.height=512]
- * @param {Array<number>} [options.center=[0,0]] latitude, longitude center
+ * @param {Array<number>} [options.center=[0,0]] longitude, latitude center
  * of the map
  * @param {number} [options.bearing=0] rotation
  * @param {Array<string>} [options.classes=[]] GL Style Classes
@@ -288,6 +294,7 @@ void NodeMap::startRender(std::unique_ptr<NodeMap::RenderOptions> options) {
     map->setClasses(options->classes);
     map->setLatLngZoom(mbgl::LatLng(options->latitude, options->longitude), options->zoom);
     map->setBearing(options->bearing);
+    map->setPitch(options->pitch);
 
     map->renderStill([this](const std::exception_ptr eptr, std::unique_ptr<const mbgl::StillImage> result) {
         if (eptr) {
@@ -418,7 +425,7 @@ NAN_METHOD(NodeMap::DumpDebugLogs) {
 NodeMap::NodeMap(v8::Local<v8::Object> options) :
     view(sharedDisplay(), [&] {
         Nan::HandleScope scope;
-        return Nan::Get(options, Nan::New("ratio").ToLocalChecked()).ToLocalChecked()->NumberValue();
+        return Nan::Has(options, Nan::New("ratio").ToLocalChecked()).FromJust() ? Nan::Get(options, Nan::New("ratio").ToLocalChecked()).ToLocalChecked()->NumberValue() : 1.0;
     }()),
     fs(options),
     map(std::make_unique<mbgl::Map>(view, fs, mbgl::MapMode::Still)),

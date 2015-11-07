@@ -18,7 +18,7 @@ void Painter::renderCircle(CircleBucket& bucket,
     // Abort early.
     if (pass == RenderPass::Opaque) return;
 
-    config.stencilTest = false;
+    config.stencilTest = GL_FALSE;
 
     const CirclePaintProperties& properties = layer.properties;
     mat4 vtxMatrix = translatedMatrix(matrix, properties.translate, id, properties.translateAnchor);
@@ -35,7 +35,7 @@ void Painter::renderCircle(CircleBucket& bucket,
     // are inversely related.
     float antialiasing = 1 / data.pixelRatio / properties.radius;
 
-    useProgram(circleShader->program);
+    config.program = circleShader->program;
 
     circleShader->u_matrix = vtxMatrix;
     circleShader->u_exmatrix = extrudeMatrix;
