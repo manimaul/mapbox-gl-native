@@ -1826,12 +1826,12 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
         env->ExceptionDescribe();
     }
 
-    httpContextCreateRequestId = env->GetMethodID(httpContextClass, "createRequest", "(JLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lcom/mapbox/mapboxsdk/http/HTTPContext$HTTPRequest;");
+    httpContextCreateRequestId = env->GetMethodID(httpContextClass, "createRequest", "(JLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lcom/mapbox/mapboxsdk/http/DataRequest;");
     if (httpContextCreateRequestId == nullptr) {
         env->ExceptionDescribe();
     }
 
-    httpRequestClass = env->FindClass("com/mapbox/mapboxsdk/http/HTTPContext$HTTPRequest");
+    httpRequestClass = env->FindClass("com/mapbox/mapboxsdk/http/DataRequest");
     if (httpRequestClass == nullptr) {
         env->ExceptionDescribe();
     }

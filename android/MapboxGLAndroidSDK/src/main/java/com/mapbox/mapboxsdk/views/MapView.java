@@ -73,7 +73,11 @@ import com.mapbox.mapboxsdk.geometry.BoundingBox;
 import com.mapbox.mapboxsdk.geometry.CoordinateBounds;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.geometry.LatLngZoom;
+import com.mapbox.mapboxsdk.provider.OfflineProvider;
+import com.mapbox.mapboxsdk.provider.OfflineProviderManager;
 import com.mapbox.mapboxsdk.utils.ApiAccess;
+
+import org.json.JSONObject;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -1342,6 +1346,14 @@ public final class MapView extends FrameLayout {
         }
         mStyleUrl = url;
         mNativeMapView.setStyleUrl(url);
+    }
+
+    @UiThread
+    public void setOfflineProvider(OfflineProvider provider) {
+        String style = OfflineProviderManager.getInstance().registerProvider(getResources(), provider);
+        if (style != null) {
+            mNativeMapView.setStyleJson(style);
+        }
     }
 
     /**
