@@ -259,7 +259,7 @@ void HTTPAndroidRequest::onResponse(int code, std::string message, std::string e
     if (!expires.empty()) {
         response->expires = parse_date(expires.c_str());
     }
-    response->data = std::make_unique<std::string>(body);
+    response->data = std::make_shared<std::string>(body);
 
     if (code == 304) {
         if (existingResponse) {
