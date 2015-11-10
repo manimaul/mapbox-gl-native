@@ -21,15 +21,13 @@ class HTTPAndroidRequest;
 
 class HTTPAndroidContext : public HTTPContextBase {
 public:
-    explicit HTTPAndroidContext(uv_loop_t *loop);
+    HTTPAndroidContext();
     ~HTTPAndroidContext();
 
     HTTPRequestBase* createRequest(const Resource&,
                                RequestBase::Callback,
                                uv_loop_t*,
                                std::shared_ptr<const Response>) final;
-
-    uv_loop_t *loop = nullptr;
 
     JavaVM *vm = nullptr;
     jobject obj = nullptr;
@@ -45,13 +43,11 @@ public:
     ~HTTPAndroidRequest();
 
     void cancel() final;
-    void retry() final;
 
     void onFailure(int type, std::string message);
     void onResponse(int code, std::string message, std::string etag, std::string modified, std::string cacheControl, std::string expires, std::string body);
 
 private:
-    void retry(uint64_t timeout) final;
     void finish();
     void start();
 
@@ -61,29 +57,17 @@ private:
 
     std::unique_ptr<Response> response;
     const std::shared_ptr<const Response> existingResponse;
-    ResponseStatus status = ResponseStatus::PermanentError;
 
     jobject obj = nullptr;
 
     uv::async async;
     uv::timer timer;
-    enum : bool { PreemptImmediately, ExponentialBackoff } strategy = PreemptImmediately;
-    int attempts = 0;
-
-    static const int maxAttempts = 4;
-
-    static const int connectionError = 0;
-    static const int temporaryError = 1;
-    static const int permanentError = 2;
-    static const int canceledError = 3;
 };
 
 // -------------------------------------------------------------------------------------------------
 
-HTTPAndroidContext::HTTPAndroidContext(uv_loop_t *loop_)
-    : HTTPContextBase(loop_),
-      loop(loop_),
-      vm(mbgl::android::theJVM) {
+HTTPAndroidContext::HTTPAndroidContext() : HTTPContextBase(),
+        vm(mbgl::android::theJVM) {
 
     JNIEnv *env = nullptr;
     bool detach = mbgl::android::attach_jni_thread(vm, &env, "HTTPAndroidContext::HTTPAndroidContext()");
@@ -131,7 +115,11 @@ HTTPRequestBase* HTTPAndroidContext::createRequest(const Resource& resource,
     return new HTTPAndroidRequest(this, resource, callback, loop_, response);
 }
 
-HTTPAndroidRequest::HTTPAndroidRequest(HTTPAndroidContext* context_, const Resource& resource_, Callback callback_, uv_loop_t* loop, std::shared_ptr<const Response> response_)
+HTTPAndroidRequest::HTTPAndroidRequest(HTTPAndroidContext* context_, 
+                                       const Resource& resource_, 
+                                       Callback callback_, 
+                                       uv_loop_t* loop, 
+                                       std::shared_ptr<const Response> response_)
     : HTTPRequestBase(resource_, callback_),
       context(context_),
       existingResponse(response_),
@@ -166,14 +154,9 @@ HTTPAndroidRequest::HTTPAndroidRequest(HTTPAndroidContext* context_, const Resou
     }
 
     mbgl::android::detach_jni_thread(context->vm, &env, detach);
-
-    context->addRequest(this);
-    start();
 }
 
 HTTPAndroidRequest::~HTTPAndroidRequest() {
-    context->removeRequest(this);
-
     JNIEnv *env = nullptr;
     bool detach = mbgl::android::attach_jni_thread(context->vm, &env, "HTTPAndroidContext::~HTTPAndroidRequest()");
 
@@ -200,8 +183,6 @@ void HTTPAndroidRequest::cancel() {
 }
 
 void HTTPAndroidRequest::start() {
-    attempts++;
-
     JNIEnv *env = nullptr;
     bool detach = mbgl::android::attach_jni_thread(context->vm, &env, "HTTPAndroidContext::start()");
 
@@ -213,46 +194,21 @@ void HTTPAndroidRequest::start() {
     mbgl::android::detach_jni_thread(context->vm, &env, detach);
 }
 
-void HTTPAndroidRequest::retry(uint64_t timeout) {
-    response.reset();
-
-    timer.stop();
-    timer.start(timeout, 0, [this] { start(); });
-}
-
-void HTTPAndroidRequest::retry() {
-    if (strategy == PreemptImmediately) {
-        timer.stop();
-        timer.start(0, 0, [this] { start(); });
-    }
-}
-
 void HTTPAndroidRequest::finish() {
     if (!cancelled) {
-        if (status == ResponseStatus::TemporaryError && attempts < maxAttempts) {
-            strategy = ExponentialBackoff;
-            return retry((1 << (attempts - 1)) * 1000);
-        } else if (status == ResponseStatus::ConnectionError && attempts < maxAttempts) {
-            strategy = PreemptImmediately;
-            return retry(30000);
-        }
-
-        if (status == ResponseStatus::NotModified) {
-            notify(std::move(response), FileCache::Hint::Refresh);
-        } else {
-            notify(std::move(response), FileCache::Hint::Full);
-        }
+        // Actually return the response.
+        notify(std::move(response));
     }
 
     delete this;
 }
 
+//TODO: remove message param
 void HTTPAndroidRequest::onResponse(int code, std::string message, std::string etag, std::string modified, std::string cacheControl, std::string expires, std::string body) {
     if (!response) {
         response = std::make_unique<Response>();
     }
 
-    response->message = message;
     response->modified = parse_date(modified.c_str());
     response->etag = etag;
     response->expires = parseCacheControl(cacheControl.c_str());
@@ -263,63 +219,68 @@ void HTTPAndroidRequest::onResponse(int code, std::string message, std::string e
 
     if (code == 304) {
         if (existingResponse) {
-            response->status = existingResponse->status;
-            response->message = existingResponse->message;
-            response->modified = existingResponse->modified;
-            response->etag = existingResponse->etag;
-            response->data = existingResponse->data;
-            status = ResponseStatus::NotModified;
-        } else {
-            response->status = Response::Successful;
-            status = ResponseStatus::Successful;
-        }
+                // We're going to copy over the existing response's data.
+                if (existingResponse->error) {
+                    response->error = std::make_unique<Response::Error>(*existingResponse->error);
+                }
+                response->data = existingResponse->data;
+                response->modified = existingResponse->modified;
+                // We're not updating `expired`, it was probably set during the request.
+                response->etag = existingResponse->etag;
+            } else {
+                // This is an unsolicited 304 response and should only happen on malfunctioning
+                // HTTP servers. It likely doesn't include any data, but we don't have much options.
+            }
     } else if (code == 200) {
-        response->status = Response::Successful;
-        status = ResponseStatus::Successful;
+        // Nothing to do; this is what we want.
     } else if (code == 404) {
-        response->status = Response::NotFound;
-        status = ResponseStatus::Successful;
+        response->error =
+                std::make_unique<Response::Error>(Response::Error::Reason::NotFound, "HTTP status code 404");
     } else if (code >= 500 && code < 600) {
-        response->status = Response::Error;
-        response->message = "HTTP status code " + util::toString(code);
-        status = ResponseStatus::TemporaryError;
+        response->error =
+                std::make_unique<Response::Error>(Response::Error::Reason::Server, std::string{ "HTTP status code " } +
+                                                                   std::to_string(code));
     } else {
-        response->status = Response::Error;
-        response->message = "HTTP status code " + util::toString(code);
-        status = ResponseStatus::PermanentError;
+        response->error =
+                std::make_unique<Response::Error>(Response::Error::Reason::Other, std::string{ "HTTP status code " } +
+                                                                  std::to_string(code));
     }
 
     async.send();
 }
 
 void HTTPAndroidRequest::onFailure(int type, std::string message) {
-    if (type != canceledError) {
-        if (!response) {
-            response = std::make_unique<Response>();
-        }
-
-        response->status = Response::Error;
-        response->message = message;
-
-        switch (type) {
-        case connectionError:
-            status = ResponseStatus::ConnectionError;
-            break;
-        case temporaryError:
-            status = ResponseStatus::TemporaryError;
-            break;
-        default:
-            status = ResponseStatus::PermanentError;
-        }
-    } else {
-        status = ResponseStatus::Canceled;
+    if (!response) {
+        response = std::make_unique<Response>();
     }
+
+    Response::Error::Reason reason;
+
+    switch (type) {
+    case 0: // (Java) HTTPRequest.CONNECTION_ERROR
+        reason = Response::Error::Reason::Connection;
+        break;
+    case 1: // (Java) HTTPRequest.TEMPORARY_ERROR
+        reason = Response::Error::Reason::Connection;
+        break;
+    case 2: // (Java) HTTPRequest.PERMANENT_ERROR
+        reason = Response::Error::Reason::NotFound;
+        break;
+    case 4: // (Java) HTTPRequest.CANCELED_ERROR
+        reason = Response::Error::Reason::Canceled;
+        break;
+    default:
+        reason = Response::Error::Reason::Other;
+        break;
+    }
+
+    response->error = std::make_unique<Response::Error>(reason, message);
 
     async.send();
 }
 
 std::unique_ptr<HTTPContextBase> HTTPContextBase::createContext(uv_loop_t* loop) {
-    return std::make_unique<HTTPAndroidContext>(loop);
+    return std::make_unique<HTTPAndroidContext>();
 }
 
 #pragma clang diagnostic ignored "-Wunused-parameter"
