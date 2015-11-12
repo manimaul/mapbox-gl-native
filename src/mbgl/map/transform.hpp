@@ -23,27 +23,27 @@ public:
     // Map view
     bool resize(std::array<uint16_t, 2> size);
 
-    void jumpTo(const CameraOptions options);
-    void easeTo(const CameraOptions options);
+    void jumpTo(const CameraOptions&);
+    void easeTo(const CameraOptions&);
 
     // Position
-    void moveBy(double dx, double dy, const Duration& = Duration::zero());
-    void setLatLng(LatLng latLng, const Duration& = Duration::zero());
-    void setLatLng(LatLng latLng, vec2<double> point, const Duration& duration = Duration::zero());
-    void setLatLngZoom(LatLng latLng, double zoom, const Duration& = Duration::zero());
-    inline const LatLng getLatLng() const { return state.getLatLng(); }
+    void moveBy(const PrecisionPoint&, const Duration& = Duration::zero());
+    void setLatLng(const LatLng&, const Duration& = Duration::zero());
+    void setLatLng(const LatLng&, const PrecisionPoint&, const Duration& = Duration::zero());
+    void setLatLngZoom(const LatLng&, double zoom, const Duration& = Duration::zero());
+    LatLng getLatLng() const { return state.getLatLng(); }
 
     // Zoom
-    void scaleBy(double ds, double cx = -1, double cy = -1, const Duration& = Duration::zero());
-    void setScale(double scale, double cx = -1, double cy = -1, const Duration& = Duration::zero());
+    void scaleBy(double ds, const PrecisionPoint& center = { 0, 0 }, const Duration& = Duration::zero());
+    void setScale(double scale, const PrecisionPoint& center = { 0, 0 }, const Duration& = Duration::zero());
     void setZoom(double zoom, const Duration& = Duration::zero());
     double getZoom() const;
     double getScale() const;
 
     // Angle
-    void rotateBy(double sx, double sy, double ex, double ey, const Duration& = Duration::zero());
+    void rotateBy(const PrecisionPoint& first, const PrecisionPoint& second, const Duration& = Duration::zero());
     void setAngle(double angle, const Duration& = Duration::zero());
-    void setAngle(double angle, double cx, double cy);
+    void setAngle(double angle, const PrecisionPoint& center);
     double getAngle() const;
 
     // Pitch
@@ -66,11 +66,10 @@ public:
     bool isPanning() const { return state.isPanning(); }
 
 private:
-    void _moveBy(double dx, double dy, const Duration& = Duration::zero());
-    void _setScale(double scale, double cx, double cy, const Duration& = Duration::zero());
+    void _moveBy(const PrecisionPoint&, const Duration& = Duration::zero());
+    void _setScale(double scale, const PrecisionPoint& center, const Duration& = Duration::zero());
     void _setScaleXY(double new_scale, double xn, double yn, const Duration& = Duration::zero());
-    void _easeTo(CameraOptions options, const double new_scale, const double new_angle,
-                 const double xn, const double yn);
+    void _easeTo(const CameraOptions&, double new_scale, double new_angle, double xn, double yn);
     void _setAngle(double angle, const Duration& = Duration::zero());
 
     View &view;

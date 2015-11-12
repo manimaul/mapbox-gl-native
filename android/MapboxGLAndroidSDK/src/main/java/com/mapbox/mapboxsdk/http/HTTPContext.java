@@ -3,7 +3,12 @@ package com.mapbox.mapboxsdk.http;
 import android.util.Log;
 
 import com.mapbox.mapboxsdk.provider.OfflineProviderManager;
+import com.squareup.okhttp.Interceptor;
 import com.squareup.okhttp.OkHttpClient;
+import com.squareup.okhttp.Request;
+import com.squareup.okhttp.Response;
+
+import java.io.IOException;
 
 @SuppressWarnings("unused") // Native invocation
 public final class HTTPContext {
@@ -18,6 +23,7 @@ public final class HTTPContext {
     private HTTPContext() {
         super();
         mClient = new OkHttpClient();
+        //mClient.interceptors().add(new LoggingInterceptor());
     }
 
     // Native invocation
@@ -47,5 +53,31 @@ public final class HTTPContext {
 
     public OkHttpClient getClient() {
         return mClient;
+    }
+
+    /*
+     * Application interceptor that logs the outgoing request and the incoming response.
+     * Based on https://github.com/square/okhttp/wiki/Interceptors
+     */
+    class LoggingInterceptor implements Interceptor {
+
+        private final static String LOG_TAG = "LoggingInterceptor";
+
+        @Override
+        public Response intercept(Interceptor.Chain chain) throws IOException {
+            Request request = chain.request();
+
+            long t1 = System.nanoTime();
+            Log.i(LOG_TAG, String.format("Sending request %s on %s%n%s",
+                    request.url(), chain.connection(), request.headers()));
+
+            Response response = chain.proceed(request);
+
+            long t2 = System.nanoTime();
+            Log.i(LOG_TAG, String.format("Received response for %s in %.1fms%n%s",
+                    response.request().url(), (t2 - t1) / 1e6d, response.headers()));
+
+            return response;
+        }
     }
 }

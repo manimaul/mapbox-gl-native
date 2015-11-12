@@ -145,6 +145,9 @@ void Painter::render(const Style& style, TransformState state_, const FrameData&
     resize();
     changeMatrix();
 
+    // Figure out what buckets we have to draw and what order we have to draw them in.
+    const auto order = determineRenderOrder(style);
+
     // - UPLOAD PASS -------------------------------------------------------------------------------
     // Uploads all required buffers and images before we do any actual rendering.
     {
@@ -162,6 +165,7 @@ void Painter::render(const Style& style, TransformState state_, const FrameData&
             }
         }
     }
+
 
     // - CLIPPING MASKS ----------------------------------------------------------------------------
     // Draws the clipping masks to the stencil buffer.
@@ -236,8 +240,6 @@ void Painter::renderPass(RenderPass pass_,
                          GLsizei i, int8_t increment) {
     pass = pass_;
 
-    const double zoom = state.getZoom();
-
     MBGL_DEBUG_GROUP(pass == RenderPass::Opaque ? "opaque" : "translucent");
 
     if (debug::renderTree) {
@@ -256,13 +258,6 @@ void Painter::renderPass(RenderPass pass_,
         currentLayer = i;
         const auto& item = *it;
         if (item.bucket && item.tile) {
-            // Skip this layer if it's outside the range of min/maxzoom.
-            // This may occur when there /is/ a bucket created for this layer, but the min/max-zoom
-            // is set to a fractional value, or value that is larger than the source maxzoom.
-            if (item.layer.minZoom > zoom ||
-                item.layer.maxZoom <= zoom) {
-                continue;
-            }
             if (item.layer.hasRenderPass(pass)) {
                 MBGL_DEBUG_GROUP(item.layer.id + " - " + std::string(item.tile->id));
                 prepareTile(*item.tile);
@@ -279,16 +274,16 @@ void Painter::renderPass(RenderPass pass_,
     }
 }
 
-void Painter::updateRenderOrder(const Style& style) {
-    order.clear();
+std::vector<RenderItem> Painter::determineRenderOrder(const Style& style) {
+    std::vector<RenderItem> order;
 
     for (const auto& layerPtr : style.layers) {
         const auto& layer = *layerPtr;
         if (layer.visibility == VisibilityType::None) continue;
         if (layer.type == StyleLayerType::Background) {
             // This layer defines a background color/image.
-            auto& props = dynamic_cast<const BackgroundLayer&>(layer).properties;
-            if (props.image.from.empty()) {
+            auto& props = dynamic_cast<const BackgroundLayer&>(layer).paint;
+            if (props.pattern.value.from.empty()) {
                 // This is a solid background. We can use glClear().
                 background = props.color;
                 background[0] *= props.opacity;
@@ -306,6 +301,15 @@ void Painter::updateRenderOrder(const Style& style) {
         Source* source = style.getSource(layer.source);
         if (!source) {
             Log::Warning(Event::Render, "can't find source for layer '%s'", layer.id.c_str());
+            continue;
+        }
+
+        // Skip this layer if it's outside the range of min/maxzoom.
+        // This may occur when there /is/ a bucket created for this layer, but the min/max-zoom
+        // is set to a fractional value, or value that is larger than the source maxzoom.
+        const double zoom = state.getZoom();
+        if (layer.minZoom > zoom ||
+            layer.maxZoom <= zoom) {
             continue;
         }
 
@@ -341,19 +345,21 @@ void Painter::updateRenderOrder(const Style& style) {
             }
         }
     }
+
+    return order;
 }
 
 void Painter::renderBackground(const BackgroundLayer& layer) {
     // Note: This function is only called for textured background. Otherwise, the background color
     // is created with glClear.
-    const BackgroundPaintProperties& properties = layer.properties;
+    const BackgroundPaintProperties& properties = layer.paint;
 
-    if (!properties.image.to.empty()) {
+    if (!properties.pattern.value.to.empty()) {
         if ((properties.opacity >= 1.0f) != (pass == RenderPass::Opaque))
             return;
 
-        SpriteAtlasPosition imagePosA = spriteAtlas->getPosition(properties.image.from, true);
-        SpriteAtlasPosition imagePosB = spriteAtlas->getPosition(properties.image.to, true);
+        SpriteAtlasPosition imagePosA = spriteAtlas->getPosition(properties.pattern.value.from, true);
+        SpriteAtlasPosition imagePosB = spriteAtlas->getPosition(properties.pattern.value.to, true);
         float zoomFraction = state.getZoomFraction();
 
         config.program = patternShader->program;
@@ -362,22 +368,22 @@ void Painter::renderBackground(const BackgroundLayer& layer) {
         patternShader->u_pattern_br_a = imagePosA.br;
         patternShader->u_pattern_tl_b = imagePosB.tl;
         patternShader->u_pattern_br_b = imagePosB.br;
-        patternShader->u_mix = properties.image.t;
+        patternShader->u_mix = properties.pattern.value.t;
         patternShader->u_opacity = properties.opacity;
 
         LatLng latLng = state.getLatLng();
-        vec2<double> center = state.latLngToPoint(latLng);
+        PrecisionPoint center = state.latLngToPoint(latLng);
         float scale = 1 / std::pow(2, zoomFraction);
 
         std::array<float, 2> sizeA = imagePosA.size;
         mat3 matrixA;
         matrix::identity(matrixA);
         matrix::scale(matrixA, matrixA,
-                      1.0f / (sizeA[0] * properties.image.fromScale),
-                      1.0f / (sizeA[1] * properties.image.fromScale));
+                      1.0f / (sizeA[0] * properties.pattern.value.fromScale),
+                      1.0f / (sizeA[1] * properties.pattern.value.fromScale));
         matrix::translate(matrixA, matrixA,
-                          std::fmod(center.x * 512, sizeA[0] * properties.image.fromScale),
-                          std::fmod(center.y * 512, sizeA[1] * properties.image.fromScale));
+                          std::fmod(center.x * 512, sizeA[0] * properties.pattern.value.fromScale),
+                          std::fmod(center.y * 512, sizeA[1] * properties.pattern.value.fromScale));
         matrix::rotate(matrixA, matrixA, -state.getAngle());
         matrix::scale(matrixA, matrixA,
                        scale * state.getWidth()  / 2,
@@ -387,11 +393,11 @@ void Painter::renderBackground(const BackgroundLayer& layer) {
         mat3 matrixB;
         matrix::identity(matrixB);
         matrix::scale(matrixB, matrixB,
-                      1.0f / (sizeB[0] * properties.image.toScale),
-                      1.0f / (sizeB[1] * properties.image.toScale));
+                      1.0f / (sizeB[0] * properties.pattern.value.toScale),
+                      1.0f / (sizeB[1] * properties.pattern.value.toScale));
         matrix::translate(matrixB, matrixB,
-                          std::fmod(center.x * 512, sizeB[0] * properties.image.toScale),
-                          std::fmod(center.y * 512, sizeB[1] * properties.image.toScale));
+                          std::fmod(center.x * 512, sizeB[0] * properties.pattern.value.toScale),
+                          std::fmod(center.y * 512, sizeB[1] * properties.pattern.value.toScale));
         matrix::rotate(matrixB, matrixB, -state.getAngle());
         matrix::scale(matrixB, matrixB,
                        scale * state.getWidth()  / 2,

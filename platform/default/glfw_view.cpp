@@ -223,7 +223,7 @@ void GLFWView::addRandomPointAnnotations(int count) {
 void GLFWView::addRandomShapeAnnotations(int count) {
     std::vector<mbgl::ShapeAnnotation> shapes;
 
-    mbgl::FillPaintProperties properties;
+    mbgl::FillAnnotationProperties properties;
     properties.opacity = .1;
 
     for (int i = 0; i < count; i++) {
@@ -279,7 +279,7 @@ void GLFWView::onScroll(GLFWwindow *window, double /*xOffset*/, double yOffset) 
         scale = 1.0 / scale;
     }
 
-    view->map->scaleBy(scale, view->lastX, view->lastY);
+    view->map->scaleBy(scale, { view->lastX, view->lastY });
 }
 
 void GLFWView::onWindowResize(GLFWwindow *window, int width, int height) {
@@ -313,9 +313,9 @@ void GLFWView::onMouseClick(GLFWwindow *window, int button, int action, int modi
             double now = glfwGetTime();
             if (now - view->lastClick < 0.4 /* ms */) {
                 if (modifiers & GLFW_MOD_SHIFT) {
-                    view->map->scaleBy(0.5, view->lastX, view->lastY, std::chrono::milliseconds(500));
+                    view->map->scaleBy(0.5, { view->lastX, view->lastY }, std::chrono::milliseconds(500));
                 } else {
-                    view->map->scaleBy(2.0, view->lastX, view->lastY, std::chrono::milliseconds(500));
+                    view->map->scaleBy(2.0, { view->lastX, view->lastY }, std::chrono::milliseconds(500));
                 }
             }
             view->lastClick = now;
@@ -331,11 +331,11 @@ void GLFWView::onMouseMove(GLFWwindow *window, double x, double y) {
         if (dx || dy) {
             double flippedY = view->height - y;
             view->map->setLatLng(
-                    view->map->latLngForPixel(mbgl::vec2<double>(x - dx, flippedY + dy)),
-                    mbgl::vec2<double>(x, flippedY));
+                    view->map->latLngForPixel(mbgl::PrecisionPoint(x - dx, flippedY + dy)),
+                    mbgl::PrecisionPoint(x, flippedY));
         }
     } else if (view->rotating) {
-        view->map->rotateBy(view->lastX, view->lastY, x, y);
+        view->map->rotateBy({ view->lastX, view->lastY }, { x, y });
     }
     view->lastX = x;
     view->lastY = y;
