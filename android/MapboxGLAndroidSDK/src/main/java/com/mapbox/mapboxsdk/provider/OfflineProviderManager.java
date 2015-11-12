@@ -60,7 +60,7 @@ public class OfflineProviderManager {
         int i = resourceUrl.indexOf(LOCALHOST);
         if (i > 0) {
             if (mProvider != null) {
-                String[] zxy = resourceUrl.substring(i + LOCALHOST.length() + 1 /* / */, resourceUrl.length()).split("/");
+                String[] zxy = resourceUrl.substring(i + LOCALHOST.length() + 1, resourceUrl.length()).split("/");
                 int z, x, y;
                 if (zxy.length == 3) {
                     z = Integer.parseInt(zxy[0]);
