@@ -1,21 +1,21 @@
 #include "../fixtures/util.hpp"
 #include "../fixtures/fixture_log_observer.hpp"
 
-#include <mbgl/geometry/sprite_atlas.hpp>
-#include <mbgl/annotation/sprite_store.hpp>
-#include <mbgl/annotation/sprite_parser.hpp>
+#include <mbgl/sprite/sprite_atlas.hpp>
+#include <mbgl/sprite/sprite_store.hpp>
+#include <mbgl/sprite/sprite_parser.hpp>
 #include <mbgl/util/io.hpp>
 #include <mbgl/util/image.hpp>
 
 using namespace mbgl;
 
-TEST(Annotations, SpriteAtlas) {
+TEST(Sprite, SpriteAtlas) {
     FixtureLog log;
 
     auto spriteParseResult = parseSprite(util::read_file("test/fixtures/annotations/emerald.png"),
                                          util::read_file("test/fixtures/annotations/emerald.json"));
 
-    SpriteStore store;
+    SpriteStore store(1);
     store.setSprites(spriteParseResult.get<Sprites>());
 
     SpriteAtlas atlas(63, 112, 1, store);
@@ -86,11 +86,11 @@ TEST(Annotations, SpriteAtlas) {
     //     util::compress_png(atlas.getTextureWidth(), atlas.getTextureHeight(), atlas.getData()));
 }
 
-TEST(Annotations, SpriteAtlasSize) {
+TEST(Sprite, SpriteAtlasSize) {
     auto spriteParseResult = parseSprite(util::read_file("test/fixtures/annotations/emerald.png"),
                                          util::read_file("test/fixtures/annotations/emerald.json"));
 
-    SpriteStore store;
+    SpriteStore store(1);
     store.setSprites(spriteParseResult.get<Sprites>());
 
     SpriteAtlas atlas(63, 112, 1.4, store);
@@ -123,8 +123,8 @@ TEST(Annotations, SpriteAtlasSize) {
     //     util::compress_png(atlas.getTextureWidth(), atlas.getTextureHeight(), atlas.getData()));
 }
 
-TEST(Annotations, SpriteAtlasUpdates) {
-    SpriteStore store;
+TEST(Sprite, SpriteAtlasUpdates) {
+    SpriteStore store(1);
 
     SpriteAtlas atlas(32, 32, 1, store);
 
