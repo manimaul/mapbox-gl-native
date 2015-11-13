@@ -23,6 +23,7 @@
     <string name="action_point_annotations">Toggle point annotations</string>
     <string name="action_info_window_adapter">InfoWindow Adapter</string>
     <string name="action_map_fragment">MapFragment</string>
+    <string name="action_offline_map_fragment">Offline MapFragment</string>
     <string name="action_press_for_marker">Press For Marker</string>
     <string name="action_info_window">InfoWindow</string>
     <string name="action_add_bulk_markers">Add Markers in bulk</string>
