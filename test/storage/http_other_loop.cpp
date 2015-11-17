@@ -3,6 +3,7 @@
 #include <uv.h>
 
 #include <mbgl/storage/default_file_source.hpp>
+#include <mbgl/util/run_loop.hpp>
 
 TEST_F(Storage, HTTPOtherLoop) {
     SCOPED_TEST(HTTPOtherLoop)
@@ -11,10 +12,11 @@ TEST_F(Storage, HTTPOtherLoop) {
 
     // This file source launches a separate thread to do the processing.
     DefaultFileSource fs(nullptr);
+    util::RunLoop loop(uv_default_loop());
 
-    Request* req = fs.request({ Resource::Unknown, "http://127.0.0.1:3000/test" }, uv_default_loop(),
-               [&](const Response &res) {
-        fs.cancel(req);
+    std::unique_ptr<FileRequest> req = fs.request({ Resource::Unknown, "http://127.0.0.1:3000/test" },
+               [&](Response res) {
+        req.reset();
         EXPECT_EQ(nullptr, res.error);
         EXPECT_EQ(false, res.stale);
         ASSERT_TRUE(res.data.get());
@@ -22,6 +24,7 @@ TEST_F(Storage, HTTPOtherLoop) {
         EXPECT_EQ(0, res.expires);
         EXPECT_EQ(0, res.modified);
         EXPECT_EQ("", res.etag);
+        loop.stop();
         HTTPOtherLoop.finish();
     });
 

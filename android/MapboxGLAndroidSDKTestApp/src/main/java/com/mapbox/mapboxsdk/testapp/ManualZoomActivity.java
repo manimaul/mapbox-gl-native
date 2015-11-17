@@ -1,29 +1,22 @@
 package com.mapbox.mapboxsdk.testapp;
 
-import android.graphics.RectF;
 import android.os.Bundle;
-import android.support.design.widget.Snackbar;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.MenuItem;
-import android.view.View;
-
-import com.mapbox.mapboxsdk.annotations.MarkerOptions;
 import com.mapbox.mapboxsdk.constants.Style;
-import com.mapbox.mapboxsdk.geometry.CoordinateBounds;
-import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.utils.ApiAccess;
 import com.mapbox.mapboxsdk.views.MapView;
 
-public class VisibleCoordinateBoundsActivity extends AppCompatActivity {
+public class ManualZoomActivity extends AppCompatActivity {
 
     private MapView mMapView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_visible_bounds);
+        setContentView(R.layout.activity_manual_zoom);
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -34,32 +27,10 @@ public class VisibleCoordinateBoundsActivity extends AppCompatActivity {
             actionBar.setDisplayShowHomeEnabled(true);
         }
 
-        mMapView = (MapView) findViewById(R.id.mapView);
+        mMapView = (MapView) findViewById(R.id.manualZoomMapView);
         mMapView.setAccessToken(ApiAccess.getToken(this));
-        mMapView.setStyle(Style.DARK);
+        mMapView.setStyle(Style.MAPBOX_STREETS);
         mMapView.onCreate(savedInstanceState);
-
-        final LatLng losAngeles = new LatLng(34.053940, -118.242622);
-        final LatLng newYork = new LatLng(40.712730, -74.005953);
-
-        mMapView.addMarker(new MarkerOptions()
-                .title("Los Angeles")
-                .snippet("City Hall")
-                .position(losAngeles));
-
-        mMapView.addMarker(new MarkerOptions()
-                .title("New York")
-                .snippet("City Hall")
-                .position(newYork));
-
-        Snackbar.make(findViewById(android.R.id.content), R.string.action_visible_bounds_explanation, Snackbar.LENGTH_INDEFINITE)
-                .setAction(android.R.string.ok, new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        float margin = getResources().getDimension(R.dimen.coordinatebounds_margin);
-                        mMapView.setVisibleCoordinateBounds(new CoordinateBounds(losAngeles, newYork), new RectF(margin, 0, margin, 0), true);
-                    }
-                }).show();
     }
 
     @Override

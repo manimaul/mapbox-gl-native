@@ -3,6 +3,7 @@
 #include <uv.h>
 
 #include <mbgl/storage/default_file_source.hpp>
+#include <mbgl/util/run_loop.hpp>
 
 TEST_F(Storage, HTTPCoalescing) {
     SCOPED_TEST(HTTPCoalescing)
@@ -13,6 +14,7 @@ TEST_F(Storage, HTTPCoalescing) {
     using namespace mbgl;
 
     DefaultFileSource fs(nullptr);
+    util::RunLoop loop(uv_default_loop());
 
     static const Response *reference = nullptr;
 
@@ -34,16 +36,17 @@ TEST_F(Storage, HTTPCoalescing) {
         EXPECT_EQ("", res.etag);
 
         if (counter >= total) {
+            loop.stop();
             HTTPCoalescing.finish();
         }
     };
 
     const Resource resource { Resource::Unknown, "http://127.0.0.1:3000/test" };
 
-    Request* reqs[total];
+    std::unique_ptr<FileRequest> reqs[total];
     for (int i = 0; i < total; i++) {
-        reqs[i] = fs.request(resource, uv_default_loop(), [&complete, &fs, &reqs, i] (const Response &res) {
-            fs.cancel(reqs[i]);
+        reqs[i] = fs.request(resource, [&complete, &fs, &reqs, i] (Response res) {
+            reqs[i].reset();
             complete(res);
         });
     }
@@ -57,16 +60,12 @@ TEST_F(Storage, HTTPMultiple) {
     using namespace mbgl;
 
     DefaultFileSource fs(nullptr);
-
-    const Response *reference = nullptr;
+    util::RunLoop loop(uv_default_loop());
 
     const Resource resource { Resource::Unknown, "http://127.0.0.1:3000/test?expires=2147483647" };
-    Request* req1 = nullptr;
-    Request* req2 = nullptr;
-    req1 = fs.request(resource, uv_default_loop(), [&] (const Response &res) {
-        EXPECT_EQ(nullptr, reference);
-        reference = &res;
-
+    std::unique_ptr<FileRequest> req1;
+    std::unique_ptr<FileRequest> req2;
+    req1 = fs.request(resource, [&] (Response res) {
         // Do not cancel the request right away.
         EXPECT_EQ(nullptr, res.error);
         ASSERT_TRUE(res.data.get());
@@ -76,13 +75,13 @@ TEST_F(Storage, HTTPMultiple) {
         EXPECT_EQ("", res.etag);
 
         // Start a second request for the same resource after the first one has been completed.
-        req2 = fs.request(resource, uv_default_loop(), [&] (const Response &res2) {
-            // Make sure we get the same object ID as before.
-            EXPECT_EQ(reference, &res2);
+        req2 = fs.request(resource, [&, res] (Response res2) {
+            // Make sure we get the same data as before.
+            EXPECT_EQ(res.data.get(), res2.data.get());
 
             // Now cancel both requests after both have been notified.
-            fs.cancel(req1);
-            fs.cancel(req2);
+            req1.reset();
+            req2.reset();
 
             EXPECT_EQ(nullptr, res2.error);
             ASSERT_TRUE(res2.data.get());
@@ -91,6 +90,7 @@ TEST_F(Storage, HTTPMultiple) {
             EXPECT_EQ(0, res2.modified);
             EXPECT_EQ("", res2.etag);
 
+            loop.stop();
             HTTPMultiple.finish();
         });
     });
@@ -105,14 +105,15 @@ TEST_F(Storage, HTTPStale) {
     using namespace mbgl;
 
     DefaultFileSource fs(nullptr);
+    util::RunLoop loop(uv_default_loop());
 
     int updates = 0;
     int stale = 0;
 
     const Resource resource { Resource::Unknown, "http://127.0.0.1:3000/test" };
-    Request* req1 = nullptr;
-    Request* req2 = nullptr;
-    req1 = fs.request(resource, uv_default_loop(), [&] (const Response &res) {
+    std::unique_ptr<FileRequest> req1;
+    std::unique_ptr<FileRequest> req2;
+    req1 = fs.request(resource, [&] (Response res) {
         // Do not cancel the request right away.
         EXPECT_EQ(nullptr, res.error);
         ASSERT_TRUE(res.data.get());
@@ -130,7 +131,7 @@ TEST_F(Storage, HTTPStale) {
         updates++;
 
         // Start a second request for the same resource after the first one has been completed.
-        req2 = fs.request(resource, uv_default_loop(), [&] (const Response &res2) {
+        req2 = fs.request(resource, [&] (Response res2) {
             EXPECT_EQ(nullptr, res2.error);
             ASSERT_TRUE(res2.data.get());
             EXPECT_EQ("Hello World!", *res2.data);
@@ -143,8 +144,9 @@ TEST_F(Storage, HTTPStale) {
                 stale++;
             } else {
                 // Now cancel both requests after both have been notified.
-                fs.cancel(req1);
-                fs.cancel(req2);
+                req1.reset();
+                req2.reset();
+                loop.stop();
                 HTTPStale.finish();
             }
         });

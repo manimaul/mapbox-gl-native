@@ -4,6 +4,7 @@
 
 #include <mbgl/storage/default_file_source.hpp>
 #include <mbgl/platform/platform.hpp>
+#include <mbgl/util/run_loop.hpp>
 
 TEST_F(Storage, AssetEmptyFile) {
     SCOPED_TEST(EmptyFile)
@@ -16,9 +17,10 @@ TEST_F(Storage, AssetEmptyFile) {
     DefaultFileSource fs(nullptr);
 #endif
 
-    Request* req = fs.request({ Resource::Unknown, "asset://TEST_DATA/fixtures/storage/empty" }, uv_default_loop(),
-               [&](const Response &res) {
-        fs.cancel(req);
+    util::RunLoop loop(uv_default_loop());
+
+    std::unique_ptr<FileRequest> req = fs.request({ Resource::Unknown, "asset://TEST_DATA/fixtures/storage/empty" }, [&](Response res) {
+        req.reset();
         EXPECT_EQ(nullptr, res.error);
         EXPECT_EQ(false, res.stale);
         ASSERT_TRUE(res.data.get());
@@ -26,6 +28,7 @@ TEST_F(Storage, AssetEmptyFile) {
         EXPECT_EQ(0, res.expires);
         EXPECT_LT(1420000000, res.modified);
         EXPECT_NE("", res.etag);
+        loop.stop();
         EmptyFile.finish();
     });
 
@@ -43,9 +46,10 @@ TEST_F(Storage, AssetNonEmptyFile) {
     DefaultFileSource fs(nullptr);
 #endif
 
-    Request* req = fs.request({ Resource::Unknown, "asset://TEST_DATA/fixtures/storage/nonempty" },
-               uv_default_loop(), [&](const Response &res) {
-        fs.cancel(req);
+    util::RunLoop loop(uv_default_loop());
+
+    std::unique_ptr<FileRequest> req = fs.request({ Resource::Unknown, "asset://TEST_DATA/fixtures/storage/nonempty" }, [&](Response res) {
+        req.reset();
         EXPECT_EQ(nullptr, res.error);
         EXPECT_EQ(false, res.stale);
         ASSERT_TRUE(res.data.get());
@@ -55,6 +59,7 @@ TEST_F(Storage, AssetNonEmptyFile) {
         EXPECT_NE("", res.etag);
         ASSERT_TRUE(res.data.get());
         EXPECT_EQ("content is here\n", *res.data);
+        loop.stop();
         NonEmptyFile.finish();
     });
 
@@ -72,9 +77,10 @@ TEST_F(Storage, AssetNonExistentFile) {
     DefaultFileSource fs(nullptr);
 #endif
 
-    Request* req = fs.request({ Resource::Unknown, "asset://TEST_DATA/fixtures/storage/does_not_exist" },
-               uv_default_loop(), [&](const Response &res) {
-        fs.cancel(req);
+    util::RunLoop loop(uv_default_loop());
+
+    std::unique_ptr<FileRequest> req = fs.request({ Resource::Unknown, "asset://TEST_DATA/fixtures/storage/does_not_exist" }, [&](Response res) {
+        req.reset();
         ASSERT_NE(nullptr, res.error);
         EXPECT_EQ(Response::Error::Reason::NotFound, res.error->reason);
         EXPECT_EQ(false, res.stale);
@@ -87,6 +93,7 @@ TEST_F(Storage, AssetNonExistentFile) {
 #elif MBGL_ASSET_FS
         EXPECT_EQ("no such file or directory", res.error->message);
 #endif
+        loop.stop();
         NonExistentFile.finish();
     });
 

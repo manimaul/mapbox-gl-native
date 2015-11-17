@@ -4,7 +4,6 @@
 #include <mbgl/storage/file_source.hpp>
 #include <mbgl/storage/resource.hpp>
 #include <mbgl/storage/response.hpp>
-#include <mbgl/storage/request_holder.hpp>
 #include <mbgl/util/exception.hpp>
 #include <mbgl/util/thread_context.hpp>
 #include <mbgl/util/run_loop.hpp>
@@ -17,8 +16,8 @@ namespace mbgl {
 struct SpriteStore::Loader {
     std::shared_ptr<const std::string> image;
     std::shared_ptr<const std::string> json;
-    RequestHolder jsonRequest;
-    RequestHolder spriteRequest;
+    std::unique_ptr<FileRequest> jsonRequest;
+    std::unique_ptr<FileRequest> spriteRequest;
 };
 
 SpriteStore::SpriteStore(float pixelRatio_)
@@ -40,8 +39,8 @@ void SpriteStore::setURL(const std::string& url) {
     loader = std::make_unique<Loader>();
 
     FileSource* fs = util::ThreadContext::getFileSource();
-    loader->jsonRequest = fs->request({ Resource::Kind::SpriteJSON, jsonURL }, util::RunLoop::getLoop(),
-                                      [this, jsonURL](const Response& res) {
+    loader->jsonRequest = fs->request({ Resource::Kind::SpriteJSON, jsonURL },
+                                      [this, jsonURL](Response res) {
         if (res.stale) {
             // Only handle fresh responses.
             return;
@@ -60,8 +59,8 @@ void SpriteStore::setURL(const std::string& url) {
     });
 
     loader->spriteRequest =
-        fs->request({ Resource::Kind::SpriteImage, spriteURL }, util::RunLoop::getLoop(),
-                    [this, spriteURL](const Response& res) {
+        fs->request({ Resource::Kind::SpriteImage, spriteURL },
+                    [this, spriteURL](Response res) {
             if (res.stale) {
                 // Only handle fresh responses.
                 return;

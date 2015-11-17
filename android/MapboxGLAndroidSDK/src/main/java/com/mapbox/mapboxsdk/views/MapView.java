@@ -1880,6 +1880,18 @@ public final class MapView extends FrameLayout {
         return new ArrayList<>(polygons);
     }
 
+
+    /**
+     * Convenience method for removing a Marker from the map.
+     *
+     * Calls removeAnnotation() internally
+     * @param marker Marker to remove
+     */
+    @UiThread
+    public void removeMarker(@NonNull Marker marker) {
+        removeAnnotation(marker);
+    }
+
     /**
      * Removes an annotation from the map.
      *

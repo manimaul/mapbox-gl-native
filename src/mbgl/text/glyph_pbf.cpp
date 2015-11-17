@@ -74,7 +74,7 @@ GlyphPBF::GlyphPBF(GlyphStore* store,
         return "";
     });
 
-    auto requestCallback = [this, store, fontStack, url](const Response &res) {
+    auto requestCallback = [this, store, fontStack, url](Response res) {
         if (res.stale) {
             // Only handle fresh responses.
             return;
@@ -92,7 +92,7 @@ GlyphPBF::GlyphPBF(GlyphStore* store,
     };
 
     FileSource* fs = util::ThreadContext::getFileSource();
-    req = fs->request({ Resource::Kind::Glyphs, url }, util::RunLoop::getLoop(), requestCallback);
+    req = fs->request({ Resource::Kind::Glyphs, url }, requestCallback);
 }
 
 GlyphPBF::~GlyphPBF() = default;
