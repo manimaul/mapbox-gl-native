@@ -16,6 +16,7 @@
 #include <mbgl/platform/log.hpp>
 #include <mbgl/platform/gl.hpp>
 #include <mbgl/util/constants.hpp>
+#include "../../include/mbgl/util/geo.hpp"
 
 namespace mbgl {
 namespace android {
@@ -691,6 +692,30 @@ void NativeMapView::notifyMapChange(mbgl::MapChange change) {
     env->CallVoidMethod(obj, onMapChangedId, change);
     if (env->ExceptionCheck()) {
         env->ExceptionDescribe();
+    }
+
+    long int now = static_cast<long int>(std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count());
+    long int dt = now - lastDetailMapChange;
+
+    if (dt >= 16) { /* Dispatch CB at 60 FPS max */
+        lastDetailMapChange = now;
+        mbgl::LatLng center = map->getLatLng();
+        double w = width;
+        double h = height;
+        mbgl::PrecisionPoint nePixel = {w, 0};
+        mbgl::PrecisionPoint swPixel = {0, h};
+
+        mbgl::LatLng northEast = map->latLngForPixel(nePixel);
+        mbgl::LatLng southWest = map->latLngForPixel(swPixel);
+
+        // west, north, east, south, centerX, centerY
+        env->CallVoidMethod(obj, onMapChangedDetailId, southWest.longitude, northEast.latitude,
+                            northEast.longitude, southWest.latitude,
+        center.longitude, center.latitude);
+        if (env->ExceptionCheck()) {
+            env->ExceptionDescribe();
+        }
     }
 
     detach_jni_thread(vm, &env, detach);

@@ -219,6 +219,8 @@ public final class MapView extends FrameLayout {
     // Used to manage MapChange event listeners
     private ArrayList<OnMapChangedListener> mOnMapChangedListener = new ArrayList<>();
 
+    private OnMapChangedDetailListener mOnMapChangedDetailListener = null;
+
     // Used to manage map click event listeners
     private OnMapClickListener mOnMapClickListener;
     private OnMapLongClickListener mOnMapLongClickListener;
@@ -243,6 +245,20 @@ public final class MapView extends FrameLayout {
     private boolean mScrollEnabled = true;
     private boolean mRotateEnabled = true;
     private String mStyleUrl;
+
+    private final RectF mRectF = new RectF();
+    private final PointF mPointF = new PointF();
+
+    public void onMapChangedDetail(float west, float north, float east, float south,
+                                   float centerX, float centerY) {
+
+        mRectF.set(west, north, east, south);
+        mPointF.set(centerX, centerY);
+
+        if (mOnMapChangedDetailListener != null) {
+            mOnMapChangedDetailListener.onMapChanged(mRectF, mPointF);
+        }
+    }
 
     //
     // Inner classes
@@ -474,6 +490,11 @@ public final class MapView extends FrameLayout {
          * @param change The type of map change event.
          */
         void onMapChanged(@MapChange int change);
+    }
+
+    public interface OnMapChangedDetailListener {
+
+        void onMapChanged(RectF wgsBounds, PointF wgsCenter);
     }
 
     /**
@@ -3030,6 +3051,24 @@ public final class MapView extends FrameLayout {
         if (listener != null) {
             mOnMapChangedListener.add(listener);
         }
+    }
+
+    /**
+     * Add a callback that's invoked when the displayed map view changes.
+     * <p/>
+     * To remove the callback, use {@link MapView#removeOnMapChangedDetailListener()}.
+     *
+     * @param listener The callback that's invoked on every frame rendered to the map view within
+     *                 a 60FPS rate.
+     * @see MapView#removeOnMapChangedDetailListener()
+     */
+    @UiThread
+    public void setOnMapChangedDetailListener(OnMapChangedDetailListener listener) {
+        mOnMapChangedDetailListener = listener;
+    }
+
+    public void removeOnMapChangedDetailListener() {
+        mOnMapChangedDetailListener = null;
     }
 
     /**

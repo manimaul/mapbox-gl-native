@@ -30,6 +30,7 @@ extern std::string androidRelease;
 
 extern jmethodID onInvalidateId;
 extern jmethodID onMapChangedId;
+extern jmethodID onMapChangedDetailId;
 extern jmethodID onFpsChangedId;
 
 extern jclass latLngClass;
