@@ -77,8 +77,6 @@ import com.mapbox.mapboxsdk.provider.OfflineProvider;
 import com.mapbox.mapboxsdk.provider.OfflineProviderManager;
 import com.mapbox.mapboxsdk.utils.ApiAccess;
 
-import org.json.JSONObject;
-
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.nio.ByteBuffer;
@@ -201,6 +199,8 @@ public final class MapView extends FrameLayout {
     // Used for the compass
     private CompassView mCompassView;
 
+    private MapOverlayDispatch mapOverlayDispatch;
+
     // Used for displaying annotations
     // Every annotation that has been added to the map
     private final List<Annotation> mAnnotations = new ArrayList<>();
@@ -218,8 +218,6 @@ public final class MapView extends FrameLayout {
 
     // Used to manage MapChange event listeners
     private ArrayList<OnMapChangedListener> mOnMapChangedListener = new ArrayList<>();
-
-    private OnMapChangedDetailListener mOnMapChangedDetailListener = null;
 
     // Used to manage map click event listeners
     private OnMapClickListener mOnMapClickListener;
@@ -248,17 +246,6 @@ public final class MapView extends FrameLayout {
 
     private final RectF mRectF = new RectF();
     private final PointF mPointF = new PointF();
-
-    public void onMapChangedDetail(float west, float north, float east, float south,
-                                   float centerX, float centerY) {
-
-        mRectF.set(west, north, east, south);
-        mPointF.set(centerX, centerY);
-
-        if (mOnMapChangedDetailListener != null) {
-            mOnMapChangedDetailListener.onMapChanged(mRectF, mPointF);
-        }
-    }
 
     //
     // Inner classes
@@ -492,11 +479,6 @@ public final class MapView extends FrameLayout {
         void onMapChanged(@MapChange int change);
     }
 
-    public interface OnMapChangedDetailListener {
-
-        void onMapChanged(RectF wgsBounds, PointF wgsCenter);
-    }
-
     /**
      * Interface definition for a callback to be invoked when an info window will be shown.
      *
@@ -685,6 +667,9 @@ public final class MapView extends FrameLayout {
         // Setup compass
         mCompassView = (CompassView) view.findViewById(R.id.compassView);
         mCompassView.setOnClickListener(new CompassView.CompassClickListener(this));
+
+        // Overlays
+        mapOverlayDispatch = (MapOverlayDispatch) view.findViewById(R.id.overlayDispatch);
 
         // Setup Mapbox logo
         mLogoView = (ImageView) view.findViewById(R.id.logoView);
@@ -3054,24 +3039,6 @@ public final class MapView extends FrameLayout {
     }
 
     /**
-     * Add a callback that's invoked when the displayed map view changes.
-     * <p/>
-     * To remove the callback, use {@link MapView#removeOnMapChangedDetailListener()}.
-     *
-     * @param listener The callback that's invoked on every frame rendered to the map view within
-     *                 a 60FPS rate.
-     * @see MapView#removeOnMapChangedDetailListener()
-     */
-    @UiThread
-    public void setOnMapChangedDetailListener(OnMapChangedDetailListener listener) {
-        mOnMapChangedDetailListener = listener;
-    }
-
-    public void removeOnMapChangedDetailListener() {
-        mOnMapChangedDetailListener = null;
-    }
-
-    /**
      * Remove a callback added with {@link MapView#addOnMapChangedListener(OnMapChangedListener)}
      *
      * @param listener The previously added callback to remove.
@@ -3178,6 +3145,25 @@ public final class MapView extends FrameLayout {
     @UiThread
     public void setOnMapClickListener(@Nullable OnMapClickListener listener) {
         mOnMapClickListener = listener;
+    }
+
+    @UiThread
+    public void addOverlay(Overlay overlay) {
+        mapOverlayDispatch.addOverlay(overlay);
+    }
+
+    @UiThread
+    public void removeOverlay(Overlay overlay) {
+        mapOverlayDispatch.removeOverlay(overlay);
+    }
+
+    void onMapChangedDetail(float west, float north, float east, float south,
+                            float centerX, float centerY) {
+
+        mRectF.set(west, north, east, south);
+        mPointF.set(centerX, centerY);
+
+        mapOverlayDispatch.invalidate(mRectF, mPointF);
     }
 
     /**
