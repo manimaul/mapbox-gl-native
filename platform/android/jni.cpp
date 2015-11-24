@@ -1690,7 +1690,7 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
         return JNI_ERR;
     }
 
-    onMapChangedDetailId = env->GetMethodID(nativeMapViewClass, "onMapChangedDetail", "(FFFFFF)V");
+    onMapChangedDetailId = env->GetMethodID(nativeMapViewClass, "onMapChangedDetail", "(FFFFFFFF)V");
     if (onMapChangedDetailId == nullptr) {
         env->ExceptionDescribe();
         return JNI_ERR;

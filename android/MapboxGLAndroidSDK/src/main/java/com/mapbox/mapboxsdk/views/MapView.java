@@ -3158,12 +3158,11 @@ public final class MapView extends FrameLayout {
     }
 
     void onMapChangedDetail(float west, float north, float east, float south,
-                            float centerX, float centerY) {
+                            float centerX, float centerY, float bearing, float zoom) {
 
         mRectF.set(west, north, east, south);
         mPointF.set(centerX, centerY);
-
-        mapOverlayDispatch.invalidate(mRectF, mPointF);
+        mapOverlayDispatch.invalidate(mRectF, mPointF, bearing, zoom);
     }
 
     /**

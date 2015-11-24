@@ -701,18 +701,23 @@ void NativeMapView::notifyMapChange(mbgl::MapChange change) {
     if (dt >= 16) { /* Dispatch CB at 60 FPS max */
         lastDetailMapChange = now;
         mbgl::LatLng center = map->getLatLng();
-        double w = width;
-        double h = height;
+        double w = static_cast<double>(width);
+        double h = static_cast<double>(height);
         mbgl::PrecisionPoint nePixel = {w, 0};
         mbgl::PrecisionPoint swPixel = {0, h};
 
         mbgl::LatLng northEast = map->latLngForPixel(nePixel);
         mbgl::LatLng southWest = map->latLngForPixel(swPixel);
+        float bearing = static_cast<float>(map->getBearing());
+        float zoom = static_cast<float>(map->getZoom());
 
-        // west, north, east, south, centerX, centerY
-        env->CallVoidMethod(obj, onMapChangedDetailId, southWest.longitude, northEast.latitude,
+        // west, north, east, south, centerX, centerY, bearing, zoom
+        env->CallVoidMethod(obj, onMapChangedDetailId, 
+                            southWest.longitude, northEast.latitude,
                             northEast.longitude, southWest.latitude,
-        center.longitude, center.latitude);
+                            center.longitude, center.latitude, 
+                            bearing, zoom);
+
         if (env->ExceptionCheck()) {
             env->ExceptionDescribe();
         }

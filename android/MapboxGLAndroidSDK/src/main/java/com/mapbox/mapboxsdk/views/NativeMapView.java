@@ -466,8 +466,8 @@ final class NativeMapView {
     }
 
     protected void onMapChangedDetail(float west, float north, float east, float south,
-                                      float centerX, float centerY) {
-        mMapView.get().onMapChangedDetail(west, north, east, south, centerX, centerY);
+                                      float centerX, float centerY, float bearing, float zoom) {
+        mMapView.get().onMapChangedDetail(west, north, east, south, centerX, centerY, bearing, zoom);
     }
 
     protected void onFpsChanged(double fps) {
