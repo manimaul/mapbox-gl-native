@@ -169,7 +169,7 @@ void MapContext::update() {
 
     data.setAnimationTime(Clock::now());
 
-    if (updateFlags & Update::Annotations) {
+    if (style->loaded && updateFlags & Update::Annotations) {
         data.getAnnotationManager()->updateStyle(*style);
         updateFlags |= Update::Classes;
     }
@@ -242,8 +242,8 @@ bool MapContext::renderSync(const TransformState& state, const FrameData& frame)
     // Cleanup OpenGL objects that we abandoned since the last render call.
     glObjectStore.performCleanup();
 
-    if (!painter) painter = std::make_unique<Painter>(data);
-    painter->render(*style, transformState, frame);
+    if (!painter) painter = std::make_unique<Painter>(data, transformState);
+    painter->render(*style, frame);
 
     if (data.mode == MapMode::Still) {
         callback(nullptr, view.readStillImage());

@@ -4,10 +4,11 @@
 #import <UIKit/UIKit.h>
 #import <CoreLocation/CoreLocation.h>
 
+#import "MGLTypes.h"
+
 NS_ASSUME_NONNULL_BEGIN
 
 @class MGLAnnotationImage;
-@class MGLMapCamera;
 @class MGLUserLocation;
 @class MGLPolyline;
 @class MGLPolygon;
@@ -120,12 +121,17 @@ IB_DESIGNABLE
 *   Changing the zoom level scales the map without changing the current center coordinate. At zoom level 0, tiles cover the entire world map; at zoom level 1, tiles cover 1/4 of the world; at zoom level 2, tiles cover 1/16 of the world, and so on. */
 - (void)setZoomLevel:(double)zoomLevel animated:(BOOL)animated;
 
-/** Changes the center coordinate and zoom level of the and optionally animates the change. 
+/** Changes the center coordinate and zoom level of the map and optionally animates the change. 
 *   @param centerCoordinate The new center coordinate for the map.
 *   @param zoomLevel The new zoom level for the map.
 *   @param animated Specify `YES` if you want the map view to animate scrolling and zooming to the new location or `NO` if you want the map to display the new location immediately. */
 - (void)setCenterCoordinate:(CLLocationCoordinate2D)centerCoordinate zoomLevel:(double)zoomLevel animated:(BOOL)animated;
 
+/** Changes the center coordinate, zoom level, and direction of the map and optionally animates the change. 
+*   @param centerCoordinate The new center coordinate for the map.
+*   @param zoomLevel The new zoom level for the map.
+*   @param direction The new direction for the map, measured in degrees relative to true north.
+*   @param animated Specify `YES` if you want the map view to animate scrolling, zooming, and rotating to the new location or `NO` if you want the map to display the new location immediately. */
 - (void)setCenterCoordinate:(CLLocationCoordinate2D)centerCoordinate zoomLevel:(double)zoomLevel direction:(CLLocationDirection)direction animated:(BOOL)animated;
 
 /** The coordinate bounds visible in the receiver’s viewport.
@@ -227,6 +233,9 @@ IB_DESIGNABLE
 *
 *   To display the default style, set this property to `nil`. */
 @property (nonatomic, null_resettable) NSURL *styleURL;
+
+/* Discourage programmatic usage of this IB-only property. Interface Builder skips over this declaration because it is unable to parse attributes. See the real declaration in MGLMapView+IBAdditions.h. */
+@property (nonatomic, nullable) IBInspectable NSString *styleURL__ __attribute__((unavailable("styleURL__ is for use within Interface Builder only. Use styleURL in code.")));
 
 /** Currently active style classes, represented as an array of string identifiers. */
 @property (nonatomic) NS_ARRAY_OF(NSString *) *styleClasses;
@@ -413,14 +422,20 @@ IB_DESIGNABLE
  *   @param animated Whether the change caused an animated effect on the map. */
 - (void)mapView:(MGLMapView *)mapView regionDidChangeAnimated:(BOOL)animated;
 
-#pragma mark - Loading the Map Data
+#pragma mark - Loading the Map
 
-/** @name Loading the Map Data */
+/** @name Loading the Map */
 
-// TODO
+/** Tells the delegate that the map view will begin to load.
+ *
+ *   This method is called whenever the map view starts loading, including when a new style has been set and the map must reload.
+ *   @param mapView The map view that is starting to load. */
 - (void)mapViewWillStartLoadingMap:(MGLMapView *)mapView;
 
-// TODO
+/** Tells the delegate that the map view has finished loading.
+ *
+ *   This method is called whenever the map view finishes loading, either after the initial load or after a style change has forced a reload.
+ *   @param mapView The map view that has finished loading. */
 - (void)mapViewDidFinishLoadingMap:(MGLMapView *)mapView;
 
 // TODO

@@ -82,6 +82,31 @@ GLFWView::GLFWView(bool fullscreen_, bool benchmark_)
     pixelRatio = static_cast<float>(fbWidth) / width;
 
     glfwMakeContextCurrent(nullptr);
+
+    printf("\n");
+    printf("================================================================================\n");
+    printf("\n");
+    printf("- Press `S` to cycle through bundled styles\n");
+    printf("- Press `X` to reset the transform\n");
+    printf("- Press `N` to reset north\n");
+    printf("- Press `C` to toggle symbol collision debug boxes\n");
+    printf("- Press `R` to toggle any available `night` style class\n");
+    printf("\n");
+    printf("- Press `1` through `6` to add increasing numbers of point annotations for testing\n");
+    printf("- Press `7` through `0` to add increasing numbers of shape annotations for testing\n");
+    printf("\n");
+    printf("- Press `Q` to remove annotations\n");
+    printf("- Press `P` to add a random custom runtime imagery annotation\n");
+    printf("- Press `W` to pop the last-added annotation off\n");
+    printf("\n");
+    printf("- `Control` + mouse drag to rotate\n");
+    printf("- `Shift` + mouse drag to tilt\n");
+    printf("\n");
+    printf("- Press `Tab` to toggle debug information\n");
+    printf("- Press `Esc` to quit\n");
+    printf("\n");
+    printf("================================================================================\n");
+    printf("\n");
 }
 
 GLFWView::~GLFWView() {
@@ -305,6 +330,9 @@ void GLFWView::onMouseClick(GLFWwindow *window, int button, int action, int modi
         (button == GLFW_MOUSE_BUTTON_LEFT && modifiers & GLFW_MOD_CONTROL)) {
         view->rotating = action == GLFW_PRESS;
         view->map->setGestureInProgress(view->rotating);
+    } else if (button == GLFW_MOUSE_BUTTON_LEFT && (modifiers & GLFW_MOD_SHIFT)) {
+        view->pitching = action == GLFW_PRESS;
+        view->map->setGestureInProgress(view->pitching);
     } else if (button == GLFW_MOUSE_BUTTON_LEFT) {
         view->tracking = action == GLFW_PRESS;
         view->map->setGestureInProgress(view->tracking);
@@ -336,6 +364,11 @@ void GLFWView::onMouseMove(GLFWwindow *window, double x, double y) {
         }
     } else if (view->rotating) {
         view->map->rotateBy({ view->lastX, view->lastY }, { x, y });
+    } else if (view->pitching) {
+        const double dy = y - view->lastY;
+        if (dy) {
+            view->map->setPitch(view->map->getPitch() - dy / 2);
+        }
     }
     view->lastX = x;
     view->lastY = y;

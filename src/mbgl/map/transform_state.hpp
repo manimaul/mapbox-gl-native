@@ -1,6 +1,7 @@
 #ifndef MBGL_MAP_TRANSFORM_STATE
 #define MBGL_MAP_TRANSFORM_STATE
 
+#include <mbgl/map/mode.hpp>
 #include <mbgl/util/geo.hpp>
 #include <mbgl/util/constants.hpp>
 #include <mbgl/util/vec.hpp>
@@ -21,6 +22,8 @@ class TransformState {
     friend class Transform;
 
 public:
+    TransformState(ConstrainMode = ConstrainMode::HeightOnly);
+
     // Matrix
     void matrixFor(mat4& matrix, const TileID& id, const int8_t z) const;
     void getProjMatrix(mat4& matrix) const;
@@ -71,7 +74,7 @@ public:
     TileCoordinate pointToCoordinate(const PrecisionPoint&) const;
 
 private:
-    void constrain(double& scale, double& y) const;
+    void constrain(double& scale, double& x, double& y) const;
 
     // Limit the amount of zooming possible on the map.
     double min_scale = std::pow(2, 0);
@@ -91,6 +94,8 @@ private:
     mat4 getPixelMatrix() const;
 
 private:
+    ConstrainMode constrainMode;
+
     // animation state
     bool rotating = false;
     bool scaling = false;

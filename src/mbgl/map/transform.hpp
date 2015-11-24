@@ -1,10 +1,11 @@
 #ifndef MBGL_MAP_TRANSFORM
 #define MBGL_MAP_TRANSFORM
 
-#include <mbgl/map/transform_state.hpp>
 #include <mbgl/map/camera.hpp>
-#include <mbgl/util/chrono.hpp>
+#include <mbgl/map/mode.hpp>
+#include <mbgl/map/transform_state.hpp>
 #include <mbgl/map/update.hpp>
+#include <mbgl/util/chrono.hpp>
 #include <mbgl/util/geo.hpp>
 #include <mbgl/util/noncopyable.hpp>
 
@@ -18,7 +19,7 @@ class View;
 
 class Transform : private util::noncopyable {
 public:
-    Transform(View&);
+    Transform(View&, ConstrainMode);
 
     // Map view
     bool resize(std::array<uint16_t, 2> size);
@@ -60,7 +61,7 @@ public:
     bool isGestureInProgress() const { return state.isGestureInProgress(); }
 
     // Transform state
-    const TransformState getState() const { return state; }
+    TransformState getState() const { return state; }
     bool isRotating() const { return state.isRotating(); }
     bool isScaling() const { return state.isScaling(); }
     bool isPanning() const { return state.isPanning(); }

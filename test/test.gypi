@@ -60,6 +60,7 @@
         'miscellaneous/text_conversions.cpp',
         'miscellaneous/thread.cpp',
         'miscellaneous/tile.cpp',
+        'miscellaneous/token.cpp',
         'miscellaneous/transform.cpp',
         'miscellaneous/work_queue.cpp',
         'miscellaneous/variant.cpp',
@@ -71,6 +72,7 @@
         'storage/database.cpp',
         'storage/directory_reading.cpp',
         'storage/file_reading.cpp',
+        'storage/headers.cpp',
         'storage/http_cancel.cpp',
         'storage/http_coalescing.cpp',
         'storage/http_error.cpp',
@@ -90,7 +92,6 @@
         'sprite/sprite_image.cpp',
         'sprite/sprite_parser.cpp',
         'sprite/sprite_store.cpp',
-        'sprite/custom_sprites.cpp',
       ],
       'libraries': [
         '<@(gtest_static_libs)',

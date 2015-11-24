@@ -34,8 +34,9 @@ static double _normalizeAngle(double angle, double anchorAngle)
     return angle;
 }
 
-Transform::Transform(View &view_)
+Transform::Transform(View &view_, ConstrainMode constrainMode)
     : view(view_)
+    , state(constrainMode)
 {
 }
 
@@ -48,7 +49,7 @@ bool Transform::resize(const std::array<uint16_t, 2> size) {
 
         state.width = size[0];
         state.height = size[1];
-        state.constrain(state.scale, state.y);
+        state.constrain(state.scale, state.x, state.y);
 
         view.notifyMapChange(MapChangeRegionDidChange);
 
@@ -105,7 +106,7 @@ void Transform::_moveBy(const PrecisionPoint& point, const Duration& duration) {
     double x = state.x + std::cos(state.angle) * point.x + std::sin( state.angle) * point.y;
     double y = state.y + std::cos(state.angle) * point.y + std::sin(-state.angle) * point.x;
 
-    state.constrain(state.scale, y);
+    state.constrain(state.scale, x, y);
 
     CameraOptions options;
     options.duration = duration;
@@ -159,7 +160,7 @@ void Transform::setLatLngZoom(const LatLng& latLng, double zoom, const Duration&
 
 #pragma mark - Zoom
 
-void Transform::scaleBy(const double ds, const PrecisionPoint& center, const Duration& duration) {
+void Transform::scaleBy(double ds, const PrecisionPoint& center, const Duration& duration) {
     if (std::isnan(ds) || !center) {
         return;
     }
@@ -175,7 +176,7 @@ void Transform::scaleBy(const double ds, const PrecisionPoint& center, const Dur
     _setScale(new_scale, center, duration);
 }
 
-void Transform::setScale(const double scale, const PrecisionPoint& center, const Duration& duration) {
+void Transform::setScale(double scale, const PrecisionPoint& center, const Duration& duration) {
     if (std::isnan(scale) || !center) {
         return;
     }
@@ -183,7 +184,7 @@ void Transform::setScale(const double scale, const PrecisionPoint& center, const
     _setScale(scale, center, duration);
 }
 
-void Transform::setZoom(const double zoom, const Duration& duration) {
+void Transform::setZoom(double zoom, const Duration& duration) {
     if (std::isnan(zoom)) {
         return;
     }
@@ -225,7 +226,7 @@ void Transform::_setScale(double new_scale, const PrecisionPoint& center, const 
     _setScaleXY(new_scale, xn, yn, duration);
 }
 
-void Transform::_setScaleXY(const double new_scale, const double xn, const double yn,
+void Transform::_setScaleXY(double new_scale, double xn, double yn,
                             const Duration& duration) {
     CameraOptions options;
     options.duration = duration;
@@ -239,7 +240,7 @@ void Transform::_easeTo(const CameraOptions& options, double new_scale, double n
     double x = xn;
     double y = yn;
 
-    state.constrain(scale, y);
+    state.constrain(scale, x, y);
     
     double angle = _normalizeAngle(new_angle, state.angle);
     state.angle = _normalizeAngle(state.angle, angle);
@@ -332,7 +333,7 @@ void Transform::rotateBy(const PrecisionPoint& first, const PrecisionPoint& seco
     _setAngle(ang, duration);
 }
 
-void Transform::setAngle(const double new_angle, const Duration& duration) {
+void Transform::setAngle(double new_angle, const Duration& duration) {
     if (std::isnan(new_angle)) {
         return;
     }
@@ -340,7 +341,7 @@ void Transform::setAngle(const double new_angle, const Duration& duration) {
     _setAngle(new_angle, duration);
 }
 
-void Transform::setAngle(const double new_angle, const PrecisionPoint& center) {
+void Transform::setAngle(double new_angle, const PrecisionPoint& center) {
     if (std::isnan(new_angle) || !center) {
         return;
     }

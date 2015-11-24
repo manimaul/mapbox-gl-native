@@ -111,6 +111,7 @@ private:
     bool hasPendingTransitions = false;
 
 public:
+    bool loaded = false;
     Worker workers;
 };
 

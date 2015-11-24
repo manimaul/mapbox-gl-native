@@ -44,7 +44,7 @@
 class MBGLView;
 
 NSString *const MGLDefaultStyleMarkerSymbolName = @"default_marker";
-NSString *const MGLMapboxSetupDocumentationURLDisplayString = @"mapbox.com/guides/first-steps-ios-sdk";
+NSString *const MGLMapboxSetupDocumentationURLDisplayString = @"mapbox.com/help/first-steps-ios-sdk";
 
 const NSTimeInterval MGLAnimationDuration = 0.3;
 const CGSize MGLAnnotationUpdateViewportOutset = {150, 150};
@@ -192,8 +192,8 @@ std::chrono::steady_clock::duration durationInSeconds(float duration)
 
     if ( ! [styleURL scheme])
     {
-        // Assume a relative path into the developer’s bundle.
-        styleURL = [[NSBundle mainBundle] URLForResource:styleURL.path withExtension:nil];
+        // Assume a relative path into the application bundle.
+        styleURL = [NSURL URLWithString:[@"asset://" stringByAppendingString:[styleURL absoluteString]]];
     }
 
     _mbglMap->setStyleURL([[styleURL absoluteString] UTF8String]);
@@ -233,7 +233,7 @@ std::chrono::steady_clock::duration durationInSeconds(float duration)
     // setup refresh driver
     _displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(updateFromDisplayLink)];
     _displayLink.frameInterval = MGLTargetFrameInterval;
-    [_displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
+    [_displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
     _needsDisplayRefresh = YES;
 
     // start paused if in IB
@@ -1099,7 +1099,7 @@ std::chrono::steady_clock::duration durationInSeconds(float duration)
 
         // figure out what that means in coordinate space
         CLLocationCoordinate2D coordinate;
-        mbgl::LatLngBounds tapBounds;
+        mbgl::LatLngBounds tapBounds = mbgl::LatLngBounds::getExtendable();
 
         coordinate = [self convertPoint:tapRectLowerLeft  toCoordinateFromView:self];
         tapBounds.extend(MGLLatLngFromLocationCoordinate2D(coordinate));
@@ -1555,7 +1555,7 @@ std::chrono::steady_clock::duration durationInSeconds(float duration)
 
 - (void)resetNorthAnimated:(BOOL)animated
 {
-    _mbglMap->setBearing(0, durationInSeconds(animated ? MGLAnimationDuration : 0));
+    [self setDirection:0 animated:animated];
 }
 
 - (void)resetPosition
@@ -1782,10 +1782,18 @@ mbgl::LatLngBounds MGLLatLngBoundsFromCoordinateBounds(MGLCoordinateBounds coord
 {
     if ( ! animated && ! self.rotationAllowed) return;
 
-    if (self.userTrackingMode == MGLUserTrackingModeFollowWithHeading)
+    if (self.userTrackingMode == MGLUserTrackingModeFollowWithHeading ||
+        self.userTrackingMode == MGLUserTrackingModeFollowWithCourse)
     {
         self.userTrackingMode = MGLUserTrackingModeFollow;
     }
+    
+    [self _setDirection:direction animated:animated];
+}
+
+- (void)_setDirection:(CLLocationDirection)direction animated:(BOOL)animated
+{
+    if (direction == self.direction) return;
 
     CGFloat duration = animated ? MGLAnimationDuration : 0;
 
@@ -1997,7 +2005,7 @@ CLLocationCoordinate2D MGLLocationCoordinate2DFromLatLng(mbgl::LatLng latLng)
 
 - (mbgl::LatLngBounds)viewportBounds
 {
-    mbgl::LatLngBounds bounds;
+    mbgl::LatLngBounds bounds = mbgl::LatLngBounds::getExtendable();
 
     bounds.extend(MGLLatLngFromLocationCoordinate2D(
         [self convertPoint:CGPointMake(0, 0) toCoordinateFromView:self]));
@@ -2517,7 +2525,7 @@ CLLocationCoordinate2D MGLLocationCoordinate2DFromLatLng(mbgl::LatLng latLng)
 {
     if ( ! annotations || ! annotations.count) return;
 
-    mbgl::LatLngBounds bounds;
+    mbgl::LatLngBounds bounds = mbgl::LatLngBounds::getExtendable();
 
     for (id <MGLAnnotation> annotation in annotations)
     {
@@ -2818,7 +2826,7 @@ CLLocationCoordinate2D MGLLocationCoordinate2DFromLatLng(mbgl::LatLng latLng)
 
     if (headingDirection >= 0 && self.userTrackingMode == MGLUserTrackingModeFollowWithHeading)
     {
-        _mbglMap->setBearing(headingDirection, durationInSeconds(MGLAnimationDuration));
+        [self _setDirection:headingDirection animated:YES];
     }
 }
 
