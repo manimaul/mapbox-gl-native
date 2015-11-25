@@ -703,8 +703,8 @@ void NativeMapView::notifyMapChange(mbgl::MapChange change) {
         mbgl::LatLng center = map->getLatLng();
         double w = static_cast<double>(width);
         double h = static_cast<double>(height);
-        mbgl::PrecisionPoint nePixel = {w, 0};
-        mbgl::PrecisionPoint swPixel = {0, h};
+        mbgl::PrecisionPoint nePixel = {w, h};
+        mbgl::PrecisionPoint swPixel = {0, 0};
 
         mbgl::LatLng northEast = map->latLngForPixel(nePixel);
         mbgl::LatLng southWest = map->latLngForPixel(swPixel);
