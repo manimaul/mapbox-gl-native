@@ -670,6 +670,7 @@ public final class MapView extends FrameLayout {
 
         // Overlays
         mapOverlayDispatch = (MapOverlayDispatch) view.findViewById(R.id.overlayDispatch);
+        mapOverlayDispatch.setMapView(this);
 
         // Setup Mapbox logo
         mLogoView = (ImageView) view.findViewById(R.id.logoView);

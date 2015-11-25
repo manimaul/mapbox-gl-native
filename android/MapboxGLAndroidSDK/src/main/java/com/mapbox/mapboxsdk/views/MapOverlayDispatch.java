@@ -18,6 +18,7 @@ final class MapOverlayDispatch extends View {
     private RectF mWgsBounds = new RectF();
     private float mBearing = 0;
     private float mZoom = 0;
+    private MapView mMapView = null;
 
     public MapOverlayDispatch(Context context) {
         super(context);
@@ -31,22 +32,29 @@ final class MapOverlayDispatch extends View {
         super(context, attrs, defStyleAttr);
     }
 
+    void setMapView(MapView mapView) {
+        mMapView = mapView;
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
-        for (int i = 0; i < mOverlayList.size(); i++) {
-            Overlay overlay = mOverlayList.get(i);
-            if (overlay.isEnabled()) {
-                overlay.drawLayer(canvas, mWgsBounds, mWgsCenter, mBearing, mZoom);
+        if (mMapView != null) {
+            for (int i = 0; i < mOverlayList.size(); i++) {
+                Overlay overlay = mOverlayList.get(i);
+                if (overlay.isOverlayEnabled()) {
+                    overlay.onOverlayDraw(mMapView, canvas, mWgsBounds, mWgsCenter, mBearing, mZoom);
+                }
             }
         }
+
+        super.onDraw(canvas);
     }
 
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
         for (int i = 0; i < mOverlayList.size(); i++) {
-            mOverlayList.get(i).onAttachedToWindow();
+            mOverlayList.get(i).onOverlayAttachedToWindow();
         }
     }
 
@@ -54,14 +62,14 @@ final class MapOverlayDispatch extends View {
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         for (int i = 0; i < mOverlayList.size(); i++) {
-            mOverlayList.get(i).onDetachedFromWindow();
+            mOverlayList.get(i).onOverlayDetachedFromWindow();
         }
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         for (int i = 0; i < mOverlayList.size(); i++) {
-            mOverlayList.get(i).onTouchEvent(event);
+            mOverlayList.get(i).onOverlayTouchEvent(event);
         }
         return super.onTouchEvent(event);
     }

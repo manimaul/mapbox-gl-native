@@ -5,30 +5,27 @@ import android.graphics.PointF;
 import android.graphics.RectF;
 import android.view.MotionEvent;
 
-public abstract class Overlay {
-
-    private boolean mEnabled = false;
+public interface Overlay {
 
     /**
      * Perform the overlay draw here.
      *
-     * @param canvas a canvas for you to draw on.
+     * @param mapView   the map view.
+     * @param canvas    a canvas for you to draw on.
      * @param wgsBounds bounds of the overlay in latitude, longitude
      * @param wgsCenter center of the overlay in latitude, longitude
+     * @param bearing   the map bearing / rotation degrees
+     * @param zoom      the map zoom level
      */
-    public abstract void drawLayer(final Canvas canvas, final RectF wgsBounds, final PointF wgsCenter,
-                                   float bearing, float zoom);
+    void onOverlayDraw(final MapView mapView, final Canvas canvas,
+                       final RectF wgsBounds, final PointF wgsCenter,
+                       float bearing, float zoom);
 
-    public abstract void onTouchEvent(final MotionEvent event);
+    void onOverlayTouchEvent(final MotionEvent event);
 
-    public abstract void onAttachedToWindow();
-    public abstract void onDetachedFromWindow();
+    void onOverlayAttachedToWindow();
 
-    public void setEnabled(boolean enabled) {
-        mEnabled = enabled;
-    }
+    void onOverlayDetachedFromWindow();
 
-    boolean isEnabled() {
-        return mEnabled;
-    }
+    boolean isOverlayEnabled();
 }
