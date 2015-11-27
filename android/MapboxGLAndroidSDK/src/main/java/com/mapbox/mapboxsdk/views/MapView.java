@@ -2318,8 +2318,9 @@ public final class MapView extends FrameLayout {
     // Called when user touches the screen, all positions are absolute
     @Override
     public boolean onTouchEvent(@NonNull MotionEvent event) {
-        // Check and ignore non touch or left clicks
+        mapOverlayDispatch.onOverlayTouchEvent(event);
 
+        // Check and ignore non touch or left clicks
         if ((event.getButtonState() != 0) && (event.getButtonState() != MotionEvent.BUTTON_PRIMARY)) {
             return false;
         }
@@ -2416,6 +2417,7 @@ public final class MapView extends FrameLayout {
         public boolean onSingleTapConfirmed(MotionEvent e) {
             // Open / Close InfoWindow
             PointF tapPoint = new PointF(e.getX(), e.getY());
+            mapOverlayDispatch.onOverlaySingleTapConfirmed(fromScreenLocation(tapPoint));
 
             final float toleranceSides = 30 * mScreenDensity;
             final float toleranceTop = 40 * mScreenDensity;
@@ -2505,6 +2507,7 @@ public final class MapView extends FrameLayout {
         public void onLongPress(MotionEvent e) {
             if (mOnMapLongClickListener != null) {
                 LatLng point = fromScreenLocation(new PointF(e.getX(), e.getY()));
+                mapOverlayDispatch.onOverlayLongPress(point);
                 mOnMapLongClickListener.onMapLongClick(point);
             }
         }
@@ -3148,14 +3151,33 @@ public final class MapView extends FrameLayout {
         mOnMapClickListener = listener;
     }
 
+    /**
+     * Add an {@link Overlay}.
+     * Note: Overlays will be drawn in the order added (first: bottom, last: top).
+     *
+     * @param overlay the overlay to add.
+     */
     @UiThread
     public void addOverlay(Overlay overlay) {
         mapOverlayDispatch.addOverlay(overlay);
     }
 
+    /**
+     * Remove an {@link Overlay}.
+     *
+     * @param overlay the overlay to remove.
+     */
     @UiThread
     public void removeOverlay(Overlay overlay) {
         mapOverlayDispatch.removeOverlay(overlay);
+    }
+
+    /**
+     * Remove all {@link Overlay}s
+     */
+    @UiThread
+    public void clearOverlays() {
+        mapOverlayDispatch.clearOverlays();
     }
 
     void onMapChangedDetail(float west, float north, float east, float south,

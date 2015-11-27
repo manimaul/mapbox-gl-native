@@ -5,6 +5,8 @@ import android.graphics.PointF;
 import android.graphics.RectF;
 import android.view.MotionEvent;
 
+import com.mapbox.mapboxsdk.geometry.LatLng;
+
 public interface Overlay {
 
     /**
@@ -23,9 +25,35 @@ public interface Overlay {
 
     void onOverlayTouchEvent(final MotionEvent event);
 
-    void onOverlayAttachedToWindow();
+    /**
+     * Called when the overlay is attached to the MapView view hierarchy.
+     */
+    void onOverlayAttached(final MapView mapView);
 
-    void onOverlayDetachedFromWindow();
+    /**
+     * Called when the overlay is detached to the MapView view hierarchy.
+     */
+    void onOverlayDetached();
 
-    boolean isOverlayEnabled();
+    /**
+     * A single tap event occurred.
+     *
+     * @param pressPosition the position of the press.
+     */
+    void onOverlaySingleTapConfirmed(LatLng pressPosition);
+
+    /**
+     * A long press event occurred.
+     *
+     * @param pressPosition the position of the press.
+     */
+    void onOverlayLongPress(LatLng pressPosition);
+
+    /**
+     * Let us know if you'd like to receive the onOverlayDraw() callback.
+     *
+     * @return true to get the
+     * {@link Overlay#onOverlayDraw(MapView, Canvas, RectF, PointF, float, float)} callback.
+     */
+    boolean isOverlayDrawEnabled();
 }
