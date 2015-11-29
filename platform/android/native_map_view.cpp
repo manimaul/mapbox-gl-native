@@ -703,18 +703,26 @@ void NativeMapView::notifyMapChange(mbgl::MapChange change) {
         mbgl::LatLng center = map->getLatLng();
         double w = static_cast<double>(width);
         double h = static_cast<double>(height);
-        mbgl::PrecisionPoint nePixel = {w, h};
-        mbgl::PrecisionPoint swPixel = {0, 0};
 
-        mbgl::LatLng northEast = map->latLngForPixel(nePixel);
-        mbgl::LatLng southWest = map->latLngForPixel(swPixel);
+        //double maxLat = -90.0, minLat = 90.0, maxLng -180.0, minLng 180.0;
+        mbgl::LatLngBounds bounds = mbgl::LatLngBounds::getExtendable();
+
+        mbgl::PrecisionPoint pixel = {0, 0};
+        bounds.extend(map->latLngForPixel(pixel)); //bottom left
+        pixel.x = w;
+        bounds.extend(map->latLngForPixel(pixel)); //bottom right
+        pixel.y = h;
+        bounds.extend(map->latLngForPixel(pixel)); //top right
+        pixel.x = 0;
+        bounds.extend(map->latLngForPixel(pixel)); //top left
+
         float bearing = static_cast<float>(map->getBearing());
         float zoom = static_cast<float>(map->getZoom());
 
         // west, north, east, south, centerX, centerY, bearing, zoom
         env->CallVoidMethod(obj, onMapChangedDetailId, 
-                            southWest.longitude, northEast.latitude,
-                            northEast.longitude, southWest.latitude,
+                            bounds.sw.longitude, bounds.ne.latitude,
+                            bounds.ne.longitude, bounds.sw.latitude,
                             center.longitude, center.latitude, 
                             bearing, zoom);
 
