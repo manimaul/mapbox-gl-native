@@ -92,7 +92,7 @@ import java.util.List;
  * and style the features of the map to fit your application's use case.
  * <p/>
  * Use of {@code MapView} requires a Mapbox API access token.
- * Obtain an access token on the <a href="https://www.mapbox.com/account/apps/">Mapbox account page</a>.
+ * Obtain an access token on the <a href="https://www.mapbox.com/studio/account/tokens/">Mapbox account page</a>.
  * <p/>
  * <strong>Warning:</strong> Please note that you are responsible for getting permission to use the map data,
  * and for ensuring your use adheres to the relevant terms of use.
@@ -182,6 +182,7 @@ public final class MapView extends FrameLayout {
     private RotateGestureDetector mRotateGestureDetector;
     private boolean mTwoTap = false;
     private boolean mZoomStarted = false;
+    private boolean mQuickZoom = false;
 
     // Shows zoom buttons
     private ZoomButtonsController mZoomButtonsController;
@@ -1316,7 +1317,7 @@ public final class MapView extends FrameLayout {
      */
     @UiThread
     public boolean isDebugActive() {
-        return mNativeMapView.getDebug() || mNativeMapView.getCollisionDebug();
+        return mNativeMapView.getDebug();
     }
 
     /**
@@ -1329,20 +1330,19 @@ public final class MapView extends FrameLayout {
     @UiThread
     public void setDebugActive(boolean debugActive) {
         mNativeMapView.setDebug(debugActive);
-        mNativeMapView.setCollisionDebug(debugActive);
     }
 
     /**
-     * Toggles whether the map debug information is shown.
+     * Cycles through the map debug options.
      * <p/>
-     * The value of {@link MapView#isDebugActive()} is toggled.
+     * The value of {@link MapView#isDebugActive()} reflects whether there are
+     * any map debug options enabled or disabled.
      *
      * @see MapView#isDebugActive()
      */
     @UiThread
-    public void toggleDebug() {
-        mNativeMapView.toggleDebug();
-        mNativeMapView.toggleCollisionDebug();
+    public void cycleDebugOptions() {
+        mNativeMapView.cycleDebugOptions();
     }
 
     // True if map has finished loading the view
@@ -2389,20 +2389,34 @@ public final class MapView extends FrameLayout {
 
         // Called for double taps
         @Override
-        public boolean onDoubleTap(MotionEvent e) {
+        public boolean onDoubleTapEvent(MotionEvent e) {
             if (!mZoomEnabled) {
                 return false;
             }
 
-            // Single finger double tap
-            // Zoom in
-            if (mUserLocationView.getMyLocationTrackingMode() == MyLocationTracking.TRACKING_NONE) {
-                // Zoom in on gesture
-                zoom(true, e.getX(), e.getY());
-            } else {
-                // Zoom in on center map
-                zoom(true, getWidth() / 2, getHeight() / 2);
+            switch (e.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    mQuickZoom = false;
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    mQuickZoom = true;
+                    break;
+                case MotionEvent.ACTION_UP:
+                    if (mQuickZoom) {
+                        break;
+                    }
+
+                    // Single finger double tap
+                    if (mUserLocationView.getMyLocationTrackingMode() == MyLocationTracking.TRACKING_NONE) {
+                        // Zoom in on gesture
+                        zoom(true, e.getX(), e.getY());
+                    } else {
+                        // Zoom in on center map
+                        zoom(true, getWidth() / 2, getHeight() / 2);
+                    }
+                    break;
             }
+
             return true;
         }
 
@@ -2618,7 +2632,7 @@ public final class MapView extends FrameLayout {
             mNativeMapView.cancelTransitions();
 
             // Scale the map
-            if (mUserLocationView.getMyLocationTrackingMode() == MyLocationTracking.TRACKING_NONE) {
+            if (!mQuickZoom && mUserLocationView.getMyLocationTrackingMode() == MyLocationTracking.TRACKING_NONE) {
                 // around gesture
                 mNativeMapView.scaleBy(detector.getScaleFactor(), detector.getFocusX() / mScreenDensity, detector.getFocusY() / mScreenDensity);
             } else {
