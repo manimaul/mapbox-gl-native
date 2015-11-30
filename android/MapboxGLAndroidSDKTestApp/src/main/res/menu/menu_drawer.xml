@@ -75,7 +75,7 @@
             <item
                 android:id="@+id/action_offline_map_fragment"
                 android:checkable="false"
-                android:icon="@drawable/ic_widgets_white_24dp"
+                android:icon="@drawable/ic_now_widgets_24dp"
                 android:title="@string/action_offline_map_fragment" />
 
             <item
