@@ -2253,7 +2253,7 @@ public final class MapView extends FrameLayout {
     }
 
     // Used by UserLocationView
-    void update() {
+    public void update() {
         if (mNativeMapView != null) {
             mNativeMapView.update();
         }
@@ -3163,6 +3163,26 @@ public final class MapView extends FrameLayout {
     @UiThread
     public void setOnMapClickListener(@Nullable OnMapClickListener listener) {
         mOnMapClickListener = listener;
+    }
+
+    @UiThread
+    public void updateMapDirection(double bearing) {
+        mNativeMapView.setBearing(bearing, 100);
+    }
+
+    @UiThread
+    public void updateMapDirection(double bearing, long duration) {
+        mNativeMapView.setBearing(bearing, duration);
+    }
+
+    @UiThread
+    public void updateMapLocation(LatLng latLng) {
+        mNativeMapView.setLatLng(latLng, 100);
+    }
+
+    @UiThread
+    public void updateMapLocation(LatLng latLng, long duration) {
+        mNativeMapView.setLatLng(latLng, duration);
     }
 
     /**
