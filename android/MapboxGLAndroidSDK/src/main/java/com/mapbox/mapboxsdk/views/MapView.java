@@ -216,8 +216,6 @@ public final class MapView extends FrameLayout {
 
     private MapOverlayDispatch mapOverlayDispatch;
 
-    private MapOverlayDispatch mapOverlayDispatch;
-
     // Used for displaying annotations
     // Every annotation that has been added to the map
     private final List<Annotation> mAnnotations = new ArrayList<>();
@@ -733,10 +731,6 @@ public final class MapView extends FrameLayout {
         // Setup compass
         mCompassOverlay = new CompassOverlay(getContext());
         addOverlay(mCompassOverlay);
-
-        // Overlays
-        mapOverlayDispatch = (MapOverlayDispatch) view.findViewById(R.id.overlayDispatch);
-        mapOverlayDispatch.setMapView(this);
 
         // Setup Mapbox logo
         mLogoView = (ImageView) view.findViewById(R.id.logoView);
@@ -3452,43 +3446,6 @@ public final class MapView extends FrameLayout {
     @UiThread
     public void updateMapLocation(LatLng latLng, long duration) {
         mNativeMapView.setLatLng(latLng, duration);
-    }
-
-    /**
-     * Add an {@link Overlay}.
-     * Note: Overlays will be drawn in the order added (first: bottom, last: top).
-     *
-     * @param overlay the overlay to add.
-     */
-    @UiThread
-    public void addOverlay(Overlay overlay) {
-        mapOverlayDispatch.addOverlay(overlay);
-    }
-
-    /**
-     * Remove an {@link Overlay}.
-     *
-     * @param overlay the overlay to remove.
-     */
-    @UiThread
-    public void removeOverlay(Overlay overlay) {
-        mapOverlayDispatch.removeOverlay(overlay);
-    }
-
-    /**
-     * Remove all {@link Overlay}s
-     */
-    @UiThread
-    public void clearOverlays() {
-        mapOverlayDispatch.clearOverlays();
-    }
-
-    void onMapChangedDetail(float west, float north, float east, float south,
-                            float centerX, float centerY, float bearing, float zoom) {
-
-        mRectF.set(west, north, east, south);
-        mPointF.set(centerX, centerY);
-        mapOverlayDispatch.invalidate(mRectF, mPointF, bearing, zoom);
     }
 
     /**
