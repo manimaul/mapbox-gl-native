@@ -11,7 +11,6 @@
 #include <jni.h>
 #include <android/native_window.h>
 #include <EGL/egl.h>
-#include <chrono>
 
 namespace mbgl {
 namespace android {
@@ -87,7 +86,6 @@ private:
     int fbWidth = 0;
     int fbHeight = 0;
     const float pixelRatio;
-    long int lastDetailMapChange = 0;
 
     int availableProcessors = 0;
     size_t totalMemory = 0;

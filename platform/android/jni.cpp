@@ -38,7 +38,6 @@ std::string androidRelease;
 
 jmethodID onInvalidateId = nullptr;
 jmethodID onMapChangedId = nullptr;
-jmethodID onMapChangedDetailId = nullptr;
 jmethodID onFpsChangedId = nullptr;
 
 jclass latLngClass = nullptr;
@@ -1714,12 +1713,6 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
         return JNI_ERR;
     }
 
-    onMapChangedDetailId = env->GetMethodID(nativeMapViewClass, "onMapChangedDetail", "(FFFFFFFF)V");
-    if (onMapChangedDetailId == nullptr) {
-        env->ExceptionDescribe();
-        return JNI_ERR;
-    }
-
     onFpsChangedId = env->GetMethodID(nativeMapViewClass, "onFpsChanged", "(D)V");
     if (onFpsChangedId == nullptr) {
         env->ExceptionDescribe();
@@ -2267,7 +2260,6 @@ extern "C" JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *vm, void *reserved) {
 
     onInvalidateId = nullptr;
     onMapChangedId = nullptr;
-    onMapChangedDetailId = nullptr;
     onFpsChangedId = nullptr;
 
     env->DeleteGlobalRef(runtimeExceptionClass);

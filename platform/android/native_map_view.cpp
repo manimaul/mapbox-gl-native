@@ -694,43 +694,6 @@ void NativeMapView::notifyMapChange(mbgl::MapChange change) {
         env->ExceptionDescribe();
     }
 
-    long int now = static_cast<long int>(std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now().time_since_epoch()).count());
-    long int dt = now - lastDetailMapChange;
-
-    if (dt >= 16) { /* Dispatch CB at 60 FPS max */
-        lastDetailMapChange = now;
-        mbgl::LatLng center = map->getLatLng();
-        double w = static_cast<double>(width);
-        double h = static_cast<double>(height);
-
-        //double maxLat = -90.0, minLat = 90.0, maxLng -180.0, minLng 180.0;
-        mbgl::LatLngBounds bounds = mbgl::LatLngBounds::getExtendable();
-
-        mbgl::PrecisionPoint pixel = {0, 0};
-        bounds.extend(map->latLngForPixel(pixel)); //bottom left
-        pixel.x = w;
-        bounds.extend(map->latLngForPixel(pixel)); //bottom right
-        pixel.y = h;
-        bounds.extend(map->latLngForPixel(pixel)); //top right
-        pixel.x = 0;
-        bounds.extend(map->latLngForPixel(pixel)); //top left
-
-        float bearing = static_cast<float>(map->getBearing());
-        float zoom = static_cast<float>(map->getZoom());
-
-        // west, north, east, south, centerX, centerY, bearing, zoom
-        env->CallVoidMethod(obj, onMapChangedDetailId, 
-                            bounds.sw.longitude, bounds.ne.latitude,
-                            bounds.ne.longitude, bounds.sw.latitude,
-                            center.longitude, center.latitude, 
-                            bearing, zoom);
-
-        if (env->ExceptionCheck()) {
-            env->ExceptionDescribe();
-        }
-    }
-
     detach_jni_thread(vm, &env, detach);
 }
 
