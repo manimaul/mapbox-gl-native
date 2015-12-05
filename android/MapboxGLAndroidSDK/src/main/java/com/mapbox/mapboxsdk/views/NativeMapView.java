@@ -256,6 +256,14 @@ final class NativeMapView {
         nativeResetPosition(mNativeMapViewPtr);
     }
 
+    public double getPitch() {
+        return nativeGetPitch(mNativeMapViewPtr);
+    }
+
+    public void setPitch(double pitch, long duration) {
+        nativeSetPitch(mNativeMapViewPtr, pitch, duration);
+    }
+
     public void scaleBy(double ds) {
         scaleBy(ds, -1.0, -1.0);
     }
@@ -429,8 +437,8 @@ final class NativeMapView {
         return nativeLatLngForProjectedMeters(mNativeMapViewPtr, projectedMeters);
     }
 
-    public PointF pixelForLatLng(LatLng latLng) {
-        return nativePixelForLatLng(mNativeMapViewPtr, latLng);
+    public void pixelForLatLng(LatLng latLng, PointF point) {
+        nativePixelForLatLng(mNativeMapViewPtr, latLng, point);
     }
 
     public LatLng latLngForPixel(PointF pixel) {
@@ -439,6 +447,10 @@ final class NativeMapView {
 
     public double getTopOffsetPixelsForAnnotationSymbol(String symbolName) {
         return nativeGetTopOffsetPixelsForAnnotationSymbol(mNativeMapViewPtr, symbolName);
+    }
+
+    public void updateMapBounds(BoundingBox wgsBounds, LatLng wgsCenter) {
+        nativeUpdateMapBounds(mNativeMapViewPtr, wgsBounds, wgsCenter);
     }
 
     //
@@ -538,6 +550,10 @@ final class NativeMapView {
 
     private native void nativeResetPosition(long nativeMapViewPtr);
 
+    private native double nativeGetPitch(long nativeMapViewPtr);
+
+    private native void nativeSetPitch(long nativeMapViewPtr, double pitch, long duration);
+
     private native void nativeScaleBy(long nativeMapViewPtr, double ds,
                                       double cx, double cy, long duration);
 
@@ -617,9 +633,11 @@ final class NativeMapView {
 
     private native LatLng nativeLatLngForProjectedMeters(long nativeMapViewPtr, ProjectedMeters projectedMeters);
 
-    private native PointF nativePixelForLatLng(long nativeMapViewPtr, LatLng latLng);
+    private native void nativePixelForLatLng(long nativeMapViewPtr, LatLng latLng, PointF point);
 
     private native LatLng nativeLatLngForPixel(long nativeMapViewPtr, PointF pixel);
 
     private native double nativeGetTopOffsetPixelsForAnnotationSymbol(long nativeMapViewPtr, String symbolName);
+
+    private native void nativeUpdateMapBounds(long nativeMapViewPtr, BoundingBox wgsBounds, LatLng wgsCenter);
 }

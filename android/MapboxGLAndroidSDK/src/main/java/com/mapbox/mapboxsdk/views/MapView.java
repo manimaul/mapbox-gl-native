@@ -14,6 +14,7 @@ import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.PointF;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.location.Location;
@@ -53,6 +54,7 @@ import android.widget.ImageView;
 import android.widget.ZoomButtonsController;
 
 import com.almeros.android.multitouch.gesturedetectors.RotateGestureDetector;
+import com.almeros.android.multitouch.gesturedetectors.ShoveGestureDetector;
 import com.almeros.android.multitouch.gesturedetectors.TwoFingerGestureDetector;
 import com.mapbox.mapboxsdk.R;
 import com.mapbox.mapboxsdk.annotations.Annotation;
@@ -117,9 +119,11 @@ public final class MapView extends FrameLayout {
     private static final String STATE_CENTER_DIRECTION = "centerDirection";
     private static final String STATE_ZOOM_LEVEL = "zoomLevel";
     private static final String STATE_DIRECTION = "direction";
+    private static final String STATE_TILT = "tilt";
     private static final String STATE_ZOOM_ENABLED = "zoomEnabled";
     private static final String STATE_SCROLL_ENABLED = "scrollEnabled";
     private static final String STATE_ROTATE_ENABLED = "rotateEnabled";
+    private static final String STATE_TILT_ENABLED = "tiltEnabled";
     private static final String STATE_ZOOM_CONTROLS_ENABLED = "zoomControlsEnabled";
     private static final String STATE_DEBUG_ACTIVE = "debugActive";
     private static final String STATE_STYLE_URL = "styleUrl";
@@ -164,6 +168,14 @@ public final class MapView extends FrameLayout {
      */
     public static final double MAXIMUM_ZOOM_LEVEL = 18.0;
 
+    /**
+     * The currently supported maximum and minimum tilt values.
+     *
+     * @see MapView#setTilt(Double, Long)
+     */
+    private static final double MINIMUM_TILT = 0;
+    private static final double MAXIMUM_TILT = 60;
+
     //
     // Instance members
     //
@@ -181,6 +193,7 @@ public final class MapView extends FrameLayout {
     private GestureDetectorCompat mGestureDetector;
     private ScaleGestureDetector mScaleGestureDetector;
     private RotateGestureDetector mRotateGestureDetector;
+    private ShoveGestureDetector mShoveGestureDetector;
     private boolean mTwoTap = false;
     private boolean mZoomStarted = false;
     private boolean mQuickZoom = false;
@@ -196,10 +209,12 @@ public final class MapView extends FrameLayout {
     private ConnectivityReceiver mConnectivityReceiver;
 
     // Used for user location
-    private UserLocationView mUserLocationView;
+    private UserLocationOverlay mUserLocationOverlay;
 
     // Used for the compass
-    private CompassView mCompassView;
+    private CompassOverlay mCompassOverlay;
+
+    private MapOverlayDispatch mapOverlayDispatch;
 
     private MapOverlayDispatch mapOverlayDispatch;
 
@@ -245,6 +260,7 @@ public final class MapView extends FrameLayout {
     private boolean mZoomEnabled = true;
     private boolean mScrollEnabled = true;
     private boolean mRotateEnabled = true;
+    private boolean mTiltEnabled = true;
     private boolean mAllowConcurrentMultipleOpenInfoWindows = false;
     private String mStyleUrl;
 
@@ -688,6 +704,7 @@ public final class MapView extends FrameLayout {
         mScaleGestureDetector = new ScaleGestureDetector(context, new ScaleGestureListener());
         ScaleGestureDetectorCompat.setQuickScaleEnabled(mScaleGestureDetector, true);
         mRotateGestureDetector = new RotateGestureDetector(context, new RotateGestureListener());
+        mShoveGestureDetector = new ShoveGestureDetector(context, new ShoveGestureListener());
 
         // Shows the zoom controls
         if (!context.getPackageManager()
@@ -705,13 +722,17 @@ public final class MapView extends FrameLayout {
         boolean isConnected = (activeNetwork != null) && activeNetwork.isConnectedOrConnecting();
         onConnectivityChanged(isConnected);
 
+        // Overlays
+        mapOverlayDispatch = (MapOverlayDispatch) view.findViewById(R.id.overlayDispatch);
+        mapOverlayDispatch.setMapView(this);
+
         // Setup user location UI
-        mUserLocationView = (UserLocationView) view.findViewById(R.id.userLocationView);
-        mUserLocationView.setMapView(this);
+        mUserLocationOverlay = new UserLocationOverlay(getContext());
+        addOverlay(mUserLocationOverlay);
 
         // Setup compass
-        mCompassView = (CompassView) view.findViewById(R.id.compassView);
-        mCompassView.setOnClickListener(new CompassView.CompassClickListener(this));
+        mCompassOverlay = new CompassOverlay(getContext());
+        addOverlay(mCompassOverlay);
 
         // Overlays
         mapOverlayDispatch = (MapOverlayDispatch) view.findViewById(R.id.overlayDispatch);
@@ -737,6 +758,7 @@ public final class MapView extends FrameLayout {
             setZoomEnabled(typedArray.getBoolean(R.styleable.MapView_zoom_enabled, true));
             setScrollEnabled(typedArray.getBoolean(R.styleable.MapView_scroll_enabled, true));
             setRotateEnabled(typedArray.getBoolean(R.styleable.MapView_rotate_enabled, true));
+            setTiltEnabled(typedArray.getBoolean(R.styleable.MapView_tilt_enabled, true));
             setZoomControlsEnabled(typedArray.getBoolean(R.styleable.MapView_zoom_controls_enabled, isZoomControlsEnabled()));
             setDebugActive(typedArray.getBoolean(R.styleable.MapView_debug_active, false));
             if (typedArray.getString(R.styleable.MapView_style_url) != null) {
@@ -758,11 +780,12 @@ public final class MapView extends FrameLayout {
 
             // Compass
             setCompassEnabled(typedArray.getBoolean(R.styleable.MapView_compass_enabled, true));
-            setCompassGravity(typedArray.getInt(R.styleable.MapView_compass_gravity, Gravity.TOP | Gravity.END));
-            setWidgetMargins(mCompassView, typedArray.getDimension(R.styleable.MapView_compass_margin_left, DIMENSION_TEN_DP)
-                    , typedArray.getDimension(R.styleable.MapView_compass_margin_top, DIMENSION_TEN_DP)
-                    , typedArray.getDimension(R.styleable.MapView_compass_margin_right, DIMENSION_TEN_DP)
-                    , typedArray.getDimension(R.styleable.MapView_compass_margin_bottom, DIMENSION_TEN_DP));
+            @CompassOverlay.CompassGravity int gravity = typedArray.getInt(R.styleable.MapView_compass_gravity, CompassOverlay.COMPASS_GRAVITY_TOP | CompassOverlay.COMPASS_GRAVITY_RIGHT);
+            setCompassGravity(gravity);
+            setCompassMargins(typedArray.getDimensionPixelSize(R.styleable.MapView_compass_margin_left, (int) DIMENSION_TEN_DP)
+                    , typedArray.getDimensionPixelSize(R.styleable.MapView_compass_margin_top, (int) DIMENSION_TEN_DP)
+                    , typedArray.getDimensionPixelSize(R.styleable.MapView_compass_margin_right, (int) DIMENSION_TEN_DP)
+                    , typedArray.getDimensionPixelSize(R.styleable.MapView_compass_margin_bottom, (int) DIMENSION_TEN_DP));
 
             // Logo
             setLogoVisibility(typedArray.getInt(R.styleable.MapView_logo_visibility, View.VISIBLE));
@@ -809,9 +832,11 @@ public final class MapView extends FrameLayout {
             setZoomLevel(savedInstanceState.getDouble(STATE_ZOOM_LEVEL));
             setDirection(savedInstanceState.getDouble(STATE_CENTER_DIRECTION));
             setDirection(savedInstanceState.getDouble(STATE_DIRECTION));
+            setTilt(savedInstanceState.getDouble(STATE_TILT), null);
             setZoomEnabled(savedInstanceState.getBoolean(STATE_ZOOM_ENABLED));
             setScrollEnabled(savedInstanceState.getBoolean(STATE_SCROLL_ENABLED));
             setRotateEnabled(savedInstanceState.getBoolean(STATE_ROTATE_ENABLED));
+            setTiltEnabled(savedInstanceState.getBoolean(STATE_TILT_ENABLED));
             setZoomControlsEnabled(savedInstanceState.getBoolean(STATE_ZOOM_CONTROLS_ENABLED));
             setDebugActive(savedInstanceState.getBoolean(STATE_DEBUG_ACTIVE));
             setStyleUrl(savedInstanceState.getString(STATE_STYLE_URL));
@@ -826,7 +851,8 @@ public final class MapView extends FrameLayout {
 
             // Compass
             setCompassEnabled(savedInstanceState.getBoolean(STATE_COMPASS_ENABLED));
-            setCompassGravity(savedInstanceState.getInt(STATE_COMPASS_GRAVITY));
+            @CompassOverlay.CompassGravity int compassLayoutGravity = savedInstanceState.getInt(STATE_COMPASS_GRAVITY);
+            setCompassGravity(compassLayoutGravity);
             setCompassMargins(savedInstanceState.getInt(STATE_COMPASS_MARGIN_LEFT)
                     , savedInstanceState.getInt(STATE_COMPASS_MARGIN_TOP)
                     , savedInstanceState.getInt(STATE_COMPASS_MARGIN_RIGHT)
@@ -889,9 +915,11 @@ public final class MapView extends FrameLayout {
         // need to set zoom level first because of limitation on rotating when zoomed out
         outState.putDouble(STATE_ZOOM_LEVEL, getZoomLevel());
         outState.putDouble(STATE_CENTER_DIRECTION, getDirection());
+        outState.putDouble(STATE_TILT, getTilt());
         outState.putBoolean(STATE_ZOOM_ENABLED, isZoomEnabled());
         outState.putBoolean(STATE_SCROLL_ENABLED, isScrollEnabled());
         outState.putBoolean(STATE_ROTATE_ENABLED, isRotateEnabled());
+        outState.putBoolean(STATE_TILT_ENABLED, isTiltEnabled());
         outState.putBoolean(STATE_ZOOM_CONTROLS_ENABLED, isZoomControlsEnabled());
         outState.putBoolean(STATE_DEBUG_ACTIVE, isDebugActive());
         outState.putString(STATE_STYLE_URL, getStyleUrl());
@@ -899,16 +927,16 @@ public final class MapView extends FrameLayout {
         outState.putStringArrayList(STATE_STYLE_CLASSES, new ArrayList<>(getStyleClasses()));
         outState.putLong(STATE_DEFAULT_TRANSITION_DURATION, mNativeMapView.getDefaultTransitionDuration());
         outState.putBoolean(STATE_MY_LOCATION_ENABLED, isMyLocationEnabled());
-        outState.putInt(STATE_MY_LOCATION_TRACKING_MODE, mUserLocationView.getMyLocationTrackingMode());
+        outState.putInt(STATE_MY_LOCATION_TRACKING_MODE, mUserLocationOverlay.getMyLocationTrackingMode());
 
         // Compass
-        LayoutParams compassParams = (LayoutParams) mCompassView.getLayoutParams();
         outState.putBoolean(STATE_COMPASS_ENABLED, isCompassEnabled());
-        outState.putInt(STATE_COMPASS_GRAVITY, compassParams.gravity);
-        outState.putInt(STATE_COMPASS_MARGIN_LEFT, compassParams.leftMargin);
-        outState.putInt(STATE_COMPASS_MARGIN_TOP, compassParams.topMargin);
-        outState.putInt(STATE_COMPASS_MARGIN_BOTTOM, compassParams.bottomMargin);
-        outState.putInt(STATE_COMPASS_MARGIN_RIGHT, compassParams.rightMargin);
+        outState.putInt(STATE_COMPASS_GRAVITY, mCompassOverlay.getGravity());
+        Rect compassMargins = mCompassOverlay.getMargins();
+        outState.putInt(STATE_COMPASS_MARGIN_LEFT, compassMargins.left);
+        outState.putInt(STATE_COMPASS_MARGIN_TOP, compassMargins.top);
+        outState.putInt(STATE_COMPASS_MARGIN_BOTTOM, compassMargins.bottom);
+        outState.putInt(STATE_COMPASS_MARGIN_RIGHT, compassMargins.right);
 
         // Logo
         LayoutParams logoParams = (LayoutParams) mLogoView.getLayoutParams();
@@ -946,7 +974,7 @@ public final class MapView extends FrameLayout {
      */
     @UiThread
     public void onStart() {
-        mUserLocationView.onStart();
+        mUserLocationOverlay.onStart();
     }
 
     /**
@@ -954,7 +982,7 @@ public final class MapView extends FrameLayout {
      */
     @UiThread
     public void onStop() {
-        mUserLocationView.onStop();
+        mUserLocationOverlay.onStop();
     }
 
     /**
@@ -966,7 +994,7 @@ public final class MapView extends FrameLayout {
         getContext().unregisterReceiver(mConnectivityReceiver);
         mConnectivityReceiver = null;
 
-        mUserLocationView.pause();
+        mUserLocationOverlay.pause();
         mNativeMapView.pause();
     }
 
@@ -979,7 +1007,7 @@ public final class MapView extends FrameLayout {
         mConnectivityReceiver = new ConnectivityReceiver();
         getContext().registerReceiver(mConnectivityReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
 
-        mUserLocationView.resume();
+        mUserLocationOverlay.resume();
         mNativeMapView.resume();
         mNativeMapView.update();
     }
@@ -1110,6 +1138,32 @@ public final class MapView extends FrameLayout {
     @UiThread
     public void setScrollEnabled(boolean scrollEnabled) {
         this.mScrollEnabled = scrollEnabled;
+    }
+
+    //
+    // Pitch / Tilt
+    //
+
+    /**
+     * Gets the current Tilt in degrees of the MapView
+     * @return tilt in degrees
+     */
+    public double getTilt() {
+        return mNativeMapView.getPitch();
+    }
+
+    /**
+     * Sets the Tilt in degrees of the MapView.
+     * @param pitch New tilt in degrees
+     * @param duration Animation time in milliseconds.  If null then 0 is used, making the animation immediate.
+     */
+    @FloatRange(from = MINIMUM_TILT, to = MAXIMUM_TILT)
+    public void setTilt(Double pitch, @Nullable Long duration) {
+        long actualDuration = 0;
+        if (duration != null) {
+            actualDuration = duration;
+        }
+        mNativeMapView.setPitch(pitch, actualDuration);
     }
 
     //
@@ -1347,6 +1401,35 @@ public final class MapView extends FrameLayout {
     }
 
     //
+    // Tilt
+    //
+
+    /**
+     * Returns whether the user may tilt the map.
+     *
+     * @return If true, tilting is enabled.
+     */
+    @UiThread
+    public boolean isTiltEnabled() {
+        return mTiltEnabled;
+    }
+
+    /**
+     * Changes whether the user may tilt the map.
+     * <p/>
+     * This setting controls only user interactions with the map. If you set the value to false,
+     * you may still change the map location programmatically.
+     * <p/>
+     * The default value is true.
+     *
+     * @param tiltEnabled If true, tilting is enabled.
+     */
+    @UiThread
+    public void setTiltEnabled(boolean tiltEnabled) {
+        this.mTiltEnabled = tiltEnabled;
+    }
+
+    //
     // InfoWindows
     //
 
@@ -1431,7 +1514,7 @@ public final class MapView extends FrameLayout {
      * <li>{@code http://...} or {@code https://...}:
      * retrieves the style over the Internet from any web server.</li>
      * <li>{@code asset://...}:
-     * reads the style from the APK {@code asset/} directory.
+     * reads the style from the APK {@code assets/} directory.
      * This is used to load a style bundled with your app.</li>
      * <li>{@code null}: loads the default {@link Style#MAPBOX_STREETS} style.</li>
      * </ul>
@@ -1700,20 +1783,36 @@ public final class MapView extends FrameLayout {
     @UiThread
     @NonNull
     public PointF toScreenLocation(@NonNull LatLng location) {
+        return toScreenLocation(location, null);
+    }
+
+    /**
+     * Converts a map coordinate to a point in this view's coordinate system.
+     *
+     * @param location A map coordinate.
+     * @param reuse    supply a point to be reused : null to have one created
+     * @return The converted point in this view's coordinate system.
+     */
+    @UiThread
+    @NonNull
+    public PointF toScreenLocation(@NonNull LatLng location, @Nullable PointF reuse) {
+        reuse = reuse == null ? new PointF() : reuse;
         if (location == null) {
             Log.w(TAG, "location was null, so just returning (0, 0)");
-            return new PointF();
+            reuse.x = 0F;
+            reuse.y = 0F;
+            return reuse;
         }
 
-        PointF point = mNativeMapView.pixelForLatLng(location);
+        mNativeMapView.pixelForLatLng(location, reuse);
 
-        float x = point.x * mScreenDensity;
-        float y = point.y * mScreenDensity;
+        reuse.x *= mScreenDensity;
+        reuse.y *= mScreenDensity;
 
         // flip y direction vertically to match core GL
-        y = getHeight() - y;
+        //y = getHeight() - y;
 
-        return new PointF(x, y);
+        return reuse;
     }
 
     //
@@ -2298,6 +2397,7 @@ public final class MapView extends FrameLayout {
 
     @Override
     protected void onSizeChanged(int width, int height, int oldw, int oldh) {
+        mapOverlayDispatch.onSizeChanged(width, height);
         if (!isInEditMode()) {
             mNativeMapView.resizeView((int) (width / mScreenDensity), (int) (height / mScreenDensity));
         }
@@ -2305,6 +2405,9 @@ public final class MapView extends FrameLayout {
 
     // This class handles TextureView callbacks
     private class SurfaceTextureListener implements TextureView.SurfaceTextureListener {
+
+        private final LatLng mWgsCenter = new LatLng();
+        private final BoundingBox mWgsBounds = new BoundingBox();
 
         // Called when the native surface texture has been created
         // Must do all EGL/GL ES initialization here
@@ -2335,8 +2438,8 @@ public final class MapView extends FrameLayout {
         // Must sync with UI here
         @Override
         public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-            mCompassView.update(getDirection());
-            mUserLocationView.update();
+            mNativeMapView.updateMapBounds(mWgsBounds, mWgsCenter);
+            mapOverlayDispatch.update(mWgsBounds, mWgsCenter, (float) getDirection(), (float) getZoomLevel());
             for (InfoWindow infoWindow : mInfoWindows) {
                 infoWindow.update();
             }
@@ -2399,11 +2502,13 @@ public final class MapView extends FrameLayout {
      * @see MapView#setZoomEnabled(boolean)
      * @see MapView#setScrollEnabled(boolean)
      * @see MapView#setRotateEnabled(boolean)
+     * @see MapView#setTiltEnabled(boolean)
      */
     public void setAllGesturesEnabled(boolean enabled) {
         setZoomEnabled(enabled);
         setScrollEnabled(enabled);
         setRotateEnabled(enabled);
+        setTiltEnabled(enabled);
     }
 
     // Called when user touches the screen, all positions are absolute
@@ -2419,6 +2524,7 @@ public final class MapView extends FrameLayout {
         // Check two finger gestures first
         mRotateGestureDetector.onTouchEvent(event);
         mScaleGestureDetector.onTouchEvent(event);
+        mShoveGestureDetector.onTouchEvent(event);
 
         // Handle two finger tap
         switch (event.getActionMasked()) {
@@ -2497,7 +2603,7 @@ public final class MapView extends FrameLayout {
                     }
 
                     // Single finger double tap
-                    if (mUserLocationView.getMyLocationTrackingMode() == MyLocationTracking.TRACKING_NONE) {
+                    if (mUserLocationOverlay.getMyLocationTrackingMode() == MyLocationTracking.TRACKING_NONE) {
                         // Zoom in on gesture
                         zoom(true, e.getX(), e.getY());
                     } else {
@@ -2730,7 +2836,7 @@ public final class MapView extends FrameLayout {
             mQuickZoom = !mTwoTap;
 
             // Scale the map
-            if (!mQuickZoom && mUserLocationView.getMyLocationTrackingMode() == MyLocationTracking.TRACKING_NONE) {
+            if (!mQuickZoom && mUserLocationOverlay.getMyLocationTrackingMode() == MyLocationTracking.TRACKING_NONE) {
                 // around gesture
                 mNativeMapView.scaleBy(detector.getScaleFactor(), detector.getFocusX() / mScreenDensity, detector.getFocusY() / mScreenDensity);
             } else {
@@ -2802,13 +2908,78 @@ public final class MapView extends FrameLayout {
             bearing += detector.getRotationDegreesDelta();
 
             // Rotate the map
-            if (mUserLocationView.getMyLocationTrackingMode() == MyLocationTracking.TRACKING_NONE) {
+            if (mUserLocationOverlay.getMyLocationTrackingMode() == MyLocationTracking.TRACKING_NONE) {
                 // around gesture
                 mNativeMapView.setBearing(bearing, detector.getFocusX() / mScreenDensity, detector.getFocusY() / mScreenDensity);
             } else {
                 // around center map
                 mNativeMapView.setBearing(bearing, (getWidth() / 2) / mScreenDensity, (getHeight() / 2) / mScreenDensity);
             }
+            return true;
+        }
+    }
+
+    // This class handles a vertical two-finger shove. (If you place two fingers on screen with
+    // less than a 20 degree angle between them, this will detect movement on the Y-axis.)
+    private class ShoveGestureListener implements ShoveGestureDetector.OnShoveGestureListener {
+
+        long mBeginTime = 0;
+        float mTotalDelta = 0.0f;
+        boolean mStarted = false;
+
+        @Override
+        public boolean onShoveBegin(ShoveGestureDetector detector) {
+            if (!mTiltEnabled) {
+                return false;
+            }
+
+            mBeginTime = detector.getEventTime();
+            return true;
+        }
+
+        @Override
+        public void onShoveEnd(ShoveGestureDetector detector) {
+            mBeginTime = 0;
+            mTotalDelta = 0.0f;
+            mStarted = false;
+        }
+
+        @Override
+        public boolean onShove(ShoveGestureDetector detector) {
+            if (!mTiltEnabled) {
+                return false;
+            }
+
+            // If tilt is large enough ignore a tap
+            // Also if zoom already started, don't tilt
+            mTotalDelta += detector.getShovePixelsDelta();
+            if (!mZoomStarted && ((mTotalDelta > 10.0f) || (mTotalDelta < -10.0f))) {
+                mStarted = true;
+            }
+
+            // Ignore short touches in case it is a tap
+            // Also ignore small tilt
+            long time = detector.getEventTime();
+            long interval = time - mBeginTime;
+            if (!mStarted && (interval <= ViewConfiguration.getTapTimeout())) {
+                return false;
+            }
+
+            if (!mStarted) {
+                return false;
+            }
+
+            // Cancel any animation
+            mNativeMapView.cancelTransitions();
+
+            // Get tilt value (scale and clamp)
+            double pitch = getTilt();
+            pitch += 0.1 * detector.getShovePixelsDelta();
+            pitch = Math.max(MINIMUM_TILT, Math.min(MAXIMUM_TILT, pitch));
+
+            // Tilt the map
+            setTilt(pitch, null);
+
             return true;
         }
     }
@@ -3321,6 +3492,27 @@ public final class MapView extends FrameLayout {
     }
 
     /**
+     * Add an {@link Overlay}.
+     * Note: Overlays will be drawn in the order added (first: bottom, last: top).
+     *
+     * @param overlay the overlay to add.
+     */
+    @UiThread
+    public void addOverlay(Overlay overlay) {
+        mapOverlayDispatch.addOverlay(overlay);
+    }
+
+    /**
+     * Remove an {@link Overlay}.
+     *
+     * @param overlay the overlay to remove.
+     */
+    @UiThread
+    public void removeOverlay(Overlay overlay) {
+        mapOverlayDispatch.removeOverlay(overlay);
+    }
+
+    /**
      * Sets a callback that's invoked when the user long clicks on the map view.
      *
      * @param listener The callback that's invoked when the user long clicks on the map view.
@@ -3375,7 +3567,7 @@ public final class MapView extends FrameLayout {
      */
     @UiThread
     public boolean isMyLocationEnabled() {
-        return mUserLocationView.isEnabled();
+        return mUserLocationOverlay.isOverlayDrawEnabled();
     }
 
     /**
@@ -3391,7 +3583,7 @@ public final class MapView extends FrameLayout {
      */
     @UiThread
     public void setMyLocationEnabled(boolean enabled) {
-        mUserLocationView.setEnabled(enabled);
+        mUserLocationOverlay.setEnabled(enabled);
     }
 
     /**
@@ -3402,7 +3594,7 @@ public final class MapView extends FrameLayout {
     @UiThread
     @Nullable
     public Location getMyLocation() {
-        return mUserLocationView.getLocation();
+        return mUserLocationOverlay.getLocation();
     }
 
     /**
@@ -3414,7 +3606,7 @@ public final class MapView extends FrameLayout {
      */
     @UiThread
     public void setOnMyLocationChangeListener(@Nullable OnMyLocationChangeListener listener) {
-        mUserLocationView.setOnMyLocationChangeListener(listener);
+        mUserLocationOverlay.setOnMyLocationChangeListener(listener);
     }
 
     /**
@@ -3428,13 +3620,13 @@ public final class MapView extends FrameLayout {
      */
     @UiThread
     public void setMyLocationTrackingMode(@MyLocationTracking.Mode int myLocationTrackingMode) {
-        mUserLocationView.setMyLocationTrackingMode(myLocationTrackingMode);
+        mUserLocationOverlay.setMyLocationTrackingMode(myLocationTrackingMode);
         validateGesturesForTrackingModes();
     }
 
     private void validateGesturesForTrackingModes() {
-        int myLocationTrackingMode = mUserLocationView.getMyLocationTrackingMode();
-        int myBearingTrackingMode = mUserLocationView.getMyBearingTrackingMode();
+        int myLocationTrackingMode = mUserLocationOverlay.getMyLocationTrackingMode();
+        int myBearingTrackingMode = mUserLocationOverlay.getMyBearingTrackingMode();
 
         // Enable/disable gestures based on tracking mode
         if (myLocationTrackingMode == MyLocationTracking.TRACKING_NONE) {
@@ -3457,7 +3649,7 @@ public final class MapView extends FrameLayout {
     @UiThread
     @MyLocationTracking.Mode
     public int getMyLocationTrackingMode() {
-        return mUserLocationView.getMyLocationTrackingMode();
+        return mUserLocationOverlay.getMyLocationTrackingMode();
     }
 
     /**
@@ -3465,7 +3657,7 @@ public final class MapView extends FrameLayout {
      * <p/>
      * Tracking the users bearing will disable gestures and shows the direction the user is heading.
      * <p/>
-     * When location tracking is disabled the direction of {@link UserLocationView}  is rotated
+     * When location tracking is disabled the direction of {@link UserLocationOverlay}  is rotated
      * When location tracking is enabled the {@link MapView} is rotated based on bearing value.
      * <p/>
      * See {@link MyBearingTracking} for different values.
@@ -3475,7 +3667,7 @@ public final class MapView extends FrameLayout {
      */
     @UiThread
     public void setMyBearingTrackingMode(@MyBearingTracking.Mode int myBearingTrackingMode) {
-        mUserLocationView.setMyBearingTrackingMode(myBearingTrackingMode);
+        mUserLocationOverlay.setMyBearingTrackingMode(myBearingTrackingMode);
         validateGesturesForTrackingModes();
     }
 
@@ -3490,7 +3682,7 @@ public final class MapView extends FrameLayout {
     @MyLocationTracking.Mode
     public int getMyBearingTrackingMode() {
         //noinspection ResourceType
-        return mUserLocationView.getMyBearingTrackingMode();
+        return mUserLocationOverlay.getMyBearingTrackingMode();
     }
 
     //
@@ -3504,7 +3696,7 @@ public final class MapView extends FrameLayout {
      */
     @UiThread
     public boolean isCompassEnabled() {
-        return mCompassView.isEnabled();
+        return mCompassOverlay.isOverlayDrawEnabled();
     }
 
     /**
@@ -3519,7 +3711,7 @@ public final class MapView extends FrameLayout {
      */
     @UiThread
     public void setCompassEnabled(boolean compassEnabled) {
-        mCompassView.setEnabled(compassEnabled);
+        mCompassOverlay.setEnabled(compassEnabled);
     }
 
     /**
@@ -3532,8 +3724,8 @@ public final class MapView extends FrameLayout {
      * @see Gravity
      */
     @UiThread
-    public void setCompassGravity(int gravity) {
-        setWidgetGravity(mCompassView, gravity);
+    public void setCompassGravity(@CompassOverlay.CompassGravity int gravity) {
+        mCompassOverlay.setGravity(gravity);
     }
 
     /**
@@ -3547,7 +3739,7 @@ public final class MapView extends FrameLayout {
      */
     @UiThread
     public void setCompassMargins(int left, int top, int right, int bottom) {
-        setWidgetMargins(mCompassView, left, top, right, bottom);
+        mCompassOverlay.setMargins(left, top, right, bottom);
     }
 
     //

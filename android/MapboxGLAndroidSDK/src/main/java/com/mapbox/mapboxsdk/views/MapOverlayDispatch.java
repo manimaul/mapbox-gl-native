@@ -2,8 +2,7 @@ package com.mapbox.mapboxsdk.views;
 
 import android.content.Context;
 import android.graphics.Canvas;
-import android.graphics.PointF;
-import android.graphics.RectF;
+import android.graphics.Rect;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
@@ -14,13 +13,17 @@ import com.mapbox.mapboxsdk.geometry.LatLng;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * View placed over the GL MapView that can draw {@link Overlay}s.
+ */
 final class MapOverlayDispatch extends View {
 
     //region FIELDS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     private List<Overlay> mOverlayList = new ArrayList<>();
-    private PointF mWgsCenter = new PointF();
-    private RectF mWgsBounds = new RectF();
+    private LatLng mWgsCenter = null;
+    private BoundingBox mWgsBounds = null;
+    private final Rect mMapPixelBounds = new Rect();
     private float mBearing = 0;
     private float mZoom = 0;
     private MapView mMapView = null;
@@ -48,7 +51,7 @@ final class MapOverlayDispatch extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        if (mMapView != null) {
+        if (mMapView != null && mWgsBounds != null && mWgsCenter != null) {
             Overlay overlay;
             for (int i = 0; i < mOverlayList.size(); i++) {
                 overlay = mOverlayList.get(i);
@@ -125,20 +128,24 @@ final class MapOverlayDispatch extends View {
         mOverlayList.add(overlay);
     }
 
-    void clearOverlays() {
-        mOverlayList.clear();
-    }
-
     void removeOverlay(Overlay overlay) {
         mOverlayList.remove(overlay);
     }
 
-    void invalidate(final RectF wgsBounds, final PointF wgsCenter, float bearing, float zoom) {
-        mWgsCenter.set(wgsCenter);
-        mWgsBounds.set(wgsBounds);
+    void update(final BoundingBox wgsBounds, final LatLng wgsCenter, float bearing, float zoom) {
+        mWgsCenter = wgsCenter;
+        mWgsBounds = wgsBounds;
         mBearing = bearing;
         mZoom = zoom;
         super.invalidate();
+    }
+
+    void onSizeChanged(int width, int height) {
+        //left top right bottom
+        mMapPixelBounds.set(0, 0, width, height);
+        for (int i = 0; i < mOverlayList.size(); i++) {
+            mOverlayList.get(i).onMapViewPixelBoundsChanged(mMapPixelBounds);
+        }
     }
 
     //endregion

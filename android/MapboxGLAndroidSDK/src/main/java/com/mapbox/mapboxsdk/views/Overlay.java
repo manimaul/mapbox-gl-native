@@ -2,9 +2,11 @@ package com.mapbox.mapboxsdk.views;
 
 import android.graphics.Canvas;
 import android.graphics.PointF;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.view.MotionEvent;
 
+import com.mapbox.mapboxsdk.geometry.BoundingBox;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 
 public interface Overlay {
@@ -20,7 +22,7 @@ public interface Overlay {
      * @param zoom      the map zoom level
      */
     void onOverlayDraw(final MapView mapView, final Canvas canvas,
-                       final RectF wgsBounds, final PointF wgsCenter,
+                       final BoundingBox wgsBounds, final LatLng wgsCenter,
                        float bearing, float zoom);
 
     void onOverlayTouchEvent(final MotionEvent event);
@@ -53,7 +55,13 @@ public interface Overlay {
      * Let us know if you'd like to receive the onOverlayDraw() callback.
      *
      * @return true to get the
-     * {@link Overlay#onOverlayDraw(MapView, Canvas, RectF, PointF, float, float)} callback.
+     * {@link Overlay#onOverlayDraw(MapView, Canvas, BoundingBox, LatLng, float, float)} callback.
      */
     boolean isOverlayDrawEnabled();
+
+    /**
+     * Called when the {@link MapView} size changes
+     * @param mapPixelBounds the pixel bounds of the view
+     */
+    void onMapViewPixelBoundsChanged(Rect mapPixelBounds);
 }
