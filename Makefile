@@ -56,6 +56,10 @@ ipackage-sim: Xcode/ios ; @JOBS=$(JOBS) ./scripts/ios/package.sh sim
 ipackage-no-bitcode: Xcode/ios ; @JOBS=$(JOBS) ./scripts/ios/package.sh no-bitcode
 iframework: ipackage-strip ; ./scripts/ios/framework.sh
 itest: ipackage-sim ; ./scripts/ios/test.sh
+
+.PHONY: xpackage xpackage-strip
+xpackage: Xcode/osx ; @JOBS=$(JOBS) ./scripts/osx/package.sh
+xpackage-strip: Xcode/osx ; @JOBS=$(JOBS) ./scripts/osx/package.sh strip
 endif
 
 #### All platforms targets #####################################################
@@ -101,6 +105,9 @@ Xcode/node: ; $(RUN) HTTP=none ASSET=none CACHE=none Xcode/node
 
 .PHONY: xnode
 xnode: Xcode/node ; @open ./build/binding.xcodeproj
+nproj:
+	$(RUN) HTTP=none ASSET=none CACHE=none node/xproj
+	@open ./build/binding.xcodeproj
 
 .PHONY: test
 test: ; $(RUN) Makefile/test
@@ -125,10 +132,12 @@ ifeq ($(BUILD), osx)
 	if [ $$CUSTOM_DD ]; then \
 		echo clearing files in $$CUSTOM_DD older than one day; \
 		find $$CUSTOM_DD/mapboxgl-app-* -mtime +1 | xargs rm -rf; \
+		find $$CUSTOM_DD/osxapp-* -mtime +1 | xargs rm -rf; \
 	fi; \
 	if [ -d ~/Library/Developer/Xcode/DerivedData/ ] && [ ! $$CUSTOM_DD ]; then \
-		echo 'clearing files in ~/Library/Developer/Xcode/DerivedData/mapboxgl-app-* older than one day'; \
+		echo 'clearing files in ~/Library/Developer/Xcode/DerivedData/{mapboxgl-app,osxapp}-* older than one day'; \
 		find ~/Library/Developer/Xcode/DerivedData/mapboxgl-app-* -mtime +1 | xargs rm -rf; \
+		find ~/Library/Developer/Xcode/DerivedData/osxapp-* -mtime +1 | xargs rm -rf; \
 	fi
 endif
 
@@ -143,6 +152,7 @@ endif
 clean: clear_sqlite_cache clear_xcode_cache
 	-find ./deps/gyp -name "*.pyc" -exec rm {} \;
 	-rm -rf ./build/
+	-rm -rf ./gyp/build/
 	-rm -rf ./macosx/build
 	-rm -rf ./linux/build
 	-rm -rf ./ios/build

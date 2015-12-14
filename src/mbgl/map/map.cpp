@@ -7,6 +7,8 @@
 #include <mbgl/map/map_data.hpp>
 #include <mbgl/annotation/point_annotation.hpp>
 #include <mbgl/annotation/shape_annotation.hpp>
+#include <mbgl/style/style_layer.hpp>
+#include <mbgl/layer/custom_layer.hpp>
 
 #include <mbgl/util/projection.hpp>
 #include <mbgl/util/thread.hpp>
@@ -153,6 +155,12 @@ void Map::jumpTo(const CameraOptions& options) {
 
 void Map::easeTo(const CameraOptions& options) {
     transform->easeTo(options);
+    update(options.zoom ? Update::Zoom : Update::Repaint);
+}
+    
+    
+void Map::flyTo(const CameraOptions& options) {
+    transform->flyTo(options);
     update(options.zoom ? Update::Zoom : Update::Repaint);
 }
 
@@ -414,6 +422,19 @@ AnnotationIDs Map::getPointAnnotationsInBounds(const LatLngBounds& bounds) {
 
 LatLngBounds Map::getBoundsForAnnotations(const AnnotationIDs& annotations) {
     return data->getAnnotationManager()->getBoundsForAnnotations(annotations);
+}
+    
+#pragma mark - Style API
+
+void Map::addCustomLayer(const std::string& id,
+                         CustomLayerInitializeFunction initialize,
+                         CustomLayerRenderFunction render,
+                         CustomLayerDeinitializeFunction deinitialize,
+                         void* context_,
+                         const char* before) {
+    context->invoke(&MapContext::addLayer,
+        std::make_unique<CustomLayer>(id, initialize, render, deinitialize, context_),
+        before ? std::string(before) : mapbox::util::optional<std::string>());
 }
 
 #pragma mark - Toggles

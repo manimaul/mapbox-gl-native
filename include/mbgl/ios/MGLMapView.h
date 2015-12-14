@@ -218,6 +218,14 @@ IB_DESIGNABLE
 *   @param completion The block to execute after the animation finishes. */
 - (void)setCamera:(MGLMapCamera *)camera withDuration:(NSTimeInterval)duration animationTimingFunction:(nullable CAMediaTimingFunction *)function completionHandler:(nullable void (^)(void))completion;
 
+#pragma mark - flyTo
+
+/** Uses a ballistic parabolic motion to "fly" the viewpoint to a different location with respect to the map with an optional transition duration.
+ *   @param camera The new viewpoint.
+ *   @param duration The amount of time, measured in seconds, that the transition animation should take. Specify `0` to jump to the new viewpoint instantaneously.
+ *   @param completion The block to execute after the animation finishes. */
+- (void)flyToCamera:(MGLMapCamera *)camera withDuration:(NSTimeInterval)duration completionHandler:(nullable void (^)(void))completion;
+
 #pragma mark - Converting Map Coordinates
 
 /** @name Converting Map Coordinates */
@@ -258,9 +266,6 @@ IB_DESIGNABLE
 *
 *   To display the default style, set this property to `nil`. */
 @property (nonatomic, null_resettable) NSURL *styleURL;
-
-/* Discourage programmatic usage of this IB-only property. Interface Builder skips over this declaration because it is unable to parse attributes. See the real declaration in MGLMapView+IBAdditions.h. */
-@property (nonatomic, nullable) IBInspectable NSString *styleURL__ __attribute__((unavailable("styleURL__ is for use within Interface Builder only. Use styleURL in code.")));
 
 /** Currently active style classes, represented as an array of string identifiers. */
 @property (nonatomic) NS_ARRAY_OF(NSString *) *styleClasses;
