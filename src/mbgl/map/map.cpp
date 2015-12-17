@@ -343,6 +343,18 @@ double Map::getPitch() const {
 }
 
 
+#pragma mark - North Orientation
+
+void Map::setNorthOrientation(NorthOrientation orientation) {
+    transform->setNorthOrientation(orientation);
+    update(Update::Repaint);
+}
+
+NorthOrientation Map::getNorthOrientation() const {
+    return transform->getNorthOrientation();
+}
+
+
 #pragma mark - Projection
 
 MetersBounds Map::getWorldBoundsMeters() const {
@@ -380,7 +392,7 @@ void Map::addAnnotationIcon(const std::string& name, std::shared_ptr<const Sprit
 }
 
 void Map::removeAnnotationIcon(const std::string& name) {
-    addAnnotationIcon(name, nullptr);
+    context->invoke(&MapContext::removeAnnotationIcon, name);
 }
 
 double Map::getTopOffsetPixelsForAnnotationIcon(const std::string& symbol) {

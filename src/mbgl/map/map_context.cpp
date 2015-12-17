@@ -272,6 +272,11 @@ void MapContext::addAnnotationIcon(const std::string& name, std::shared_ptr<cons
     assert(util::ThreadContext::currentlyOn(util::ThreadType::Map));
     data.getAnnotationManager()->addIcon(name, sprite);
 }
+    
+void MapContext::removeAnnotationIcon(const std::string& name) {
+    assert(util::ThreadContext::currentlyOn(util::ThreadType::Map));
+    data.getAnnotationManager()->removeIcon(name);
+}
 
 double MapContext::getTopOffsetPixelsForAnnotationIcon(const std::string& name) {
     assert(util::ThreadContext::currentlyOn(util::ThreadType::Map));
@@ -280,6 +285,8 @@ double MapContext::getTopOffsetPixelsForAnnotationIcon(const std::string& name) 
 
 void MapContext::addLayer(std::unique_ptr<StyleLayer> layer, mapbox::util::optional<std::string> after) {
     style->addLayer(std::move(layer), after);
+    updateFlags |= Update::Classes;
+    asyncUpdate.send();
 }
 
 void MapContext::setSourceTileCacheSize(size_t size) {
@@ -298,7 +305,7 @@ void MapContext::onLowMemory() {
     style->onLowMemory();
     asyncInvalidate.send();
 }
-
+    
 void MapContext::onTileDataChanged() {
     assert(util::ThreadContext::currentlyOn(util::ThreadType::Map));
     updateFlags |= Update::Repaint;

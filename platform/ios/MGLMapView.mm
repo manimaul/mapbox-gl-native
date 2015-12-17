@@ -1,5 +1,6 @@
 #import "MGLMapView.h"
 #import "MGLMapView+IBAdditions.h"
+#import "MGLMapView+MGLCustomStyleLayerAdditions.h"
 
 #import <mbgl/platform/log.hpp>
 #import <mbgl/platform/gl.hpp>
@@ -36,6 +37,7 @@
 #import "MGLUserLocationAnnotationView.h"
 #import "MGLUserLocation_Private.h"
 #import "MGLAccountManager_Private.h"
+#import "MGLAnnotationImage_Private.h"
 #import "MGLMapboxEvents.h"
 
 #import "SMCalloutView.h"
@@ -120,7 +122,8 @@ public:
                           CLLocationManagerDelegate,
                           UIActionSheetDelegate,
                           SMCalloutViewDelegate,
-                          MGLMultiPointDelegate>
+                          MGLMultiPointDelegate,
+                          MGLAnnotationImageDelegate>
 
 @property (nonatomic) EAGLContext *context;
 @property (nonatomic) GLKView *glView;
@@ -1139,7 +1142,7 @@ std::chrono::steady_clock::duration MGLDurationInSeconds(float duration)
         if (hitAnnotationTag != _selectedAnnotationTag)
         {
             id <MGLAnnotation> annotation = [self annotationWithTag:hitAnnotationTag];
-            NSAssert(annotation, @"Cannot select nonexistent annotation with tag %i", hitAnnotationTag);
+            NSAssert(annotation, @"Cannot select nonexistent annotation with tag %u", hitAnnotationTag);
             [self selectAnnotation:annotation animated:YES];
         }
     }
@@ -1787,18 +1790,57 @@ std::chrono::steady_clock::duration MGLDurationInSeconds(float duration)
 
 - (void)setCamera:(MGLMapCamera *)camera withDuration:(NSTimeInterval)duration animationTimingFunction:(nullable CAMediaTimingFunction *)function completionHandler:(nullable void (^)(void))completion
 {
-    [self _setCamera:camera withDuration:duration animationTimingFunction:function completionHandler:completion useFly:NO];
+    _mbglMap->cancelTransitions();
+    mbgl::CameraOptions options = [self cameraOptionsObjectForAnimatingToCamera:camera];
+    if (duration > 0)
+    {
+        options.duration = MGLDurationInSeconds(duration);
+        options.easing = MGLUnitBezierForMediaTimingFunction(function);
+    }
+    if (completion)
+    {
+        options.transitionFinishFn = [completion]() {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                completion();
+            });
+        };
+    }
+    
+    [self willChangeValueForKey:@"camera"];
+    _mbglMap->easeTo(options);
+    [self didChangeValueForKey:@"camera"];
+}
+
+- (void)flyToCamera:(MGLMapCamera *)camera completionHandler:(nullable void (^)(void))completion
+{
+    [self flyToCamera:camera withDuration:0 completionHandler:completion];
 }
 
 - (void)flyToCamera:(MGLMapCamera *)camera withDuration:(NSTimeInterval)duration completionHandler:(nullable void (^)(void))completion
 {
-    [self _setCamera:camera withDuration:duration animationTimingFunction:nil completionHandler:completion useFly:YES];
+    _mbglMap->cancelTransitions();
+    mbgl::CameraOptions options = [self cameraOptionsObjectForAnimatingToCamera:camera];
+    if (duration > 0)
+    {
+        options.duration = MGLDurationInSeconds(duration);
+    }
+    if (completion)
+    {
+        options.transitionFinishFn = [completion]() {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                completion();
+            });
+        };
+    }
+    
+    [self willChangeValueForKey:@"camera"];
+    _mbglMap->flyTo(options);
+    [self didChangeValueForKey:@"camera"];
 }
 
-- (void)_setCamera:(MGLMapCamera *)camera withDuration:(NSTimeInterval)duration animationTimingFunction:(nullable CAMediaTimingFunction *)function completionHandler:(nullable void (^)(void))completion useFly:(BOOL)fly
-{
-    _mbglMap->cancelTransitions();
-    
+/// Returns a CameraOptions object that specifies parameters for animating to
+/// the given camera.
+- (mbgl::CameraOptions)cameraOptionsObjectForAnimatingToCamera:(MGLMapCamera *)camera {
     // The opposite side is the distance between the center and one edge.
     mbgl::LatLng centerLatLng = MGLLatLngFromLocationCoordinate2D(camera.centerCoordinate);
     mbgl::ProjectedMeters centerMeters = _mbglMap->projectedMetersForLatLng(centerLatLng);
@@ -1855,24 +1897,7 @@ std::chrono::steady_clock::duration MGLDurationInSeconds(float duration)
     {
         options.pitch = pitch;
     }
-    if (duration > 0)
-    {
-        options.duration = MGLDurationInSeconds(duration);
-        options.easing = MGLUnitBezierForMediaTimingFunction(function);
-    }
-    if (completion)
-    {
-        options.transitionFinishFn = [completion]() {
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                completion();
-            });
-        };
-    }
-    if (fly) {
-        _mbglMap->flyTo(options);
-    } else {
-        _mbglMap->easeTo(options);
-    }
+    return options;
 }
 
 - (CLLocationCoordinate2D)convertPoint:(CGPoint)point toCoordinateFromView:(nullable UIView *)view
@@ -2144,6 +2169,7 @@ std::chrono::steady_clock::duration MGLDurationInSeconds(float duration)
             {
                 self.annotationImagesByIdentifier[annotationImage.reuseIdentifier] = annotationImage;
                 [self installAnnotationImage:annotationImage];
+                annotationImage.delegate = self;
             }
 
             NSString *symbolName = [MGLAnnotationSpritePrefix stringByAppendingString:annotationImage.reuseIdentifier];
@@ -2685,6 +2711,17 @@ std::chrono::steady_clock::duration MGLDurationInSeconds(float duration)
     [self setVisibleCoordinateBounds:MGLCoordinateBoundsFromLatLngBounds(bounds)
                          edgePadding:UIEdgeInsetsMake(100, 100, 100, 100)
                             animated:animated];
+}
+
+#pragma mark Annotation Image Delegate
+
+- (void)annotationImageNeedsRedisplay:(MGLAnnotationImage *)annotationImage
+{
+    // remove sprite
+    NSString *symbolName = [MGLAnnotationSpritePrefix stringByAppendingString:annotationImage.reuseIdentifier];
+    _mbglMap->removeAnnotationIcon(symbolName.UTF8String);
+    [self installAnnotationImage:annotationImage];
+    _mbglMap->update(mbgl::Update::Annotations);
 }
 
 #pragma mark - User Location -
@@ -3436,6 +3473,8 @@ class MBGLView : public mbgl::View
 
 @end
 
+#pragma mark - IBAdditions methods
+
 @implementation MGLMapView (IBAdditions)
 
 + (NS_SET_OF(NSString *) *)keyPathsForValuesAffectingStyleURL__
@@ -3571,6 +3610,74 @@ class MBGLView : public mbgl::View
 - (void)setAllowsTilting:(BOOL)allowsTilting
 {
     self.pitchEnabled = allowsTilting;
+}
+
+@end
+
+#pragma mark - MGLCustomStyleLayerAdditions methods
+
+class MGLCustomStyleLayerHandlers
+{
+public:
+    MGLCustomStyleLayerHandlers(MGLCustomStyleLayerPreparationHandler p,
+                                MGLCustomStyleLayerDrawingHandler d,
+                                MGLCustomStyleLayerCompletionHandler f)
+    : prepare(p), draw(d), finish(f) {}
+    
+    MGLCustomStyleLayerPreparationHandler prepare;
+    MGLCustomStyleLayerDrawingHandler draw;
+    MGLCustomStyleLayerCompletionHandler finish;
+};
+
+void MGLPrepareCustomStyleLayer(void *context)
+{
+    MGLCustomStyleLayerPreparationHandler prepare = reinterpret_cast<MGLCustomStyleLayerHandlers *>(context)->prepare;
+    if (prepare)
+    {
+        prepare();
+    }
+}
+
+void MGLDrawCustomStyleLayer(void *context, const mbgl::CustomLayerRenderParameters &params)
+{
+    CGSize size = CGSizeMake(params.width, params.height);
+    CLLocationCoordinate2D centerCoordinate = CLLocationCoordinate2DMake(params.latitude, params.longitude);
+    double zoomLevel = params.zoom;
+    CLLocationDirection direction = mbgl::util::wrap(params.bearing, 0., 360.);
+    CGFloat pitch = params.pitch;
+    CGFloat perspectiveSkew = params.altitude;
+    MGLCustomStyleLayerDrawingHandler draw = reinterpret_cast<MGLCustomStyleLayerHandlers *>(context)->draw;
+    if (draw)
+    {
+        draw(size, centerCoordinate, zoomLevel, direction, pitch, perspectiveSkew);
+    }
+}
+
+void MGLFinishCustomStyleLayer(void *context)
+{
+    MGLCustomStyleLayerHandlers *handlers = reinterpret_cast<MGLCustomStyleLayerHandlers *>(context);
+    MGLCustomStyleLayerCompletionHandler finish = handlers->finish;
+    if (finish)
+    {
+        finish();
+    }
+    delete handlers;
+}
+
+@implementation MGLMapView (MGLCustomStyleLayerAdditions)
+
+- (void)insertCustomStyleLayerWithIdentifier:(NSString *)identifier preparationHandler:(void (^)())preparation drawingHandler:(MGLCustomStyleLayerDrawingHandler)drawing completionHandler:(void (^)())completion belowStyleLayerWithIdentifier:(nullable NSString *)otherIdentifier
+{
+    NSAssert(identifier, @"Style layer needs an identifier");
+    MGLCustomStyleLayerHandlers *context = new MGLCustomStyleLayerHandlers(preparation, drawing, completion);
+    _mbglMap->addCustomLayer(identifier.UTF8String, MGLPrepareCustomStyleLayer,
+                             MGLDrawCustomStyleLayer, MGLFinishCustomStyleLayer,
+                             context, otherIdentifier.UTF8String);
+}
+
+- (void)setCustomStyleLayersNeedDisplay
+{
+    _mbglMap->update(mbgl::Update::Repaint);
 }
 
 @end
