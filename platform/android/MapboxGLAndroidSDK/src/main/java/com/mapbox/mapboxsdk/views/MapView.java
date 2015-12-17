@@ -3872,6 +3872,11 @@ public final class MapView extends FrameLayout {
     }
 
     @UiThread
+    public void removeCustomLayer(String id) {
+        mNativeMapView.removeCustomLayer(id);
+    }
+
+    @UiThread
     public void invalidateCustomLayers() {
         mNativeMapView.update();
     }

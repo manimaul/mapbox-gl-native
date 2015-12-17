@@ -27,8 +27,8 @@
 #include <mbgl/util/default_styles.hpp>
 
 #import "Mapbox.h"
-#import "../darwin/MGLGeometry_Private.h"
-#import "../darwin/MGLMultiPoint_Private.h"
+#import "../../darwin/MGLGeometry_Private.h"
+#import "../../darwin/MGLMultiPoint_Private.h"
 
 #import "NSBundle+MGLAdditions.h"
 #import "NSString+MGLAdditions.h"
@@ -3673,6 +3673,11 @@ void MGLFinishCustomStyleLayer(void *context)
     _mbglMap->addCustomLayer(identifier.UTF8String, MGLPrepareCustomStyleLayer,
                              MGLDrawCustomStyleLayer, MGLFinishCustomStyleLayer,
                              context, otherIdentifier.UTF8String);
+}
+
+- (void)removeCustomStyleLayerWithIdentifier:(NSString *)identifier
+{
+    _mbglMap->removeCustomLayer(identifier.UTF8String);
 }
 
 - (void)setCustomStyleLayersNeedDisplay

@@ -458,6 +458,10 @@ final class NativeMapView {
         nativeAddCustomLayer(mNativeMapViewPtr, customLayer, before);
     }
 
+    public void removeCustomLayer(String id) {
+        nativeRemoveCustomLayer(mNativeMapViewPtr, id);
+    }
+
     //
     // Callbacks
     //
@@ -642,4 +646,6 @@ final class NativeMapView {
     private native void nativeUpdateMapBounds(long nativeMapViewPtr, BoundingBox wgsBounds, LatLng wgsCenter);
 
     private native void nativeAddCustomLayer(long nativeMapViewPtr, CustomLayer customLayer, String before);
+
+    private native void nativeRemoveCustomLayer(long nativeMapViewPtr, String id);
 }
