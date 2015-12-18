@@ -17,7 +17,6 @@
 #include <mbgl/platform/log.hpp>
 #include <mbgl/platform/gl.hpp>
 #include <mbgl/util/constants.hpp>
-#include "../../include/mbgl/util/geo.hpp"
 
 namespace mbgl {
 namespace android {
