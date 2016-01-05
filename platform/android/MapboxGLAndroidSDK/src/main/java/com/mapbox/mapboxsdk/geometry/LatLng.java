@@ -103,6 +103,11 @@ public class LatLng implements ILatLng, Parcelable, Serializable {
         this.longitude = longitude;
     }
 
+    public void set(LatLng other) {
+        latitude = other.latitude;
+        longitude = other.longitude;
+    }
+
     @Override
     public double getLongitude() {
         return longitude;

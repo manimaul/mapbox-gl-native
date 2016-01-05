@@ -3514,6 +3514,13 @@ public final class MapView extends FrameLayout {
         mNativeMapView.setLatLng(latLng, duration);
     }
 
+    @UiThread
+    public void updateMapZoom(float zoomLevel) {
+        if ((zoomLevel >= 0.0) && (zoomLevel <= MAXIMUM_ZOOM_LEVEL)) {
+            mNativeMapView.setZoom(zoomLevel, 0);
+        }
+    }
+
     /**
      * Add an {@link Overlay}.
      * Note: Overlays will be drawn in the order added (first: bottom, last: top).
