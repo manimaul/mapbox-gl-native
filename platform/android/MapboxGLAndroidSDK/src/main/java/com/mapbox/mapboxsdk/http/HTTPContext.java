@@ -41,8 +41,8 @@ public final class HTTPContext {
     public DataRequest createRequest(long nativePtr, String resourceUrl, String userAgent,
                                      String etag, String modified) {
 
-        Log.d(TAG, String.format("HTTPRequest$create(resourceUrl %s : userAgent %s : etag: %s : modified %s) ",
-                resourceUrl, userAgent, etag, modified));
+        /* Log.d(TAG, String.format("HTTPRequest$create(resourceUrl %s : userAgent %s : etag: %s : modified %s) ",
+                resourceUrl, userAgent, etag, modified)); */
 
         if (offlineProviderManager.willHandleUrl(resourceUrl)) {
             return offlineProviderManager.createDataRequest(nativePtr, resourceUrl);
