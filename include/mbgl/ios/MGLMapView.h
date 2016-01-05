@@ -218,16 +218,32 @@ IB_DESIGNABLE
 *   @param completion The block to execute after the animation finishes. */
 - (void)setCamera:(MGLMapCamera *)camera withDuration:(NSTimeInterval)duration animationTimingFunction:(nullable CAMediaTimingFunction *)function completionHandler:(nullable void (^)(void))completion;
 
-/** Uses a ballistic parabolic motion to "fly" the viewpoint to a different location with respect to the map with a default duration based on the length of the flight path.
+/** Moves the viewpoint to a different location using a transition animation that evokes powered flight and a default duration based on the length of the flight path.
+*
+*   The transition animation seamlessly incorporates zooming and panning to help the user find his or her bearings even after traversing a great distance.
+*
 *   @param camera The new viewpoint.
 *   @param completion The block to execute after the animation finishes. */
 - (void)flyToCamera:(MGLMapCamera *)camera completionHandler:(nullable void (^)(void))completion;
 
-/** Uses a ballistic parabolic motion to "fly" the viewpoint to a different location with respect to the map with an optional transition duration.
+/** Moves the viewpoint to a different location using a transition animation that evokes powered flight and an optional transition duration.
+*
+*   The transition animation seamlessly incorporates zooming and panning to help the user find his or her bearings even after traversing a great distance.
+*
 *   @param camera The new viewpoint.
-*   @param duration The amount of time, measured in seconds, that the transition animation should take. Specify `0` to use the default duration, which is based on the length of the flight path.
+*   @param duration The amount of time, measured in seconds, that the transition animation should take. Specify `0` to jump to the new viewpoint instantaneously. Specify a negative value to use the default duration, which is based on the length of the flight path.
 *   @param completion The block to execute after the animation finishes. */
 - (void)flyToCamera:(MGLMapCamera *)camera withDuration:(NSTimeInterval)duration completionHandler:(nullable void (^)(void))completion;
+
+/** Moves the viewpoint to a different location using a transition animation that evokes powered flight and an optional transition duration and peak altitude.
+*
+*   The transition animation seamlessly incorporates zooming and panning to help the user find his or her bearings even after traversing a great distance.
+*
+*   @param camera The new viewpoint.
+*   @param duration The amount of time, measured in seconds, that the transition animation should take. Specify `0` to jump to the new viewpoint instantaneously. Specify a negative value to use the default duration, which is based on the length of the flight path.
+*   @param peakAltitude The altitude, measured in meters, at the midpoint of the animation. The value of this parameter is ignored if it is negative or if the animation transition resulting from a similar call to `-setCamera:animated:` would have a midpoint at a higher altitude.
+*   @param completion The block to execute after the animation finishes. */
+- (void)flyToCamera:(MGLMapCamera *)camera withDuration:(NSTimeInterval)duration peakAltitude:(CLLocationDistance)peakAltitude completionHandler:(nullable void (^)(void))completion;
 
 #pragma mark - Converting Map Coordinates
 
@@ -245,13 +261,15 @@ IB_DESIGNABLE
 *   @return The point (in the appropriate view or window coordinate system) corresponding to the specified latitude and longitude value. */
 - (CGPoint)convertCoordinate:(CLLocationCoordinate2D)coordinate toPointToView:(nullable UIView *)view;
 
-/** Returns the distance spanned by one pixel at the specified latitude and current zoom level.
+/** Returns the distance spanned by one point in the map view’s coordinate system at the given latitude and current zoom level.
 *
-*   The distance between pixels decreases as the latitude approaches the poles. This relationship parallels the relationship between longitudinal coordinates at different latitudes.
+*   The distance between points decreases as the latitude approaches the poles. This relationship parallels the relationship between longitudinal coordinates at different latitudes.
 *
-*   @param latitude The latitude for which to return the value.
-*   @return The distance (in meters) spanned by a single pixel. */
-- (CLLocationDistance)metersPerPixelAtLatitude:(CLLocationDegrees)latitude;
+*   @param latitude The latitude of the geographic coordinate represented by the point.
+*   @return The distance in meters spanned by a single point. */
+- (CLLocationDistance)metersPerPointAtLatitude:(CLLocationDegrees)latitude;
+
+- (CLLocationDistance)metersPerPixelAtLatitude:(CLLocationDegrees)latitude __attribute__((deprecated("Call -metersPerPointAtLatitude: instead.")));
 
 #pragma mark - Styling the Map
 

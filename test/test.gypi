@@ -24,7 +24,6 @@
         'mbgl.gyp:platform-<(platform_lib)',
         'mbgl.gyp:http-<(http_lib)',
         'mbgl.gyp:asset-<(asset_lib)',
-        'mbgl.gyp:cache-<(cache_lib)',
         'mbgl.gyp:headless-<(headless_lib)',
       ],
       'sources': [
@@ -72,6 +71,7 @@
         'storage/storage.cpp',
         'storage/cache_response.cpp',
         'storage/cache_revalidate.cpp',
+        'storage/cache_size.cpp',
         'storage/database.cpp',
         'storage/directory_reading.cpp',
         'storage/file_reading.cpp',

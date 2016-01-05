@@ -4,6 +4,7 @@
 #include <mbgl/util/box.hpp>
 #include <mbgl/util/tile_coordinate.hpp>
 #include <mbgl/util/interpolate.hpp>
+#include <mbgl/util/math.hpp>
 
 using namespace mbgl;
 
@@ -168,16 +169,16 @@ double TransformState::getScale() const {
 }
 
 double TransformState::getMinZoom() const {
-    double test_scale = scale;
+    double test_scale = min_scale;
     double unused_x = x;
     double unused_y = y;
     constrain(test_scale, unused_x, unused_y);
 
-    return ::log2(::fmin(min_scale, test_scale));
+    return scaleZoom(test_scale);
 }
 
 double TransformState::getMaxZoom() const {
-    return ::log2(max_scale);
+    return scaleZoom(max_scale);
 }
 
 
@@ -354,11 +355,9 @@ bool TransformState::rotatedNorth() const {
 
 void TransformState::constrain(double& scale_, double& x_, double& y_) const {
     // Constrain minimum scale to avoid zooming out far enough to show off-world areas.
-    if (constrainMode == ConstrainMode::WidthAndHeight) {
-        scale_ = std::max(scale_, static_cast<double>((rotatedNorth() ? height : width) / util::tileSize));
-    }
-
-    scale_ = std::max(scale_, static_cast<double>((rotatedNorth() ? width : height) / util::tileSize));
+    scale_ = util::max(scale_,
+                       static_cast<double>((rotatedNorth() ? height : width) / util::tileSize),
+                       static_cast<double>((rotatedNorth() ? width : height) / util::tileSize));
 
     // Constrain min/max pan to avoid showing off-world areas.
     if (constrainMode == ConstrainMode::WidthAndHeight) {
@@ -368,6 +367,34 @@ void TransformState::constrain(double& scale_, double& x_, double& y_) const {
 
     double max_y = (scale_ * util::tileSize - (rotatedNorth() ? width : height)) / 2;
     y_ = std::max(-max_y, std::min(y_, max_y));
+}
+
+void TransformState::setLatLngZoom(const LatLng &latLng, double zoom) {
+    double newScale = zoomScale(zoom);
+    const double newWorldSize = newScale * util::tileSize;
+    Bc = newWorldSize / 360;
+    Cc = newWorldSize / util::M2PI;
+    
+    const double m = 1 - 1e-15;
+    const double f = util::clamp(std::sin(util::DEG2RAD * latLng.latitude), -m, m);
+    
+    PrecisionPoint point = {
+        -latLng.longitude * Bc,
+        0.5 * Cc * std::log((1 + f) / (1 - f)),
+    };
+    setScalePoint(newScale, point);
+}
+
+void TransformState::setScalePoint(const double newScale, const PrecisionPoint &point) {
+    double constrainedScale = newScale;
+    PrecisionPoint constrainedPoint = point;
+    constrain(constrainedScale, constrainedPoint.x, constrainedPoint.y);
+    
+    scale = constrainedScale;
+    x = constrainedPoint.x;
+    y = constrainedPoint.y;
+    Bc = worldSize() / 360;
+    Cc = worldSize() / util::M2PI;
 }
 
 

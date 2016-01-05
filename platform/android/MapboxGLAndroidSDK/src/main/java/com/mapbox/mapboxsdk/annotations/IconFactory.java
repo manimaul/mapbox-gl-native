@@ -5,35 +5,46 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Rect;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
+import android.support.annotation.DrawableRes;
+import android.support.annotation.NonNull;
+import android.support.v4.content.ContextCompat;
 import android.util.DisplayMetrics;
 import android.view.WindowManager;
 
 import com.mapbox.mapboxsdk.R;
-import com.mapbox.mapboxsdk.exceptions.TooManySpritesException;
-import com.mapbox.mapboxsdk.views.MapView;
+import com.mapbox.mapboxsdk.exceptions.TooManyIconsException;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 
-public final class SpriteFactory {
+public final class IconFactory {
 
-    private static final String SPRITE_ID_PREFIX = "com.mapbox.sprites.sprite_";
+    private static final String ICON_ID_PREFIX = "com.mapbox.icons.icon_";
 
-    private MapView mMapView;
-    private Sprite mDefaultMarker;
+    private Context mContext;
+    private static IconFactory sInstance;
+    private Icon mDefaultMarker;
     private BitmapFactory.Options mOptions;
 
     private int mNextId = 0;
 
-    public SpriteFactory(MapView mapView) {
-        mMapView = mapView;
+    public static synchronized IconFactory getInstance(@NonNull Context context) {
+        if (sInstance == null) {
+            sInstance = new IconFactory(context.getApplicationContext());
+        }
+        return sInstance;
+    }
+
+    private IconFactory(@NonNull Context context) {
+        mContext = context;
         DisplayMetrics realMetrics = null;
         DisplayMetrics metrics = new DisplayMetrics();
-        WindowManager wm = (WindowManager) mMapView.getContext().getSystemService(Context.WINDOW_SERVICE);
+        WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
             realMetrics = new DisplayMetrics();
@@ -48,31 +59,23 @@ public final class SpriteFactory {
         if (realMetrics != null) {
             mOptions.inScreenDensity = realMetrics.densityDpi;
         }
-
     }
 
-    public Sprite fromBitmap(Bitmap bitmap) {
-        if (bitmap == null) {
-            return null;
-        }
-
+    public Icon fromBitmap(@NonNull Bitmap bitmap) {
         if (mNextId < 0) {
-            throw new TooManySpritesException();
+            throw new TooManyIconsException();
         }
-        String id = SPRITE_ID_PREFIX + ++mNextId;
-
-        return new Sprite(id, bitmap);
+        String id = ICON_ID_PREFIX + ++mNextId;
+        return new Icon(id, bitmap);
     }
 
-    public Sprite fromDrawable(Drawable drawable) {
+    public Icon fromDrawable(@NonNull Drawable drawable) {
         int width = drawable.getIntrinsicWidth();
         int height = drawable.getIntrinsicHeight();
-
         return fromDrawable(drawable, width, height);
     }
 
-
-    public Sprite fromDrawable(Drawable drawable, int width, int height) {
+    public Icon fromDrawable(@NonNull Drawable drawable, int width, int height) {
         if ((width < 0) || (height < 0)) {
             return null;
         }
@@ -84,46 +87,60 @@ public final class SpriteFactory {
         drawable.setBounds(bounds);
         drawable.draw(canvas);
         drawable.setBounds(temp);
-
         return fromBitmap(bitmap);
     }
 
-    public Sprite fromResource(int resourceId) {
-        Bitmap bitmap = BitmapFactory.decodeResource(mMapView.getResources(), resourceId);
+    public Icon fromResource(@DrawableRes int resourceId) {
+        Drawable drawable = ContextCompat.getDrawable(mContext, resourceId);
+        Bitmap bitmap;
+        if (drawable instanceof BitmapDrawable) {
+            BitmapDrawable bitmapDrawable = (BitmapDrawable) drawable;
+            bitmap = bitmapDrawable.getBitmap();
+        } else {
+            if (drawable.getIntrinsicWidth() <= 0 || drawable.getIntrinsicHeight() <= 0) {
+                bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888);
+            } else {
+                bitmap = Bitmap.createBitmap(drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+            }
+
+            Canvas canvas = new Canvas(bitmap);
+            drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+            drawable.draw(canvas);
+        }
         return fromBitmap(bitmap);
     }
 
-    public Sprite defaultMarker() {
+    public Icon defaultMarker() {
         if (mDefaultMarker == null) {
             mDefaultMarker = fromResource(R.drawable.default_marker);
         }
         return mDefaultMarker;
     }
 
-    private Sprite fromInputStream(InputStream is) {
+    private Icon fromInputStream(@NonNull InputStream is) {
         Bitmap bitmap = BitmapFactory.decodeStream(is, null, mOptions);
         return fromBitmap(bitmap);
     }
 
-    public Sprite fromAsset(String assetName) {
+    public Icon fromAsset(@NonNull String assetName) {
         InputStream is;
         try {
-            is = mMapView.getContext().getAssets().open(assetName);
+            is = mContext.getAssets().open(assetName);
         } catch (IOException e) {
             return null;
         }
         return fromInputStream(is);
     }
 
-    public Sprite fromPath(String absolutePath) {
+    public Icon fromPath(@NonNull String absolutePath) {
         Bitmap bitmap = BitmapFactory.decodeFile(absolutePath, mOptions);
         return fromBitmap(bitmap);
     }
 
-    public Sprite fromFile(String fileName) {
+    public Icon fromFile(@NonNull String fileName) {
         FileInputStream is;
         try {
-            is = mMapView.getContext().openFileInput(fileName);
+            is = mContext.openFileInput(fileName);
         } catch (FileNotFoundException e) {
             return null;
         }

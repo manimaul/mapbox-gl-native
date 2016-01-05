@@ -1,4 +1,4 @@
-#include <mbgl/storage/default_file_source_impl.hpp>
+#include <mbgl/storage/online_file_source.hpp>
 #include <mbgl/storage/asset_context_base.hpp>
 #include <mbgl/storage/http_context_base.hpp>
 #include <mbgl/storage/network_status.hpp>
@@ -11,6 +11,9 @@
 #include <mbgl/util/mapbox.hpp>
 #include <mbgl/util/exception.hpp>
 #include <mbgl/util/chrono.hpp>
+#include <mbgl/util/async_task.hpp>
+#include <mbgl/util/noncopyable.hpp>
+#include <mbgl/util/timer.hpp>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"
@@ -21,21 +24,119 @@
 
 #include <algorithm>
 #include <cassert>
+#include <set>
+#include <unordered_map>
 
 namespace algo = boost::algorithm;
 
 namespace mbgl {
 
-DefaultFileSource::DefaultFileSource(FileCache* cache, const std::string& root)
+class RequestBase;
+
+class OnlineFileRequest : public FileRequest {
+public:
+    OnlineFileRequest(const Resource& resource_,
+                       OnlineFileSource& fileSource_)
+        : resource(resource_),
+          fileSource(fileSource_) {
+    }
+
+    ~OnlineFileRequest() {
+        fileSource.cancel(resource, this);
+    }
+
+    Resource resource;
+    OnlineFileSource& fileSource;
+
+    std::unique_ptr<WorkRequest> workRequest;
+};
+
+class OnlineFileRequestImpl : public util::noncopyable {
+public:
+    using Callback = std::function<void (Response)>;
+
+    const Resource resource;
+    std::unique_ptr<WorkRequest> cacheRequest;
+    RequestBase* realRequest = nullptr;
+    std::unique_ptr<util::Timer> timerRequest;
+
+    inline OnlineFileRequestImpl(const Resource& resource_)
+        : resource(resource_) {}
+
+    ~OnlineFileRequestImpl();
+
+    // Observer accessors.
+    void addObserver(FileRequest*, Callback);
+    void removeObserver(FileRequest*);
+    bool hasObservers() const;
+
+    // Updates/gets the response of this request object.
+    void setResponse(const std::shared_ptr<const Response>&);
+    const std::shared_ptr<const Response>& getResponse() const;
+
+    // Returns the seconds we have to wait until we need to redo this request. A value of 0
+    // means that we need to redo it immediately, and a negative value means that we're not setting
+    // a timeout at all.
+    Seconds getRetryTimeout() const;
+
+    // Checks the currently stored response and replaces it with an idential one, except with the
+    // stale flag set, if the response is expired.
+    void checkResponseFreshness();
+
+    // Notifies all observers.
+    void notify();
+
+
+private:
+    // Stores a set of all observing Request objects.
+    std::unordered_map<FileRequest*, Callback> observers;
+
+    // The current response data. We're storing it because we can satisfy requests for the same
+    // resource directly by returning this response object. We also need it to create conditional
+    // HTTP requests, and to check whether new responses we got changed any data.
+    std::shared_ptr<const Response> response;
+
+    // Counts the number of subsequent failed requests. We're using this value for exponential
+    // backoff when retrying requests.
+    int failedRequests = 0;
+};
+
+class OnlineFileSource::Impl {
+public:
+    using Callback = std::function<void (Response)>;
+
+    Impl(FileCache*, const std::string& = "");
+    ~Impl();
+
+    void networkIsReachableAgain();
+
+    void add(Resource, FileRequest*, Callback);
+    void cancel(Resource, FileRequest*);
+
+private:
+    void update(OnlineFileRequestImpl&);
+    void startCacheRequest(OnlineFileRequestImpl&);
+    void startRealRequest(OnlineFileRequestImpl&);
+    void reschedule(OnlineFileRequestImpl&);
+
+    std::unordered_map<Resource, std::unique_ptr<OnlineFileRequestImpl>, Resource::Hash> pending;
+    FileCache* const cache;
+    const std::string assetRoot;
+    const std::unique_ptr<AssetContextBase> assetContext;
+    const std::unique_ptr<HTTPContextBase> httpContext;
+    util::AsyncTask reachability;
+};
+
+OnlineFileSource::OnlineFileSource(FileCache* cache, const std::string& root)
     : thread(std::make_unique<util::Thread<Impl>>(
-          util::ThreadContext{ "FileSource", util::ThreadType::Unknown, util::ThreadPriority::Low },
+          util::ThreadContext{ "OnlineFileSource", util::ThreadType::Unknown, util::ThreadPriority::Low },
           cache,
           root)) {
 }
 
-DefaultFileSource::~DefaultFileSource() = default;
+OnlineFileSource::~OnlineFileSource() = default;
 
-std::unique_ptr<FileRequest> DefaultFileSource::request(const Resource& resource, Callback callback) {
+std::unique_ptr<FileRequest> OnlineFileSource::request(const Resource& resource, Callback callback) {
     if (!callback) {
         throw util::MisuseException("FileSource callback can't be empty");
     }
@@ -65,18 +166,18 @@ std::unique_ptr<FileRequest> DefaultFileSource::request(const Resource& resource
     }
 
     Resource res { resource.kind, url };
-    auto req = std::make_unique<DefaultFileRequest>(res, *this);
+    auto req = std::make_unique<OnlineFileRequest>(res, *this);
     req->workRequest = thread->invokeWithCallback(&Impl::add, callback, res, req.get());
     return std::move(req);
 }
 
-void DefaultFileSource::cancel(const Resource& res, FileRequest* req) {
+void OnlineFileSource::cancel(const Resource& res, FileRequest* req) {
     thread->invoke(&Impl::cancel, res, req);
 }
 
 // ----- Impl -----
 
-DefaultFileSource::Impl::Impl(FileCache* cache_, const std::string& root)
+OnlineFileSource::Impl::Impl(FileCache* cache_, const std::string& root)
     : cache(cache_),
       assetRoot(root.empty() ? platform::assetRoot() : root),
       assetContext(AssetContextBase::createContext()),
@@ -89,11 +190,11 @@ DefaultFileSource::Impl::Impl(FileCache* cache_, const std::string& root)
     reachability.unref();
 }
 
-DefaultFileSource::Impl::~Impl() {
+OnlineFileSource::Impl::~Impl() {
     NetworkStatus::Unsubscribe(&reachability);
 }
 
-void DefaultFileSource::Impl::networkIsReachableAgain() {
+void OnlineFileSource::Impl::networkIsReachableAgain() {
     for (auto& req : pending) {
         auto& request = *req.second;
         auto& response = request.getResponse();
@@ -105,9 +206,9 @@ void DefaultFileSource::Impl::networkIsReachableAgain() {
     }
 }
 
-void DefaultFileSource::Impl::add(Resource resource, FileRequest* req, Callback callback) {
+void OnlineFileSource::Impl::add(Resource resource, FileRequest* req, Callback callback) {
     auto& request = *pending.emplace(resource,
-        std::make_unique<DefaultFileRequestImpl>(resource)).first->second;
+        std::make_unique<OnlineFileRequestImpl>(resource)).first->second;
 
     // Trigger a potentially required refresh of this Request
     update(request);
@@ -117,7 +218,7 @@ void DefaultFileSource::Impl::add(Resource resource, FileRequest* req, Callback 
     request.addObserver(req, callback);
 }
 
-void DefaultFileSource::Impl::update(DefaultFileRequestImpl& request) {
+void OnlineFileSource::Impl::update(OnlineFileRequestImpl& request) {
     if (request.getResponse()) {
         // We've at least obtained a cache value, potentially we also got a final response.
         // The observers have been notified already; send what we have to the new one as well.
@@ -149,7 +250,7 @@ void DefaultFileSource::Impl::update(DefaultFileRequestImpl& request) {
     }
 }
 
-void DefaultFileSource::Impl::startCacheRequest(DefaultFileRequestImpl& request) {
+void OnlineFileSource::Impl::startCacheRequest(OnlineFileRequestImpl& request) {
     // Check the cache for existing data so that we can potentially
     // revalidate the information without having to redownload everything.
     request.cacheRequest =
@@ -172,7 +273,7 @@ void DefaultFileSource::Impl::startCacheRequest(DefaultFileRequestImpl& request)
         });
 }
 
-void DefaultFileSource::Impl::startRealRequest(DefaultFileRequestImpl& request) {
+void OnlineFileSource::Impl::startRealRequest(OnlineFileRequestImpl& request) {
     assert(!request.realRequest);
 
     // Cancel the timer if we have one.
@@ -200,17 +301,17 @@ void DefaultFileSource::Impl::startRealRequest(DefaultFileRequestImpl& request) 
 
     if (algo::starts_with(request.resource.url, "asset://")) {
         request.realRequest =
-            assetContext->createRequest(request.resource, callback, assetRoot);
+            assetContext->createRequest(request.resource.url, callback, assetRoot);
     } else {
         request.realRequest =
-            httpContext->createRequest(request.resource, callback, request.getResponse());
+            httpContext->createRequest(request.resource.url, callback, request.getResponse());
     }
 }
 
-void DefaultFileSource::Impl::cancel(Resource resource, FileRequest* req) {
+void OnlineFileSource::Impl::cancel(Resource resource, FileRequest* req) {
     auto it = pending.find(resource);
     if (it != pending.end()) {
-        // If the number of dependent requests of the DefaultFileRequest drops to zero,
+        // If the number of dependent requests of the OnlineFileRequest drops to zero,
         // cancel the request and remove it from the pending list.
         auto& request = *it->second;
         request.removeObserver(req);
@@ -223,7 +324,7 @@ void DefaultFileSource::Impl::cancel(Resource resource, FileRequest* req) {
     }
 }
 
-void DefaultFileSource::Impl::reschedule(DefaultFileRequestImpl& request) {
+void OnlineFileSource::Impl::reschedule(OnlineFileRequestImpl& request) {
     if (request.realRequest) {
         // There's already a request in progress; don't start another one.
         return;
@@ -245,9 +346,9 @@ void DefaultFileSource::Impl::reschedule(DefaultFileRequestImpl& request) {
     }
 }
 
-// ----- DefaultFileRequest -----
+// ----- OnlineFileRequest -----
 
-DefaultFileRequestImpl::~DefaultFileRequestImpl() {
+OnlineFileRequestImpl::~OnlineFileRequestImpl() {
     if (realRequest) {
         realRequest->cancel();
         realRequest = nullptr;
@@ -255,7 +356,7 @@ DefaultFileRequestImpl::~DefaultFileRequestImpl() {
     // timerRequest and cacheRequest are automatically canceld upon destruction.
 }
 
-void DefaultFileRequestImpl::addObserver(FileRequest* req, Callback callback) {
+void OnlineFileRequestImpl::addObserver(FileRequest* req, Callback callback) {
     observers.emplace(req, callback);
 
     if (response) {
@@ -264,15 +365,15 @@ void DefaultFileRequestImpl::addObserver(FileRequest* req, Callback callback) {
     }
 }
 
-void DefaultFileRequestImpl::removeObserver(FileRequest* req) {
+void OnlineFileRequestImpl::removeObserver(FileRequest* req) {
     observers.erase(req);
 }
 
-bool DefaultFileRequestImpl::hasObservers() const {
+bool OnlineFileRequestImpl::hasObservers() const {
     return !observers.empty();
 }
 
-void DefaultFileRequestImpl::notify() {
+void OnlineFileRequestImpl::notify() {
     if (response) {
         for (auto& req : observers) {
             req.second(*response);
@@ -280,7 +381,7 @@ void DefaultFileRequestImpl::notify() {
     }
 }
 
-void DefaultFileRequestImpl::setResponse(const std::shared_ptr<const Response>& response_) {
+void OnlineFileRequestImpl::setResponse(const std::shared_ptr<const Response>& response_) {
     response = response_;
 
     if (response->error) {
@@ -291,11 +392,11 @@ void DefaultFileRequestImpl::setResponse(const std::shared_ptr<const Response>& 
     }
 }
 
-const std::shared_ptr<const Response>& DefaultFileRequestImpl::getResponse() const {
+const std::shared_ptr<const Response>& OnlineFileRequestImpl::getResponse() const {
     return response;
 }
 
-Seconds DefaultFileRequestImpl::getRetryTimeout() const {
+Seconds OnlineFileRequestImpl::getRetryTimeout() const {
     Seconds timeout = Seconds::zero();
 
     if (!response) {
@@ -339,7 +440,7 @@ Seconds DefaultFileRequestImpl::getRetryTimeout() const {
     return timeout;
 }
 
-void DefaultFileRequestImpl::checkResponseFreshness() {
+void OnlineFileRequestImpl::checkResponseFreshness() {
     if (response && !response->stale && response->isExpired()) {
         // Create a new Response object with `stale = true`, but the same data, and
         // replace the current request object we have.
