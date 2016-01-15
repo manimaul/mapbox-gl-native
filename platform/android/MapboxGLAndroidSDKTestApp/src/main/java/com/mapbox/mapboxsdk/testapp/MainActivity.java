@@ -409,6 +409,10 @@ public class MainActivity extends AppCompatActivity {
                                 }
                                 return true;
 
+                            case R.id.action_directions:
+                                startActivity(new Intent(getApplicationContext(), DirectionsActivity.class));
+                                return true;
+
                             default:
                                 return changeMapStyle(menuItem.getItemId());
                         }
@@ -482,8 +486,8 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onMyLocationChange(@Nullable Location location) {
                         if (location != null) {
-                            mMapView.setZoomLevel(16);
-                            mMapView.setCenterCoordinate(new LatLng(location));
+                            mMapView.setZoom(16);
+                            mMapView.setLatLng(new LatLng(location));
                             mMapView.setOnMyLocationChangeListener(null);
                         }
                     }
@@ -511,8 +515,8 @@ public class MainActivity extends AppCompatActivity {
                 addMarkers();
                 addPolyline();
                 addPolygon();
-                mMapView.setZoomLevel(7);
-                mMapView.setCenterCoordinate(new LatLng(38.11727, -122.22839));
+                mMapView.setZoom(7);
+                mMapView.setLatLng(new LatLng(38.11727, -122.22839));
             }
         } else {
             if (mIsAnnotationsOn) {

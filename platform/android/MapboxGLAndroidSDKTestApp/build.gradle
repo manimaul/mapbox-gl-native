@@ -60,7 +60,7 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled true
+            minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
@@ -80,6 +80,11 @@ dependencies {
     // Leak Canary
     debugCompile 'com.squareup.leakcanary:leakcanary-android:1.4-beta1'
     releaseCompile 'com.squareup.leakcanary:leakcanary-android-no-op:1.4-beta1'
+
+    // Directions SDK
+    compile ('com.mapbox.mapboxsdk:mapbox-android-directions:1.0.0@aar'){
+        transitive=true
+    }
 
     // Testing dependencies
     testCompile 'junit:junit:4.12'
