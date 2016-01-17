@@ -3,12 +3,13 @@ package com.mapbox.mapboxsdk.http;
 import android.util.Log;
 
 import com.mapbox.mapboxsdk.provider.OfflineProviderManager;
-import com.squareup.okhttp.Interceptor;
-import com.squareup.okhttp.OkHttpClient;
-import com.squareup.okhttp.Request;
-import com.squareup.okhttp.Response;
 
 import java.io.IOException;
+
+import okhttp3.Interceptor;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 @SuppressWarnings("unused") // Native invocation
 public final class HTTPContext {
