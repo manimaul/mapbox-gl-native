@@ -5,6 +5,9 @@ import android.content.res.Resources;
 import com.mapbox.mapboxsdk.http.DataRequest;
 import com.mapbox.mapboxsdk.http.OfflineRequest;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 public class OfflineProviderManager {
 
     public static final String LOCALHOST = "localhost";
@@ -31,12 +34,20 @@ public class OfflineProviderManager {
         }
 
         String style = AssetReader.readAssetAsString(resources, "offline_style_v8.json");
+        try {
+            JSONObject jsonStyle = new JSONObject(style);
+            jsonStyle.put("name", provider.name());
+            style = jsonStyle.toString();
+        } catch (JSONException ignored) {
+        }
+
         mData = AssetReader.readAssetByteArray(resources, "offline_data_v8.json");
         if (style == null && mData != null) {
             mProvider = null;
         } else {
             mProvider = provider;
         }
+
         return style;
     }
 
