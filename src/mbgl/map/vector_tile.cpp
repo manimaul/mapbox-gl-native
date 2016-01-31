@@ -54,10 +54,10 @@ VectorTileFeature::VectorTileFeature(pbf feature_pbf, const VectorTileLayer& lay
     }
 }
 
-mapbox::util::optional<Value> VectorTileFeature::getValue(const std::string& key) const {
+optional<Value> VectorTileFeature::getValue(const std::string& key) const {
     auto keyIter = layer.keys.find(key);
     if (keyIter == layer.keys.end()) {
-        return mapbox::util::optional<Value>();
+        return optional<Value>();
     }
 
     pbf tags = tags_pbf;
@@ -82,7 +82,7 @@ mapbox::util::optional<Value> VectorTileFeature::getValue(const std::string& key
         }
     }
 
-    return mapbox::util::optional<Value>();
+    return optional<Value>();
 }
 
 GeometryCollection VectorTileFeature::getGeometries() const {
@@ -178,14 +178,16 @@ util::ptr<const GeometryTileFeature> VectorTileLayer::getFeature(std::size_t i) 
     return std::make_shared<VectorTileFeature>(features.at(i), *this);
 }
 
-VectorTileMonitor::VectorTileMonitor(const TileID& tileID_, const std::string& urlTemplate_)
-    : tileID(tileID_), urlTemplate(urlTemplate_) {
+VectorTileMonitor::VectorTileMonitor(const TileID& tileID_, float pixelRatio_, const std::string& urlTemplate_)
+    : tileID(tileID_),
+      pixelRatio(pixelRatio_),
+      urlTemplate(urlTemplate_) {
 }
 
 std::unique_ptr<FileRequest> VectorTileMonitor::monitorTile(const GeometryTileMonitor::Callback& callback) {
-    const std::string url = util::templateTileURL(urlTemplate, tileID);
-    return util::ThreadContext::getFileSource()->request({ Resource::Kind::Tile, url }, [callback, this](Response res) {
-        if (res.data && data == res.data) {
+    const Resource resource = Resource::tile(urlTemplate, pixelRatio, tileID.x, tileID.y, tileID.sourceZ);
+    return util::ThreadContext::getFileSource()->request(resource, [callback, this](Response res) {
+        if (res.notModified) {
             // We got the same data again. Abort early.
             return;
         }
@@ -200,8 +202,7 @@ std::unique_ptr<FileRequest> VectorTileMonitor::monitorTile(const GeometryTileMo
             }
         }
 
-        data = res.data;
-        callback(nullptr, std::make_unique<VectorTile>(data), res.modified, res.expires);
+        callback(nullptr, std::make_unique<VectorTile>(res.data), res.modified, res.expires);
     });
 }
 

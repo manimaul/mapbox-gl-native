@@ -52,19 +52,11 @@
     self.mapView.scrollEnabled = NO;
     self.mapView.rotateEnabled = NO;
     self.mapView.userInteractionEnabled = YES;
-    [self.mapView setDebugActive:NO];
 
     [self startBenchmarkIteration];
 
     [self.view addSubview:self.mapView];
 
-}
-
-using Clock = std::chrono::steady_clock;
-using TimePoint = Clock::time_point;
-template <typename Duration>
-inline int64_t Microseconds(Duration d) {
-    return std::chrono::duration_cast<std::chrono::microseconds>(d).count();
 }
 
 size_t idx = 0;

@@ -6,6 +6,7 @@
 #include <mbgl/platform/log.hpp>
 #include <mbgl/util/gl_helper.hpp>
 #include <mbgl/util/string.hpp>
+#include <mbgl/util/chrono.hpp>
 
 #include <cassert>
 #include <cstdlib>
@@ -140,7 +141,7 @@ void GLFWView::onKey(GLFWwindow *window, int key, int /*scancode*/, int action, 
             break;
         case GLFW_KEY_R:
             if (!mods) {
-                view->map->setDefaultTransitionDuration(std::chrono::milliseconds(300));
+                view->map->setDefaultTransitionDuration(mbgl::Milliseconds(300));
                 if (view->map->hasClass("night")) {
                     view->map->removeClass("night");
                 } else {
@@ -182,11 +183,11 @@ void GLFWView::onKey(GLFWwindow *window, int key, int /*scancode*/, int action, 
 }
 
 mbgl::LatLng GLFWView::makeRandomPoint() const {
-    const auto sw = map->latLngForPixel({ 0, 0 });
-    const auto ne = map->latLngForPixel({ double(width), double(height) });
+    const auto nw = map->latLngForPixel({ 0, 0 });
+    const auto se = map->latLngForPixel({ double(width), double(height) });
 
-    const double lon = sw.longitude + (ne.longitude - sw.longitude) * (double(std::rand()) / RAND_MAX);
-    const double lat = sw.latitude + (ne.latitude - sw.latitude) * (double(std::rand()) / RAND_MAX);
+    const double lon = nw.longitude + (se.longitude - nw.longitude) * (double(std::rand()) / RAND_MAX);
+    const double lat = se.latitude + (nw.latitude - se.latitude) * (double(std::rand()) / RAND_MAX);
 
     return { lat, lon };
 }
@@ -200,8 +201,8 @@ GLFWView::makeSpriteImage(int width, int height, float pixelRatio) {
     const int w = std::ceil(pixelRatio * width);
     const int h = std::ceil(pixelRatio * height);
 
-    std::string pixels(w * h * 4, '\x00');
-    auto data = reinterpret_cast<uint32_t*>(const_cast<char*>(pixels.data()));
+    mbgl::PremultipliedImage image(w, h);
+    auto data = reinterpret_cast<uint32_t*>(image.data.get());
     const int dist = (w / 2) * (w / 2);
     for (int y = 0; y < h; y++) {
         for (int x = 0; x < w; x++) {
@@ -217,7 +218,7 @@ GLFWView::makeSpriteImage(int width, int height, float pixelRatio) {
         }
     }
 
-    return std::make_shared<mbgl::SpriteImage>(width, height, pixelRatio, std::move(pixels));
+    return std::make_shared<mbgl::SpriteImage>(std::move(image), pixelRatio);
 }
 
 void GLFWView::nextOrientation() {
@@ -352,9 +353,9 @@ void GLFWView::onMouseClick(GLFWwindow *window, int button, int action, int modi
             double now = glfwGetTime();
             if (now - view->lastClick < 0.4 /* ms */) {
                 if (modifiers & GLFW_MOD_SHIFT) {
-                    view->map->scaleBy(0.5, { view->lastX, view->lastY }, std::chrono::milliseconds(500));
+                    view->map->scaleBy(0.5, { view->lastX, view->lastY }, mbgl::Milliseconds(500));
                 } else {
-                    view->map->scaleBy(2.0, { view->lastX, view->lastY }, std::chrono::milliseconds(500));
+                    view->map->scaleBy(2.0, { view->lastX, view->lastY }, mbgl::Milliseconds(500));
                 }
             }
             view->lastClick = now;
@@ -368,10 +369,9 @@ void GLFWView::onMouseMove(GLFWwindow *window, double x, double y) {
         double dx = x - view->lastX;
         double dy = y - view->lastY;
         if (dx || dy) {
-            double flippedY = view->height - y;
             view->map->setLatLng(
-                    view->map->latLngForPixel(mbgl::PrecisionPoint(x - dx, flippedY + dy)),
-                    mbgl::PrecisionPoint(x, flippedY));
+                    view->map->latLngForPixel(mbgl::PrecisionPoint(x - dx, y - dy)),
+                    mbgl::PrecisionPoint(x, y));
         }
     } else if (view->rotating) {
         view->map->rotateBy({ view->lastX, view->lastY }, { x, y });

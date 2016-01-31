@@ -19,6 +19,30 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol MGLOverlay;
 @protocol MGLCalloutView;
 
+/** The vertical alignment of an annotation within a map view. */
+typedef NS_ENUM(NSUInteger, MGLAnnotationVerticalAlignment) {
+    /** Aligns the annotation vertically in the center of the map view. */
+    MGLAnnotationVerticalAlignmentCenter = 0,
+    /** Aligns the annotation vertically at the top of the map view. */
+    MGLAnnotationVerticalAlignmentTop,
+    /** Aligns the annotation vertically at the bottom of the map view. */
+    MGLAnnotationVerticalAlignmentBottom,
+};
+
+/** Options for enabling debugging features in an MGLMapView instance. */
+typedef NS_OPTIONS(NSUInteger, MGLMapDebugMaskOptions) {
+    /** Edges of tile boundaries are shown as thick, red lines to help diagnose
+        tile clipping issues. */
+    MGLMapDebugTileBoundariesMask = 1 << 1,
+    /** Each tile shows its tile coordinate (x/y/z) in the upper-left corner. */
+    MGLMapDebugTileInfoMask = 1 << 2,
+    /** Each tile shows a timestamp indicating when it was loaded. */
+    MGLMapDebugTimestampsMask = 1 << 3,
+    /** Edges of glyphs and symbols are shown as faint, green lines to help
+        diagnose collision and label placement issues. */
+    MGLMapDebugCollisionBoxesMask = 1 << 4,
+};
+
 /**
  An interactive, customizable map view with an interface similar to the one
  provided by Apple's MapKit.
@@ -214,15 +238,93 @@ IB_DESIGNABLE
 @property (nonatomic, readonly, nullable) MGLUserLocation *userLocation;
 
 /** 
- The mode used to track the user location.
+ The mode used to track the user location. The default value is
+ `MGLUserTrackingModeNone`.
+ 
+ Changing the value of this property updates the map view with an animated
+ transition. If you don’t want to animate the change, use the
+ `-setUserTrackingMode:animated:` method instead.
  */
 @property (nonatomic, assign) MGLUserTrackingMode userTrackingMode;
+
+/**
+ Sets the mode used to track the user location, with an optional transition.
+ 
+ @param mode The mode used to track the user location.
+ @param animated If `YES`, there is an animated transition from the current
+    viewport to a viewport that results from the change to `mode`. If `NO`, the
+    map view instantaneously changes to the new viewport. This parameter only
+    affects the initial transition; subsequent changes to the user location or
+    heading are always animated.
+ */
+- (void)setUserTrackingMode:(MGLUserTrackingMode)mode animated:(BOOL)animated;
+
+/**
+ The vertical alignment of the user location annotation within the receiver. The
+ default value is `MGLAnnotationVerticalAlignmentCenter`.
+ 
+ Changing the value of this property updates the map view with an animated
+ transition. If you don’t want to animate the change, use the
+ `-setUserLocationVerticalAlignment:animated:` method instead.
+ */
+@property (nonatomic, assign) MGLAnnotationVerticalAlignment userLocationVerticalAlignment;
+
+/**
+ Sets the vertical alignment of the user location annotation within the
+ receiver, with an optional transition.
+ 
+ @param alignment The vertical alignment of the user location annotation.
+ @param animated If `YES`, the user location annotation animates to its new
+    position within the map view. If `NO`, the user location annotation
+    instantaneously moves to its new position.
+ */
+- (void)setUserLocationVerticalAlignment:(MGLAnnotationVerticalAlignment)alignment animated:(BOOL)animated;
 
 /**
  Whether the map view should display a heading calibration alert when necessary.
  The default value is `YES`.
  */
 @property (nonatomic, assign) BOOL displayHeadingCalibration;
+
+/**
+ The geographic coordinate that is the subject of observation as the user
+ location is being tracked.
+ 
+ By default, this property is set to an invalid coordinate, indicating that
+ there is no target. In course tracking mode, the target forms one of two foci
+ in the viewport, the other being the user location annotation. Typically, this
+ property is set to a destination or waypoint in a real-time navigation scene.
+ As the user annotation moves toward the target, the map automatically zooms in
+ to fit both foci optimally within the viewport.
+ 
+ This property has no effect if the `userTrackingMode` property is set to a
+ value other than `MGLUserTrackingModeFollowWithCourse`.
+ 
+ Changing the value of this property updates the map view with an animated
+ transition. If you don’t want to animate the change, use the
+ `-setTargetCoordinate:animated:` method instead.
+ */
+@property (nonatomic, assign) CLLocationCoordinate2D targetCoordinate;
+
+/**
+ Sets the geographic coordinate that is the subject of observation as the user
+ location is being tracked, with an optional transition animation.
+ 
+ By default, the target coordinate is set to an invalid coordinate, indicating
+ that there is no target. In course tracking mode, the target forms one of two
+ foci in the viewport, the other being the user location annotation. Typically,
+ the target is set to a destination or waypoint in a real-time navigation scene.
+ As the user annotation moves toward the target, the map automatically zooms in
+ to fit both foci optimally within the viewport.
+ 
+ This method has no effect if the `userTrackingMode` property is set to a value
+ other than `MGLUserTrackingModeFollowWithCourse`.
+ 
+ @param targetCoordinate The target coordinate to fit within the viewport.
+ @param animated If `YES`, the map animates to fit the target within the map
+    view. If `NO`, the map fits the target instantaneously.
+ */
+- (void)setTargetCoordinate:(CLLocationCoordinate2D)targetCoordinate animated:(BOOL)animated;
 
 #pragma mark Configuring How the User Interacts with the Map
 
@@ -374,6 +476,30 @@ IB_DESIGNABLE
     zoom level immediately.
  */
 - (void)setZoomLevel:(double)zoomLevel animated:(BOOL)animated;
+
+/**
+ * The minimum zoom level at which the map can be shown.
+ *
+ * Depending on the map view’s aspect ratio, the map view may be prevented
+ * from reaching the minimum zoom level, in order to keep the map from
+ * repeating within the current viewport.
+ *
+ * If the value of this property is greater than that of the
+ * maximumZoomLevel property, the behavior is undefined.
+ *
+ * The default minimumZoomLevel is 0.
+ */
+@property (nonatomic) double minimumZoomLevel;
+
+/**
+ * The maximum zoom level the map can be shown at.
+ *
+ * If the value of this property is smaller than that of the
+ * minimumZoomLevel property, the behavior is undefined.
+ *
+ * The default maximumZoomLevel is 20.
+ */
+@property (nonatomic) double maximumZoomLevel;
 
 /**
  The heading of the map, measured in degrees clockwise from true north.
@@ -574,6 +700,47 @@ IB_DESIGNABLE
  */
 - (void)flyToCamera:(MGLMapCamera *)camera withDuration:(NSTimeInterval)duration peakAltitude:(CLLocationDistance)peakAltitude completionHandler:(nullable void (^)(void))completion;
 
+/**
+ The distance from the edges of the map view’s frame to the edges of the map
+ view’s logical viewport.
+ 
+ When the value of this property is equal to `UIEdgeInsetsZero`, viewport
+ properties such as `centerCoordinate` assume a viewport that matches the map
+ view’s frame. Otherwise, those properties are inset, excluding part of the
+ frame from the viewport. For instance, if the only the top edge is inset, the
+ map center is effectively shifted downward.
+ 
+ When the map view’s superview is an instance of `UIViewController` whose
+ `automaticallyAdjustsScrollViewInsets` property is `YES`, the value of this
+ property may be overridden at any time.
+ 
+ Changing the value of this property updates the map view immediately. If you
+ want to animate the change, use the `-setContentInset:animated:` method
+ instead.
+ */
+@property (nonatomic, assign) UIEdgeInsets contentInset;
+
+/**
+ Sets the distance from the edges of the map view’s frame to the edges of the
+ map view’s logical viewport with an optional transition animation.
+ 
+ When the value of this property is equal to `UIEdgeInsetsZero`, viewport
+ properties such as `centerCoordinate` assume a viewport that matches the map
+ view’s frame. Otherwise, those properties are inset, excluding part of the
+ frame from the viewport. For instance, if the only the top edge is inset, the
+ map center is effectively shifted downward.
+ 
+ When the map view’s superview is an instance of `UIViewController` whose
+ `automaticallyAdjustsScrollViewInsets` property is `YES`, the value of this
+ property may be overridden at any time.
+ 
+ @param contentInset The new values to inset the content by.
+ @param animated Specify `YES` if you want the map view to animate the change to
+    the content inset or `NO` if you want the map to inset the content
+    immediately.
+ */
+- (void)setContentInset:(UIEdgeInsets)contentInset animated:(BOOL)animated;
+
 #pragma mark Converting Geographic Coordinates
 
 /**
@@ -734,7 +901,7 @@ IB_DESIGNABLE
  @param annotation The annotation object to deselect.
  @param animated If `YES`, the callout view is animated offscreen.
  */
-- (void)deselectAnnotation:(id <MGLAnnotation>)annotation animated:(BOOL)animated;
+- (void)deselectAnnotation:(nullable id <MGLAnnotation>)annotation animated:(BOOL)animated;
 
 #pragma mark Overlaying the Map
 
@@ -777,23 +944,19 @@ IB_DESIGNABLE
  */
 - (void)removeOverlays:(NS_ARRAY_OF(id <MGLOverlay>) *)overlays;
 
-#pragma mark Debugging
+#pragma mark Debugging the Map
 
 /**
- A Boolean value that determines whether map debugging information is shown.
- 
- The default value of this property is `NO`.
- */
-@property (nonatomic, getter=isDebugActive) BOOL debugActive;
-
-/**
- Cycle through the options that determine which debugging aids are shown on the
- map.
+ The options that determine which debugging aids are shown on the map.
  
  These options are all disabled by default and should remain disabled in
- released software.
+ released software for performance and aesthetic reasons.
  */
-- (void)cycleDebugOptions;
+@property (nonatomic) MGLMapDebugMaskOptions debugMask;
+
+@property (nonatomic, getter=isDebugActive) BOOL debugActive __attribute__((deprecated("Use -debugMask and -setDebugMask:.")));
+
+- (void)toggleDebug __attribute__((deprecated("Use -setDebugMask:.")));
 
 /**
     Empties the in-memory tile cache.

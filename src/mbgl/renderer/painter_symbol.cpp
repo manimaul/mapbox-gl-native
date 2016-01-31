@@ -189,7 +189,7 @@ void Painter::renderSymbol(SymbolBucket& bucket, const SymbolLayer& layer, const
 
         SpriteAtlas* activeSpriteAtlas = layer.spriteAtlas;
         const bool iconScaled = fontScale != 1 || data.pixelRatio != activeSpriteAtlas->getPixelRatio() || bucket.iconsNeedLinear;
-        const bool iconTransformed = layout.placement == PlacementType::Line || angleOffset != 0 || state.getPitch() != 0;
+        const bool iconTransformed = layout.icon.rotationAlignment == RotationAlignmentType::Map || angleOffset != 0 || state.getPitch() != 0;
         activeSpriteAtlas->bind(sdf || state.isChanging() || iconScaled || iconTransformed);
 
         if (sdf) {
@@ -230,7 +230,7 @@ void Painter::renderSymbol(SymbolBucket& bucket, const SymbolLayer& layer, const
             config.program = iconShader->program;
             iconShader->u_matrix = vtxMatrix;
             iconShader->u_exmatrix = exMatrix;
-            iconShader->u_texsize = {{ float(spriteAtlas->getWidth()) / 4.0f, float(spriteAtlas->getHeight()) / 4.0f }};
+            iconShader->u_texsize = {{ float(activeSpriteAtlas->getWidth()) / 4.0f, float(activeSpriteAtlas->getHeight()) / 4.0f }};
             iconShader->u_skewed = skewed;
             iconShader->u_extra = extra;
             iconShader->u_texture = 0;

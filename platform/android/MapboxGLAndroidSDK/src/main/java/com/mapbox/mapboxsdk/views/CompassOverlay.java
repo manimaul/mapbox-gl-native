@@ -14,6 +14,7 @@ import android.view.MotionEvent;
 import com.mapbox.mapboxsdk.R;
 import com.mapbox.mapboxsdk.geometry.BoundingBox;
 import com.mapbox.mapboxsdk.geometry.LatLng;
+import com.mapbox.mapboxsdk.maps.MapView;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;

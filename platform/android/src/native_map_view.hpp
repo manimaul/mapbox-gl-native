@@ -51,6 +51,8 @@ public:
 
     void resizeView(int width, int height);
     void resizeFramebuffer(int width, int height);
+    mbgl::EdgeInsets getInsets() { return insets;}
+    void setInsets(mbgl::EdgeInsets insets_);
 
     int getWidth();
     int getHeight();
@@ -95,6 +97,7 @@ private:
     // Ensure these are initialised last
     std::unique_ptr<mbgl::DefaultFileSource> fileSource;
     std::unique_ptr<mbgl::Map> map;
+    mbgl::EdgeInsets insets;
 };
 }
 }

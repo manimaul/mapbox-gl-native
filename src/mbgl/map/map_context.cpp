@@ -104,13 +104,7 @@ void MapContext::setStyleURL(const std::string& url) {
     }
 
     FileSource* fs = util::ThreadContext::getFileSource();
-    styleRequest = fs->request({ Resource::Kind::Style, styleURL }, [this, base](Response res) {
-        if (res.stale) {
-            // Only handle fresh responses.
-            return;
-        }
-        styleRequest = nullptr;
-
+    styleRequest = fs->request(Resource::style(styleURL), [this, base](Response res) {
         if (res.error) {
             if (res.error->reason == Response::Error::Reason::NotFound &&
                 util::mapbox::isMapboxURL(styleURL)) {
@@ -119,10 +113,14 @@ void MapContext::setStyleURL(const std::string& url) {
                 Log::Error(Event::Setup, "loading style failed: %s", res.error->message.c_str());
                 data.loading = false;
             }
-        } else {
-            loadStyleJSON(*res.data, base);
+            return;
         }
 
+        if (res.notModified) {
+            return;
+        }
+
+        loadStyleJSON(*res.data, base);
     });
 }
 
@@ -132,7 +130,7 @@ void MapContext::setStyleJSON(const std::string& json, const std::string& base) 
     }
 
     styleURL.clear();
-    styleJSON = json;
+    styleJSON.clear();
 
     style = std::make_unique<Style>(data);
 
@@ -144,6 +142,7 @@ void MapContext::loadStyleJSON(const std::string& json, const std::string& base)
 
     style->setJSON(json, base);
     style->setObserver(this);
+    styleJSON = json;
 
     // force style cascade, causing all pending transitions to complete.
     style->cascade();
@@ -282,7 +281,7 @@ double MapContext::getTopOffsetPixelsForAnnotationIcon(const std::string& name) 
     return data.getAnnotationManager()->getTopOffsetPixelsForIcon(name);
 }
 
-void MapContext::addLayer(std::unique_ptr<StyleLayer> layer, mapbox::util::optional<std::string> after) {
+void MapContext::addLayer(std::unique_ptr<StyleLayer> layer, optional<std::string> after) {
     style->addLayer(std::move(layer), after);
     updateFlags |= Update::Classes;
     asyncUpdate.send();

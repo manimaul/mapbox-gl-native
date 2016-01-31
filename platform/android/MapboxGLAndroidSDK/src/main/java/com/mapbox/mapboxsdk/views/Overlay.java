@@ -8,6 +8,7 @@ import android.view.MotionEvent;
 
 import com.mapbox.mapboxsdk.geometry.BoundingBox;
 import com.mapbox.mapboxsdk.geometry.LatLng;
+import com.mapbox.mapboxsdk.maps.MapView;
 
 public interface Overlay {
 

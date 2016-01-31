@@ -1,57 +1,55 @@
 package com.mapbox.mapboxsdk.annotations;
 
-import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.PointF;
+import android.support.annotation.LayoutRes;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.R;
 import com.mapbox.mapboxsdk.geometry.LatLng;
-import com.mapbox.mapboxsdk.views.MapView;
+import com.mapbox.mapboxsdk.maps.MapView;
 
 import java.lang.ref.WeakReference;
 
 /**
  * <p>
- * A tooltip view. This is a UI element placed over a map at a specific geographic
- * location.
+ * InfoWindow is a tooltip shown when a {@link Marker} is tapped.
+ * </p>
+ * <p>
+ * This is a UI element placed over a map at a specific geographic location.
  * </p>
  */
 public class InfoWindow {
 
     private WeakReference<Marker> mBoundMarker;
-    private WeakReference<MapView> mMapView;
+    private WeakReference<MapboxMap> mMapboxMap;
+    protected WeakReference<View> mView;
+
     private float mMarkerHeightOffset;
     private float mViewWidthOffset;
     private PointF mCoordinates;
     private boolean mIsVisible;
-    protected WeakReference<View> mView;
 
-    static int mTitleId = 0;
-    static int mDescriptionId = 0;
-    static int mSubDescriptionId = 0;
-    static int mImageId = 0;
+    @LayoutRes
+    private int mLayoutRes;
 
-    InfoWindow(int layoutResId, MapView mapView) {
+    InfoWindow(MapView mapView, int layoutResId, MapboxMap mapboxMap) {
+        mLayoutRes = layoutResId;
         View view = LayoutInflater.from(mapView.getContext()).inflate(layoutResId, mapView, false);
-
-        if (mTitleId == 0) {
-            setResIds(mapView.getContext());
-        }
-
-        initialize(view, mapView);
+        initialize(view, mapboxMap);
     }
 
-    InfoWindow(View view, MapView mapView) {
-        initialize(view, mapView);
+    InfoWindow(View view, MapboxMap mapboxMap) {
+        initialize(view, mapboxMap);
     }
 
-    private void initialize(View view, MapView mapView) {
-        mMapView = new WeakReference<>(mapView);
+    private void initialize(View view, MapboxMap mapboxMap) {
+        mMapboxMap = new WeakReference<>(mapboxMap);
         mIsVisible = false;
         mView = new WeakReference<>(view);
 
@@ -61,8 +59,8 @@ public class InfoWindow {
             public boolean onTouch(View v, MotionEvent e) {
                 if (e.getAction() == MotionEvent.ACTION_UP) {
                     boolean handledDefaultClick = false;
-                    MapView.OnInfoWindowClickListener onInfoWindowClickListener =
-                            mMapView.get().getOnInfoWindowClickListener();
+                    MapboxMap.OnInfoWindowClickListener onInfoWindowClickListener =
+                            mMapboxMap.get().getOnInfoWindowClickListener();
                     if (onInfoWindowClickListener != null) {
                         handledDefaultClick = onInfoWindowClickListener.onMarkerClick(getBoundMarker());
                     }
@@ -86,34 +84,36 @@ public class InfoWindow {
      *                    This allows to offset the view from the object position.
      * @return this infowindow
      */
-    InfoWindow open(Marker boundMarker, LatLng position, int offsetX, int offsetY) {
+    InfoWindow open(MapView mapView, Marker boundMarker, LatLng position, int offsetX, int offsetY) {
         setBoundMarker(boundMarker);
 
         MapView.LayoutParams lp = new MapView.LayoutParams(MapView.LayoutParams.WRAP_CONTENT, MapView.LayoutParams.WRAP_CONTENT);
 
+        MapboxMap mapboxMap = mMapboxMap.get();
         View view = mView.get();
-        if (view != null) {
+        if (view != null && mapboxMap != null) {
             view.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
 
             // Calculate y-offset for update method
             mMarkerHeightOffset = -view.getMeasuredHeight() + offsetY;
 
             // Calculate default Android x,y coordinate
-            mCoordinates = mMapView.get().toScreenLocation(position);
+
+            mCoordinates = mapboxMap.toScreenLocation(position);
             float x = mCoordinates.x - (view.getMeasuredWidth() / 2) + offsetX;
             float y = mCoordinates.y - view.getMeasuredHeight() + offsetY;
 
             if (view instanceof InfoWindowView) {
                 // only apply repositioning/margin for InfoWindowView
-                Resources resources = mMapView.get().getContext().getResources();
+                Resources resources = mapView.getContext().getResources();
 
                 // get right/left popup window
                 float rightSideInfowWindow = x + view.getMeasuredWidth();
                 float leftSideInfoWindow = x;
 
                 // get right/left map view
-                final float mapRight = mMapView.get().getRight();
-                final float mapLeft = mMapView.get().getLeft();
+                final float mapRight = mapView.getRight();
+                final float mapLeft = mapView.getLeft();
 
                 float marginHorizontal = resources.getDimension(R.dimen.infowindow_margin);
                 float tipViewOffset = resources.getDimension(R.dimen.infowindow_tipview_width) / 2;
@@ -164,7 +164,7 @@ public class InfoWindow {
             mViewWidthOffset = x - mCoordinates.x - offsetX;
 
             close(); //if it was already opened
-            mMapView.get().addView(view, lp);
+            mapView.addView(view, lp);
             mIsVisible = true;
         }
         return this;
@@ -194,29 +194,24 @@ public class InfoWindow {
      *
      * @param overlayItem the tapped overlay item
      */
-    void adaptDefaultMarker(Marker overlayItem) {
+    void adaptDefaultMarker(Marker overlayItem, MapboxMap mapboxMap, MapView mapView) {
         View view = mView.get();
-        if (view != null) {
-            String title = overlayItem.getTitle();
-            ((TextView) view.findViewById(mTitleId /*R.id.title*/)).setText(title);
-            String snippet = overlayItem.getSnippet();
-            ((TextView) view.findViewById(mDescriptionId /*R.id.description*/)).setText(snippet);
+        if (view == null) {
+            view = LayoutInflater.from(mapView.getContext()).inflate(mLayoutRes, mapView, false);
+            initialize(view, mapboxMap);
         }
-/*
-        //handle sub-description, hiding or showing the text view:
-        TextView subDescText = (TextView) mView.findViewById(mSubDescriptionId);
-        String subDesc = overlayItem.getSubDescription();
-        if ("".equals(subDesc)) {
-            subDescText.setVisibility(View.GONE);
-        } else {
-            subDescText.setText(subDesc);
-            subDescText.setVisibility(View.VISIBLE);
-        }
-*/
+        mMapboxMap = new WeakReference<>(mapboxMap);
+        String title = overlayItem.getTitle();
+        ((TextView) view.findViewById(R.id.infowindow_title)).setText(title);
+        String snippet = overlayItem.getSnippet();
+        ((TextView) view.findViewById(R.id.infowindow_description)).setText(snippet);
     }
 
     private void onClose() {
-        mMapView.get().deselectMarker(getBoundMarker());
+        MapboxMap mapboxMap = mMapboxMap.get();
+        if (mapboxMap != null) {
+            mapboxMap.deselectMarker(getBoundMarker());
+        }
     }
 
     InfoWindow setBoundMarker(Marker boundMarker) {
@@ -231,28 +226,12 @@ public class InfoWindow {
         return mBoundMarker.get();
     }
 
-    /**
-     * Given a context, set the resource ids for the layout
-     * of the InfoWindow.
-     *
-     * @param context the apps Context
-     */
-    private static void setResIds(Context context) {
-        String packageName = context.getPackageName(); //get application package name
-        mTitleId = context.getResources().getIdentifier("id/infowindow_title", null, packageName);
-        mDescriptionId =
-                context.getResources().getIdentifier("id/infowindow_description", null, packageName);
-        mSubDescriptionId = context.getResources()
-                .getIdentifier("id/infowindow_subdescription", null, packageName);
-        mImageId = context.getResources().getIdentifier("id/infowindow_image", null, packageName);
-    }
-
     public void update() {
-        MapView mapView = mMapView.get();
+        MapboxMap mapboxMap = mMapboxMap.get();
         Marker marker = mBoundMarker.get();
         View view = mView.get();
-        if (mapView != null && marker != null && view != null) {
-            mCoordinates = mapView.toScreenLocation(marker.getPosition());
+        if (mapboxMap != null && marker != null && view != null) {
+            mCoordinates = mapboxMap.toScreenLocation(marker.getPosition());
             view.setX(mCoordinates.x + mViewWidthOffset);
             view.setY(mCoordinates.y + mMarkerHeightOffset);
         }

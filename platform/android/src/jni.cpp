@@ -24,6 +24,7 @@
 #include <mbgl/platform/event.hpp>
 #include <mbgl/platform/log.hpp>
 #include <mbgl/storage/network_status.hpp>
+#include <mbgl/util/exception.hpp>
 
 #pragma clang diagnostic ignored "-Wunused-parameter"
 
@@ -559,14 +560,14 @@ void JNICALL nativeSetDefaultTransitionDuration(JNIEnv *env, jobject obj, jlong 
     assert(nativeMapViewPtr != 0);
     assert(duration >= 0);
     NativeMapView *nativeMapView = reinterpret_cast<NativeMapView *>(nativeMapViewPtr);
-    nativeMapView->getMap().setDefaultTransitionDuration(std::chrono::milliseconds(duration));
+    nativeMapView->getMap().setDefaultTransitionDuration(mbgl::Milliseconds(duration));
 }
 
 jlong JNICALL nativeGetDefaultTransitionDuration(JNIEnv *env, jobject obj, jlong nativeMapViewPtr) {
     mbgl::Log::Debug(mbgl::Event::JNI, "nativeGetDefaultTransitionDuration");
     assert(nativeMapViewPtr != 0);
     NativeMapView *nativeMapView = reinterpret_cast<NativeMapView *>(nativeMapViewPtr);
-    return std::chrono::duration_cast<std::chrono::milliseconds>(nativeMapView->getMap().getDefaultTransitionDuration()).count();
+    return std::chrono::duration_cast<mbgl::Milliseconds>(nativeMapView->getMap().getDefaultTransitionDuration()).count();
 }
 
 void JNICALL nativeSetStyleURL(JNIEnv *env, jobject obj, jlong nativeMapViewPtr, jstring url) {
@@ -626,7 +627,7 @@ void JNICALL nativeMoveBy(JNIEnv *env, jobject obj, jlong nativeMapViewPtr, jdou
     assert(nativeMapViewPtr != 0);
     NativeMapView *nativeMapView = reinterpret_cast<NativeMapView *>(nativeMapViewPtr);
     mbgl::PrecisionPoint center(dx, dy);
-    nativeMapView->getMap().moveBy(center, std::chrono::milliseconds(duration));
+    nativeMapView->getMap().moveBy(center, mbgl::Milliseconds(duration));
 }
 
 void JNICALL nativeSetLatLng(JNIEnv *env, jobject obj, jlong nativeMapViewPtr, jobject latLng,
@@ -647,14 +648,14 @@ void JNICALL nativeSetLatLng(JNIEnv *env, jobject obj, jlong nativeMapViewPtr, j
         return;
     }
 
-    nativeMapView->getMap().setLatLng(mbgl::LatLng(latitude, longitude), mbgl::Duration(duration));
+    nativeMapView->getMap().setLatLng(mbgl::LatLng(latitude, longitude), nativeMapView->getInsets(), mbgl::Duration(duration));
 }
 
 jobject JNICALL nativeGetLatLng(JNIEnv *env, jobject obj, jlong nativeMapViewPtr) {
     mbgl::Log::Debug(mbgl::Event::JNI, "nativeGetLatLng");
     assert(nativeMapViewPtr != 0);
     NativeMapView *nativeMapView = reinterpret_cast<NativeMapView *>(nativeMapViewPtr);
-    mbgl::LatLng latLng = nativeMapView->getMap().getLatLng();
+    mbgl::LatLng latLng = nativeMapView->getMap().getLatLng(nativeMapView->getInsets());
 
     jobject ret = env->NewObject(latLngClass, latLngConstructorId, latLng.latitude, latLng.longitude);
     if (ret == nullptr) {
@@ -679,11 +680,12 @@ jdouble JNICALL nativeGetPitch(JNIEnv *env, jobject obj, jlong nativeMapViewPtr)
     return nativeMapView->getMap().getPitch();
 }
 
-void JNICALL nativeSetPitch(JNIEnv *env, jobject obj, jlong nativeMapViewPtr, jdouble pitch, jlong duration) {
+void JNICALL nativeSetPitch(JNIEnv *env, jobject obj, jlong nativeMapViewPtr, jdouble pitch, jlong milliseconds) {
     mbgl::Log::Debug(mbgl::Event::JNI, "nativeGetPitch");
     assert(nativeMapViewPtr != 0);
     NativeMapView *nativeMapView = reinterpret_cast<NativeMapView *>(nativeMapViewPtr);
-    nativeMapView->getMap().setPitch(pitch, std::chrono::milliseconds(duration));
+    mbgl::Duration duration((mbgl::Milliseconds(milliseconds)));
+    nativeMapView->getMap().setPitch(pitch, duration);
 }
 
 void JNICALL nativeScaleBy(JNIEnv *env, jobject obj, jlong nativeMapViewPtr, jdouble ds, jdouble cx,
@@ -692,7 +694,7 @@ void JNICALL nativeScaleBy(JNIEnv *env, jobject obj, jlong nativeMapViewPtr, jdo
     assert(nativeMapViewPtr != 0);
     NativeMapView *nativeMapView = reinterpret_cast<NativeMapView *>(nativeMapViewPtr);
     mbgl::PrecisionPoint center(cx, cy);
-    nativeMapView->getMap().scaleBy(ds, center, std::chrono::milliseconds(duration));
+    nativeMapView->getMap().scaleBy(ds, center, mbgl::Milliseconds(duration));
 }
 
 void JNICALL nativeSetScale(JNIEnv *env, jobject obj, jlong nativeMapViewPtr, jdouble scale,
@@ -701,7 +703,7 @@ void JNICALL nativeSetScale(JNIEnv *env, jobject obj, jlong nativeMapViewPtr, jd
     assert(nativeMapViewPtr != 0);
     NativeMapView *nativeMapView = reinterpret_cast<NativeMapView *>(nativeMapViewPtr);
     mbgl::PrecisionPoint center(cx, cy);
-    nativeMapView->getMap().setScale(scale, center, std::chrono::milliseconds(duration));
+    nativeMapView->getMap().setScale(scale, center, mbgl::Milliseconds(duration));
 }
 
 jdouble JNICALL nativeGetScale(JNIEnv *env, jobject obj, jlong nativeMapViewPtr) {
@@ -715,7 +717,7 @@ void JNICALL nativeSetZoom(JNIEnv *env, jobject obj, jlong nativeMapViewPtr, jdo
     mbgl::Log::Debug(mbgl::Event::JNI, "nativeSetZoom");
     assert(nativeMapViewPtr != 0);
     NativeMapView *nativeMapView = reinterpret_cast<NativeMapView *>(nativeMapViewPtr);
-    nativeMapView->getMap().setZoom(zoom, std::chrono::milliseconds(duration));
+    nativeMapView->getMap().setZoom(zoom, mbgl::Milliseconds(duration));
 }
 
 jdouble JNICALL nativeGetZoom(JNIEnv *env, jobject obj, jlong nativeMapViewPtr) {
@@ -725,49 +727,6 @@ jdouble JNICALL nativeGetZoom(JNIEnv *env, jobject obj, jlong nativeMapViewPtr) 
     return nativeMapView->getMap().getZoom();
 }
 
-void JNICALL nativeSetLatLngZoom(JNIEnv *env, jobject obj, jlong nativeMapViewPtr,
-                                 jobject latLngZoom, jlong duration) {
-    mbgl::Log::Debug(mbgl::Event::JNI, "nativeSetLatLngZoom");
-    assert(nativeMapViewPtr != 0);
-    NativeMapView *nativeMapView = reinterpret_cast<NativeMapView *>(nativeMapViewPtr);
-
-    jdouble latitude = env->GetDoubleField(latLngZoom, latLngZoomLatitudeId);
-    if (env->ExceptionCheck()) {
-        env->ExceptionDescribe();
-        return;
-    }
-
-    jdouble longitude = env->GetDoubleField(latLngZoom, latLngZoomLongitudeId);
-    if (env->ExceptionCheck()) {
-        env->ExceptionDescribe();
-        return;
-    }
-
-    jdouble zoom = env->GetDoubleField(latLngZoom, latLngZoomZoomId);
-    if (env->ExceptionCheck()) {
-        env->ExceptionDescribe();
-        return;
-    }
-
-    nativeMapView->getMap().setLatLngZoom(mbgl::LatLng(latitude, longitude), zoom, std::chrono::milliseconds(duration));
-}
-
-jobject JNICALL nativeGetLatLngZoom(JNIEnv *env, jobject obj, jlong nativeMapViewPtr) {
-    mbgl::Log::Debug(mbgl::Event::JNI, "nativeGetLatLngZoom");
-    assert(nativeMapViewPtr != 0);
-    NativeMapView *nativeMapView = reinterpret_cast<NativeMapView *>(nativeMapViewPtr);
-    mbgl::LatLng latLng = nativeMapView->getMap().getLatLng();
-    jdouble zoom = nativeMapView->getMap().getZoom();
-
-    jobject ret = env->NewObject(latLngZoomClass, latLngZoomConstructorId, latLng.longitude, latLng.latitude, zoom);
-    if (ret == nullptr) {
-        env->ExceptionDescribe();
-        return nullptr;
-    }
-
-    return ret;
-}
-
 void JNICALL nativeResetZoom(JNIEnv *env, jobject obj, jlong nativeMapViewPtr) {
     mbgl::Log::Debug(mbgl::Event::JNI, "nativeResetZoom");
     assert(nativeMapViewPtr != 0);
@@ -775,11 +734,25 @@ void JNICALL nativeResetZoom(JNIEnv *env, jobject obj, jlong nativeMapViewPtr) {
     nativeMapView->getMap().resetZoom();
 }
 
+void JNICALL nativeSetMinZoom(JNIEnv *env, jobject obj, jlong nativeMapViewPtr, jdouble zoom) {
+    mbgl::Log::Debug(mbgl::Event::JNI, "nativeSetMinZoom");
+    assert(nativeMapViewPtr != 0);
+    NativeMapView *nativeMapView = reinterpret_cast<NativeMapView *>(nativeMapViewPtr);
+    nativeMapView->getMap().setMinZoom(zoom);
+}
+
 jdouble JNICALL nativeGetMinZoom(JNIEnv *env, jobject obj, jlong nativeMapViewPtr) {
     mbgl::Log::Debug(mbgl::Event::JNI, "nativeGetMinZoom");
     assert(nativeMapViewPtr != 0);
     NativeMapView *nativeMapView = reinterpret_cast<NativeMapView *>(nativeMapViewPtr);
     return nativeMapView->getMap().getMinZoom();
+}
+
+void JNICALL nativeSetMaxZoom(JNIEnv *env, jobject obj, jlong nativeMapViewPtr, jdouble zoom) {
+    mbgl::Log::Debug(mbgl::Event::JNI, "nativeSetMaxZoom");
+    assert(nativeMapViewPtr != 0);
+    NativeMapView *nativeMapView = reinterpret_cast<NativeMapView *>(nativeMapViewPtr);
+    nativeMapView->getMap().setMaxZoom(zoom);
 }
 
 jdouble JNICALL nativeGetMaxZoom(JNIEnv *env, jobject obj, jlong nativeMapViewPtr) {
@@ -796,7 +769,7 @@ void JNICALL nativeRotateBy(JNIEnv *env, jobject obj, jlong nativeMapViewPtr, jd
     NativeMapView *nativeMapView = reinterpret_cast<NativeMapView *>(nativeMapViewPtr);
     mbgl::PrecisionPoint first(sx, sy);
     mbgl::PrecisionPoint second(ex, ey);
-    nativeMapView->getMap().rotateBy(first, second, std::chrono::milliseconds(duration));
+    nativeMapView->getMap().rotateBy(first, second, mbgl::Milliseconds(duration));
 }
 
 void JNICALL nativeSetBearing(JNIEnv *env, jobject obj, jlong nativeMapViewPtr, jdouble degrees,
@@ -804,7 +777,7 @@ void JNICALL nativeSetBearing(JNIEnv *env, jobject obj, jlong nativeMapViewPtr, 
     mbgl::Log::Debug(mbgl::Event::JNI, "nativeSetBearing");
     assert(nativeMapViewPtr != 0);
     NativeMapView *nativeMapView = reinterpret_cast<NativeMapView *>(nativeMapViewPtr);
-    mbgl::Duration duration((std::chrono::milliseconds(milliseconds)));
+    mbgl::Duration duration((mbgl::Milliseconds(milliseconds)));
     nativeMapView->getMap().setBearing(degrees, duration);
 }
 
@@ -1225,16 +1198,18 @@ void JNICALL nativeAddAnnotationIcon(JNIEnv *env, jobject obj, jlong nativeMapVi
 
     const std::string symbolName = std_string_from_jstring(env, symbol);
 
-    jbyte* pixelData = env->GetByteArrayElements(jpixels, nullptr);
     jsize size = env->GetArrayLength(jpixels);
-    std::string pixels(reinterpret_cast<char*>(pixelData), size);
-    env->ReleaseByteArrayElements(jpixels, pixelData, JNI_ABORT);
+    mbgl::PremultipliedImage premultipliedImage(width, height);
+
+    if (premultipliedImage.size() != uint32_t(size)) {
+        throw mbgl::util::SpriteImageException("Sprite image pixel count mismatch");
+    }
+
+    env->GetByteArrayRegion(jpixels, 0, size, reinterpret_cast<jbyte*>(premultipliedImage.data.get()));
 
     auto iconImage = std::make_shared<mbgl::SpriteImage>(
-        uint16_t(width),
-        uint16_t(height),
-        float(scale),
-        std::move(pixels));
+        std::move(premultipliedImage),
+        float(scale));
 
     nativeMapView->getMap().addAnnotationIcon(symbolName, iconImage);
 }
@@ -1297,9 +1272,9 @@ void JNICALL nativeSetVisibleCoordinateBounds(JNIEnv *env, jobject obj, jlong na
     }
     mbgl::AnimationOptions animationOptions;
     if (duration > 0) {
-        animationOptions.duration = std::chrono::milliseconds(duration);
+        animationOptions.duration.emplace(mbgl::Milliseconds(duration));
         // equivalent to kCAMediaTimingFunctionDefault in iOS
-        animationOptions.easing = {0.25, 0.1, 0.25, 0.1};
+        animationOptions.easing = mbgl::util::UnitBezier(0.25, 0.1, 0.25, 0.1);
     }
 
     nativeMapView->getMap().easeTo(cameraOptions, animationOptions);
@@ -1528,6 +1503,7 @@ void JNICALL nativeJumpTo(JNIEnv *env, jobject obj, jlong nativeMapViewPtr, jdou
         options.angle = angle;
     }
     options.center = mbgl::LatLng(latitude, longitude);
+    options.padding = nativeMapView->getInsets();
     if (pitch != -1) {
         options.pitch = pitch;
     }
@@ -1560,6 +1536,7 @@ void JNICALL nativeEaseTo(JNIEnv *env, jobject obj, jlong nativeMapViewPtr, jdou
         cameraOptions.angle = angle;
     }
     cameraOptions.center = mbgl::LatLng(latitude, longitude);
+    cameraOptions.padding = nativeMapView->getInsets();
     if (pitch != -1) {
         cameraOptions.pitch = pitch;
     }
@@ -1567,10 +1544,18 @@ void JNICALL nativeEaseTo(JNIEnv *env, jobject obj, jlong nativeMapViewPtr, jdou
         cameraOptions.zoom = zoom;
     }
     mbgl::AnimationOptions animationOptions;
-    animationOptions.duration = mbgl::Duration(duration);
+    animationOptions.duration.emplace(mbgl::Duration(duration));
 
     nativeMapView->getMap().easeTo(cameraOptions, animationOptions);
 }
+
+void JNICALL nativeSetContentPadding(JNIEnv *env, jobject obj,long nativeMapViewPtr, double top, double left, double bottom, double right) {
+    mbgl::Log::Debug(mbgl::Event::JNI, "nativeSetContentPadding");
+    assert(nativeMapViewPtr != 0);
+    NativeMapView *nativeMapView = reinterpret_cast<NativeMapView *>(nativeMapViewPtr);
+    nativeMapView->setInsets({top, left, bottom, right});
+}
+
 
 void JNICALL nativeFlyTo(JNIEnv *env, jobject obj, jlong nativeMapViewPtr, jdouble angle, jobject centerLatLng, jlong duration, jdouble pitch, jdouble zoom) {
     mbgl::Log::Debug(mbgl::Event::JNI, "nativeFlyTo");
@@ -1594,6 +1579,7 @@ void JNICALL nativeFlyTo(JNIEnv *env, jobject obj, jlong nativeMapViewPtr, jdoub
         cameraOptions.angle = angle;
     }
     cameraOptions.center = mbgl::LatLng(latitude, longitude);
+    cameraOptions.padding = nativeMapView->getInsets();
     if (pitch != -1) {
         cameraOptions.pitch = pitch;
     }
@@ -1601,7 +1587,7 @@ void JNICALL nativeFlyTo(JNIEnv *env, jobject obj, jlong nativeMapViewPtr, jdoub
         cameraOptions.zoom = zoom;
     }
     mbgl::AnimationOptions animationOptions;
-    animationOptions.duration = mbgl::Duration(duration);
+    animationOptions.duration.emplace(mbgl::Duration(duration));
 
     nativeMapView->getMap().flyTo(cameraOptions, animationOptions);
 }
@@ -1631,6 +1617,7 @@ void JNICALL nativeRemoveCustomLayer(JNIEnv *env, jobject obj, jlong nativeMapVi
 extern "C" {
 
 extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
+    // This reads out values from objects
     mbgl::Log::Debug(mbgl::Event::JNI, "JNI_OnLoad");
 
     theJVM = vm;
@@ -1662,36 +1649,6 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
 
     latLngLongitudeId = env->GetFieldID(latLngClass, "longitude", "D");
     if (latLngLongitudeId == nullptr) {
-        env->ExceptionDescribe();
-        return JNI_ERR;
-    }
-
-    latLngZoomClass = env->FindClass("com/mapbox/mapboxsdk/geometry/LatLngZoom");
-    if (latLngZoomClass == nullptr) {
-        env->ExceptionDescribe();
-        return JNI_ERR;
-    }
-
-    latLngZoomConstructorId = env->GetMethodID(latLngZoomClass, "<init>", "(DDD)V");
-    if (latLngZoomConstructorId == nullptr) {
-        env->ExceptionDescribe();
-        return JNI_ERR;
-    }
-
-    latLngZoomLatitudeId = env->GetFieldID(latLngZoomClass, "latitude", "D");
-    if (latLngZoomLatitudeId == nullptr) {
-        env->ExceptionDescribe();
-        return JNI_ERR;
-    }
-
-    latLngZoomLongitudeId = env->GetFieldID(latLngZoomClass, "longitude", "D");
-    if (latLngZoomLongitudeId == nullptr) {
-        env->ExceptionDescribe();
-        return JNI_ERR;
-    }
-
-    latLngZoomZoomId = env->GetFieldID(latLngZoomClass, "zoom", "D");
-    if (latLngZoomZoomId == nullptr) {
         env->ExceptionDescribe();
         return JNI_ERR;
     }
@@ -1822,7 +1779,7 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
         return JNI_ERR;
     }
 
-    jclass nativeMapViewClass = env->FindClass("com/mapbox/mapboxsdk/views/NativeMapView");
+    jclass nativeMapViewClass = env->FindClass("com/mapbox/mapboxsdk/maps/NativeMapView");
     if (nativeMapViewClass == nullptr) {
         env->ExceptionDescribe();
         return JNI_ERR;
@@ -2093,13 +2050,11 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
         {"nativeGetScale", "(J)D", reinterpret_cast<void *>(&nativeGetScale)},
         {"nativeSetZoom", "(JDJ)V", reinterpret_cast<void *>(&nativeSetZoom)},
         {"nativeGetZoom", "(J)D", reinterpret_cast<void *>(&nativeGetZoom)},
-        {"nativeSetLatLngZoom", "(JLcom/mapbox/mapboxsdk/geometry/LatLngZoom;J)V",
-         reinterpret_cast<void *>(&nativeSetLatLngZoom)},
-        {"nativeGetLatLngZoom", "(J)Lcom/mapbox/mapboxsdk/geometry/LatLngZoom;",
-         reinterpret_cast<void *>(&nativeGetLatLngZoom)},
         {"nativeResetZoom", "(J)V", reinterpret_cast<void *>(&nativeResetZoom)},
         {"nativeGetMinZoom", "(J)D", reinterpret_cast<void *>(&nativeGetMinZoom)},
+        {"nativeSetMinZoom", "(JD)V", reinterpret_cast<void *>(&nativeSetMinZoom)},
         {"nativeGetMaxZoom", "(J)D", reinterpret_cast<void *>(&nativeGetMaxZoom)},
+        {"nativeSetMaxZoom", "(JD)V", reinterpret_cast<void *>(&nativeSetMaxZoom)},
         {"nativeRotateBy", "(JDDDDJ)V", reinterpret_cast<void *>(&nativeRotateBy)},
         {"nativeSetBearing", "(JDJ)V",
          reinterpret_cast<void *>(
@@ -2161,6 +2116,8 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
          reinterpret_cast<void *>(&nativeAddCustomLayer)},
         {"nativeRemoveCustomLayer", "(JLjava/lang/String;)V",
          reinterpret_cast<void *>(&nativeRemoveCustomLayer)},
+        {"nativeSetContentPadding", "(JDDDD)V",
+         reinterpret_cast<void *>(&nativeSetContentPadding)}
     };
 
     if (env->RegisterNatives(nativeMapViewClass, methods.data(), methods.size()) < 0) {
@@ -2171,13 +2128,6 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     latLngClass = reinterpret_cast<jclass>(env->NewGlobalRef(latLngClass));
     if (latLngClass == nullptr) {
         env->ExceptionDescribe();
-        return JNI_ERR;
-    }
-
-    latLngZoomClass = reinterpret_cast<jclass>(env->NewGlobalRef(latLngZoomClass));
-    if (latLngZoomClass == nullptr) {
-        env->ExceptionDescribe();
-        env->DeleteGlobalRef(latLngClass);
         return JNI_ERR;
     }
 

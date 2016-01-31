@@ -1,16 +1,19 @@
 package com.mapbox.mapboxsdk.annotations;
 
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.view.View;
 
+import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.R;
 import com.mapbox.mapboxsdk.geometry.LatLng;
-import com.mapbox.mapboxsdk.views.MapView;
+import com.mapbox.mapboxsdk.maps.MapView;
 
 /**
- * A marker is a map overlay that shows an icon image at a specific
- * geographical location and can be associated with a {@link InfoWindow}
- * that is shown when the marker is tapped.
+ * Marker is an annotation that shows an icon image at a geographical location.
+ * </p>
+ * An {@link InfoWindow} can be shown when a Marker is pressed
+ * <p/>
  */
 public final class Marker extends Annotation {
 
@@ -84,48 +87,38 @@ public final class Marker extends Annotation {
     /**
      * Do not use this method. Used internally by the SDK.
      */
-    public InfoWindow showInfoWindow() {
-        if (getMapView() == null) {
-            return null;
-        }
-
-        MapView.InfoWindowAdapter infoWindowAdapter = getMapView().getInfoWindowAdapter();
+    public InfoWindow showInfoWindow(@NonNull MapboxMap mapboxMap, @NonNull MapView mapView) {
+        setMapboxMap(mapboxMap);
+        MapboxMap.InfoWindowAdapter infoWindowAdapter = getMapboxMap().getInfoWindowAdapter();
         if (infoWindowAdapter != null) {
             // end developer is using a custom InfoWindowAdapter
             View content = infoWindowAdapter.getInfoWindow(this);
             if (content != null) {
-                infoWindow = new InfoWindow(content, getMapView());
-                showInfoWindow(infoWindow);
+                infoWindow = new InfoWindow(content, mapboxMap);
+                showInfoWindow(infoWindow, mapView);
                 return infoWindow;
             }
         }
 
-        getInfoWindow().adaptDefaultMarker(this);
-        return showInfoWindow(getInfoWindow());
+        InfoWindow infoWindow = getInfoWindow(mapView);
+        if (mapView.getContext() != null) {
+            infoWindow.adaptDefaultMarker(this, mapboxMap, mapView);
+        }
+        return showInfoWindow(infoWindow, mapView);
     }
 
-    private InfoWindow showInfoWindow(InfoWindow iw) {
-        iw.open(this, getPosition(), 0, topOffsetPixels);
+    private InfoWindow showInfoWindow(InfoWindow iw, MapView mapView) {
+        iw.open(mapView, this, getPosition(), 0, topOffsetPixels);
         infoWindowShown = true;
         return iw;
     }
 
-    private InfoWindow getInfoWindow() {
-        if (infoWindow == null) {
-            infoWindow = new InfoWindow(R.layout.infowindow_view, getMapView());
+    private InfoWindow getInfoWindow(@NonNull MapView mapView) {
+        if (infoWindow == null && mapView.getContext() != null) {
+            infoWindow = new InfoWindow(mapView, R.layout.infowindow_view, getMapboxMap());
         }
         return infoWindow;
     }
-
-    /*
-    @Override
-    void setVisible(boolean visible) {
-        super.setVisible(visible);
-        if (!visible && infoWindowShown) {
-            hideInfoWindow();
-        }
-    }
-    */
 
     /**
      * Do not use this method. Used internally by the SDK.

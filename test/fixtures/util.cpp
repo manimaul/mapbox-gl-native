@@ -4,6 +4,7 @@
 #include <mbgl/platform/log.hpp>
 #include <mbgl/util/image.hpp>
 #include <mbgl/util/io.hpp>
+#include <mbgl/util/chrono.hpp>
 
 #include <mapbox/pixelmatch.hpp>
 
@@ -89,6 +90,7 @@ Server::~Server() {
     }
 }
 
+
 // from https://gist.github.com/ArtemGr/997887
 uint64_t crc64(const char* data, size_t size) {
     boost::crc_optimal<64, 0x04C11DB7, 0, 0, false, false> crc;
@@ -100,7 +102,11 @@ uint64_t crc64(const std::string& str) {
     return crc64(str.data(), str.size());
 }
 
-PremultipliedImage render(Map& map, std::chrono::milliseconds timeout) {
+uint64_t crc64(const PremultipliedImage &image) {
+    return crc64(reinterpret_cast<const char*>(image.data.get()), image.size());
+}
+
+PremultipliedImage render(Map& map, Milliseconds timeout) {
     std::promise<PremultipliedImage> promise;
     map.renderStill([&](std::exception_ptr, PremultipliedImage&& image) {
         promise.set_value(std::move(image));

@@ -67,51 +67,29 @@ GlyphPBF::GlyphPBF(GlyphStore* store,
                    GlyphStore::Observer* observer_)
     : parsed(false),
       observer(observer_) {
-    // Load the glyph set URL
-    std::string url = util::replaceTokens(store->getURL(), [&](const std::string &name) -> std::string {
-        if (name == "fontstack") return util::percentEncode(fontStack);
-        if (name == "range") return util::toString(glyphRange.first) + "-" + util::toString(glyphRange.second);
-        return "";
-    });
-
-    auto requestCallback = [this, store, fontStack, glyphRange](Response res) {
-        if (res.stale) {
-            // Only handle fresh responses.
-            return;
-        }
-        req = nullptr;
-
+    FileSource* fs = util::ThreadContext::getFileSource();
+    req = fs->request(Resource::glyphs(store->getURL(), fontStack, glyphRange), [this, store, fontStack, glyphRange](Response res) {
         if (res.error) {
             observer->onGlyphsError(fontStack, glyphRange, std::make_exception_ptr(std::runtime_error(res.error->message)));
-        } else {
-            data = res.data;
-            parse(store, fontStack, glyphRange);
+            return;
         }
-    };
 
-    FileSource* fs = util::ThreadContext::getFileSource();
-    req = fs->request({ Resource::Kind::Glyphs, url }, requestCallback);
+        if (res.notModified) {
+            return;
+        }
+
+        try {
+            parseGlyphPBF(**store->getFontStack(fontStack), *res.data);
+        } catch (...) {
+            observer->onGlyphsError(fontStack, glyphRange, std::current_exception());
+            return;
+        }
+
+        parsed = true;
+        observer->onGlyphsLoaded(fontStack, glyphRange);
+    });
 }
 
 GlyphPBF::~GlyphPBF() = default;
-
-void GlyphPBF::parse(GlyphStore* store, const std::string& fontStack, const GlyphRange& glyphRange) {
-    assert(data);
-    if (data->empty()) {
-        // If there is no data, this means we either haven't
-        // received any data.
-        return;
-    }
-
-    try {
-        parseGlyphPBF(**store->getFontStack(fontStack), *data);
-    } catch (...) {
-        observer->onGlyphsError(fontStack, glyphRange, std::current_exception());
-        return;
-    }
-
-    parsed = true;
-    observer->onGlyphsLoaded(fontStack, glyphRange);
-}
 
 } // namespace mbgl

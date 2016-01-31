@@ -23,9 +23,6 @@
 
 #include <csscolorparser/csscolorparser.hpp>
 
-#include <rapidjson/document.h>
-#include <rapidjson/error/en.h>
-
 #include <algorithm>
 
 namespace mbgl {
@@ -35,7 +32,7 @@ Style::Style(MapData& data_)
       glyphStore(std::make_unique<GlyphStore>()),
       glyphAtlas(std::make_unique<GlyphAtlas>(1024, 1024)),
       spriteStore(std::make_unique<SpriteStore>(data.pixelRatio)),
-      spriteAtlas(std::make_unique<SpriteAtlas>(512, 512, data.pixelRatio, *spriteStore)),
+      spriteAtlas(std::make_unique<SpriteAtlas>(1024, 1024, data.pixelRatio, *spriteStore)),
       lineAtlas(std::make_unique<LineAtlas>(512, 512)),
       workers(4) {
     glyphStore->setObserver(this);
@@ -43,15 +40,11 @@ Style::Style(MapData& data_)
 }
 
 void Style::setJSON(const std::string& json, const std::string&) {
-    rapidjson::GenericDocument<rapidjson::UTF8<>, rapidjson::CrtAllocator> doc;
-    doc.Parse<0>((const char *const)json.c_str());
-    if (doc.HasParseError()) {
-        Log::Error(Event::ParseStyle, "Error parsing style JSON at %i: %s", doc.GetErrorOffset(), rapidjson::GetParseError_En(doc.GetParseError()));
-        return;
-    }
+    sources.clear();
+    layers.clear();
 
     StyleParser parser;
-    parser.parse(doc);
+    parser.parse(json);
 
     for (auto& source : parser.sources) {
         addSource(std::move(source));
@@ -101,7 +94,7 @@ StyleLayer* Style::getLayer(const std::string& id) const {
     return it != layers.end() ? it->get() : nullptr;
 }
 
-void Style::addLayer(std::unique_ptr<StyleLayer> layer, mapbox::util::optional<std::string> before) {
+void Style::addLayer(std::unique_ptr<StyleLayer> layer, optional<std::string> before) {
     if (SymbolLayer* symbolLayer = layer->as<SymbolLayer>()) {
         if (!symbolLayer->spriteAtlas) {
             symbolLayer->spriteAtlas = spriteAtlas.get();
@@ -351,6 +344,10 @@ void Style::onTileError(Source& source, const TileID& tileID, std::exception_ptr
                std::string(tileID).c_str(), source.id.c_str(), util::toString(error).c_str());
     observer->onTileError(source, tileID, error);
     observer->onResourceError(error);
+}
+
+void Style::onPlacementRedone() {
+    observer->onResourceLoaded();
 }
 
 void Style::onSpriteLoaded() {
