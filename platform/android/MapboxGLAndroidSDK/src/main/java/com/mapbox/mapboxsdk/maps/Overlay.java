@@ -1,37 +1,34 @@
-package com.mapbox.mapboxsdk.views;
+package com.mapbox.mapboxsdk.maps;
 
 import android.graphics.Canvas;
-import android.graphics.PointF;
 import android.graphics.Rect;
-import android.graphics.RectF;
 import android.view.MotionEvent;
 
 import com.mapbox.mapboxsdk.geometry.BoundingBox;
 import com.mapbox.mapboxsdk.geometry.LatLng;
-import com.mapbox.mapboxsdk.maps.MapView;
 
 public interface Overlay {
 
     /**
      * Perform the overlay draw here.
      *
-     * @param mapView   the map view.
+     * @param mapboxMap the map.
      * @param canvas    a canvas for you to draw on.
      * @param wgsBounds bounds of the overlay in latitude, longitude
      * @param wgsCenter center of the overlay in latitude, longitude
      * @param bearing   the map bearing / rotation degrees
      * @param zoom      the map zoom level
      */
-    void onOverlayDraw(final MapView mapView, final Canvas canvas,
+    void onOverlayDraw(final MapboxMap mapboxMap, final Canvas canvas,
                        final BoundingBox wgsBounds, final LatLng wgsCenter,
                        float bearing, float zoom);
 
     void onOverlayTouchEvent(final MotionEvent event);
 
     /**
-     * Called when the overlay is attached to the MapView view hierarchy.
+     * Called when the overlay is attached to the MapboxMap view hierarchy.
      */
-    void onOverlayAttached(final MapView mapView);
+    void onOverlayAttached(final MapboxMap mapboxMap);
 
     /**
      * Called when the overlay is detached to the MapView view hierarchy.
@@ -56,12 +53,13 @@ public interface Overlay {
      * Let us know if you'd like to receive the onOverlayDraw() callback.
      *
      * @return true to get the
-     * {@link Overlay#onOverlayDraw(MapView, Canvas, BoundingBox, LatLng, float, float)} callback.
+     * {@link Overlay#onOverlayDraw(MapboxMap, Canvas, BoundingBox, LatLng, float, float)} callback.
      */
     boolean isOverlayDrawEnabled();
 
     /**
      * Called when the {@link MapView} size changes
+     *
      * @param mapPixelBounds the pixel bounds of the view
      */
     void onMapViewPixelBoundsChanged(Rect mapPixelBounds);

@@ -1,4 +1,4 @@
-package com.mapbox.mapboxsdk.views;
+package com.mapbox.mapboxsdk.maps;
 
 import android.content.Context;
 import android.graphics.Canvas;
@@ -9,7 +9,6 @@ import android.view.View;
 
 import com.mapbox.mapboxsdk.geometry.BoundingBox;
 import com.mapbox.mapboxsdk.geometry.LatLng;
-import com.mapbox.mapboxsdk.maps.MapView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +26,7 @@ final class MapOverlayDispatch extends View {
     private final Rect mMapPixelBounds = new Rect();
     private float mBearing = 0;
     private float mZoom = 0;
-    private MapView mMapView = null;
+    private MapboxMap mMapboxMap = null;
     private boolean mAttached = false;
 
     //endregion
@@ -52,12 +51,12 @@ final class MapOverlayDispatch extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        if (mMapView != null && mWgsBounds != null && mWgsCenter != null) {
+        if (mMapboxMap != null && mWgsBounds != null && mWgsCenter != null) {
             Overlay overlay;
             for (int i = 0; i < mOverlayList.size(); i++) {
                 overlay = mOverlayList.get(i);
                 if (overlay.isOverlayDrawEnabled()) {
-                    overlay.onOverlayDraw(mMapView, canvas, mWgsBounds, mWgsCenter, mBearing, mZoom);
+                    overlay.onOverlayDraw(mMapboxMap, canvas, mWgsBounds, mWgsCenter, mBearing, mZoom);
                 }
             }
         }
@@ -85,7 +84,7 @@ final class MapOverlayDispatch extends View {
 
     private void onOverlayAttached() {
         for (int i = 0; i < mOverlayList.size(); i++) {
-            mOverlayList.get(i).onOverlayAttached(mMapView);
+            mOverlayList.get(i).onOverlayAttached(mMapboxMap);
         }
     }
 
@@ -105,8 +104,8 @@ final class MapOverlayDispatch extends View {
 
     //region PACKAGE LOCAL ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    void setMapView(MapView mapView) {
-        mMapView = mapView;
+    void setMapBoxMap(MapboxMap mapboxMap) {
+        mMapboxMap = mapboxMap;
     }
 
     void onOverlaySingleTapConfirmed(LatLng pressPosition) {
@@ -123,7 +122,7 @@ final class MapOverlayDispatch extends View {
 
     void addOverlay(Overlay overlay) {
         if (mAttached) {
-            overlay.onOverlayAttached(mMapView);
+            overlay.onOverlayAttached(mMapboxMap);
         }
 
         mOverlayList.add(overlay);

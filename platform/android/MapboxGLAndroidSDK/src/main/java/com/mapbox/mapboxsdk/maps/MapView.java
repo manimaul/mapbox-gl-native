@@ -78,6 +78,8 @@ import com.mapbox.mapboxsdk.geometry.BoundingBox;
 import com.mapbox.mapboxsdk.geometry.CoordinateBounds;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.layers.CustomLayer;
+import com.mapbox.mapboxsdk.provider.OfflineProvider;
+import com.mapbox.mapboxsdk.provider.OfflineProviderManager;
 import com.mapbox.mapboxsdk.utils.ApiAccess;
 
 import java.lang.annotation.Retention;
@@ -121,6 +123,7 @@ public class MapView extends FrameLayout {
     private ImageView mLogoView;
     private ImageView mAttributionsView;
     private UserLocationView mUserLocationView;
+    private MapOverlayDispatch mMapOverlayDispatch;
 
     private List<OnMapChangedListener> mOnMapChangedListener;
     private ZoomButtonsController mZoomButtonsController;
@@ -210,6 +213,10 @@ public class MapView extends FrameLayout {
 
         // Connectivity
         onConnectivityChanged(isConnected());
+
+        // Overlays
+        mMapOverlayDispatch = (MapOverlayDispatch) view.findViewById(R.id.overlayDispatch);
+        mMapOverlayDispatch.setMapBoxMap(mMapboxMap);
 
         mUserLocationView = (UserLocationView) view.findViewById(R.id.userLocationView);
         mUserLocationView.setMapView(this);
@@ -612,7 +619,7 @@ public class MapView extends FrameLayout {
      * Resets the map heading to true north and animates the change.
      */
     @UiThread
-    public void resetNorth() {
+    void resetNorth() {
         mNativeMapView.cancelTransitions();
         mNativeMapView.resetNorth();
     }
@@ -964,6 +971,24 @@ public class MapView extends FrameLayout {
         mNativeMapView.setStyleUrl(url);
     }
 
+    @UiThread
+    void setOfflineProvider(OfflineProvider provider) {
+        String style = OfflineProviderManager.getInstance().registerProvider(getResources(), provider);
+        if (style != null) {
+            mNativeMapView.setStyleJson(style);
+        }
+    }
+
+    @UiThread
+    void addOverlay(Overlay overlay) {
+        mMapOverlayDispatch.addOverlay(overlay);
+    }
+
+    @UiThread
+    void removeOverlay(Overlay overlay) {
+        mMapOverlayDispatch.removeOverlay(overlay);
+    }
+
     //
     // Access token
     //
@@ -1038,14 +1063,34 @@ public class MapView extends FrameLayout {
      */
     @UiThread
     @NonNull
-    public PointF toScreenLocation(@NonNull LatLng location) {
-        PointF point = new PointF();
-        mNativeMapView.pixelForLatLng(location, point);
+    PointF toScreenLocation(@NonNull LatLng location) {
+        return toScreenLocation(location, null);
+    }
 
-        float x = point.x * mScreenDensity;
-        float y = point.y * mScreenDensity;
+    /**
+     * Converts a map coordinate to a point in this view's coordinate system.
+     *
+     * @param location A map coordinate.
+     * @param reuse    supply a point to be reused : null to have one created
+     * @return The converted point in this view's coordinate system.
+     */
+    @UiThread
+    @NonNull
+    PointF toScreenLocation(@NonNull LatLng location, @Nullable PointF reuse) {
+        reuse = reuse == null ? new PointF() : reuse;
+        if (location == null) {
+            Log.w(TAG, "location was null, so just returning (0, 0)");
+            reuse.x = 0F;
+            reuse.y = 0F;
+            return reuse;
+        }
 
-        return new PointF(x, y);
+        mNativeMapView.pixelForLatLng(location, reuse);
+
+        reuse.x *= mScreenDensity;
+        reuse.y *= mScreenDensity;
+
+        return reuse;
     }
 
     //
@@ -1629,6 +1674,7 @@ public class MapView extends FrameLayout {
 
     @Override
     protected void onSizeChanged(int width, int height, int oldw, int oldh) {
+        mMapOverlayDispatch.onSizeChanged(width, height);
         if (!isInEditMode()) {
             mNativeMapView.resizeView((int) (width / mScreenDensity), (int) (height / mScreenDensity));
         }
@@ -1636,6 +1682,9 @@ public class MapView extends FrameLayout {
 
     // This class handles TextureView callbacks
     private class SurfaceTextureListener implements TextureView.SurfaceTextureListener {
+
+        private final LatLng mWgsCenter = new LatLng();
+        private final BoundingBox mWgsBounds = new BoundingBox(0, 0, 0, 0);
 
         // Called when the native surface texture has been created
         // Must do all EGL/GL ES initialization here
@@ -1666,6 +1715,8 @@ public class MapView extends FrameLayout {
         // Must sync with UI here
         @Override
         public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+            mNativeMapView.updateMapBounds(mWgsBounds, mWgsCenter);
+            mMapOverlayDispatch.update(mWgsBounds, mWgsCenter, (float) getDirection(), (float) getZoom());
             mCompassView.update(getDirection());
             mUserLocationView.update();
             for (InfoWindow infoWindow : mMapboxMap.getInfoWindows()) {
@@ -1745,6 +1796,8 @@ public class MapView extends FrameLayout {
     // Called when user touches the screen, all positions are absolute
     @Override
     public boolean onTouchEvent(@NonNull MotionEvent event) {
+        mMapOverlayDispatch.onOverlayTouchEvent(event);
+
         // Check and ignore non touch or left clicks
 
         if ((event.getButtonState() != 0) && (event.getButtonState() != MotionEvent.BUTTON_PRIMARY)) {
@@ -1859,6 +1912,7 @@ public class MapView extends FrameLayout {
         public boolean onSingleTapConfirmed(MotionEvent e) {
             // Open / Close InfoWindow
             PointF tapPoint = new PointF(e.getX(), e.getY());
+            mMapOverlayDispatch.onOverlaySingleTapConfirmed(fromScreenLocation(tapPoint));
 
             List<Marker> selectedMarkers = mMapboxMap.getSelectedMarkers();
 
@@ -1927,9 +1981,11 @@ public class MapView extends FrameLayout {
         // Called for a long press
         @Override
         public void onLongPress(MotionEvent e) {
+            LatLng point = fromScreenLocation(new PointF(e.getX(), e.getY()));
+            mMapOverlayDispatch.onOverlayLongPress(point);
+
             MapboxMap.OnMapLongClickListener listener = mMapboxMap.getOnMapLongClickListener();
             if (listener != null && !mQuickZoom) {
-                LatLng point = fromScreenLocation(new PointF(e.getX(), e.getY()));
                 listener.onMapLongClick(point);
             }
         }

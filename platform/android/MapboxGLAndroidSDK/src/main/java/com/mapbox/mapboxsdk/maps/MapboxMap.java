@@ -32,6 +32,7 @@ import com.mapbox.mapboxsdk.constants.MyLocationTracking;
 import com.mapbox.mapboxsdk.constants.Style;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.layers.CustomLayer;
+import com.mapbox.mapboxsdk.provider.OfflineProvider;
 import com.mapbox.mapboxsdk.utils.ApiAccess;
 
 import java.util.ArrayList;
@@ -506,6 +507,40 @@ public class MapboxMap {
         mMapView.setStyleUrl(url);
     }
 
+    @UiThread
+    public void setOfflineProvider(OfflineProvider provider) {
+        mMapView.setOfflineProvider(provider);
+    }
+
+    @UiThread
+    public void addOverlay(Overlay overlay) {
+        mMapView.addOverlay(overlay);
+    }
+
+    @UiThread
+    public void removeOverlay(Overlay overlay) {
+        mMapView.removeOverlay(overlay);
+    }
+
+    @UiThread
+    public int getWidth() {
+        return mMapView.getWidth();
+    }
+
+    @UiThread
+    public int getHeight() {
+        return mMapView.getHeight();
+    }
+
+    @UiThread
+    public void update() {
+        mMapView.update();
+    }
+
+    public void invalidate() {
+        mMapView.invalidate();
+    }
+
     /**
      * <p>
      * Loads a new map style from the specified bundled style.
@@ -599,7 +634,20 @@ public class MapboxMap {
     @UiThread
     @NonNull
     public PointF toScreenLocation(@NonNull LatLng location) {
-        return mMapView.toScreenLocation(location);
+        return mMapView.toScreenLocation(location, null);
+    }
+
+    /**
+     * Converts a map coordinate to a point in this view's coordinate system.
+     *
+     * @param location A map coordinate.
+     * @param reuse    supply a point to be reused : null to have one created
+     * @return The converted point in this view's coordinate system.
+     */
+    @UiThread
+    @NonNull
+    public PointF toScreenLocation(@NonNull LatLng location, @Nullable PointF reuse) {
+        return mMapView.toScreenLocation(location, reuse);
     }
 
     /**

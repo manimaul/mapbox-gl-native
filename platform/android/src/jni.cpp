@@ -1410,9 +1410,6 @@ void JNICALL nativePixelForLatLng(JNIEnv *env, jobject obj, jlong nativeMapViewP
 
     mbgl::vec2<double> pixel = nativeMapView->getMap().pixelForLatLng(mbgl::LatLng(latitude, longitude));
 
-    // flip y direction vertically to match Android
-    pixel.y = nativeMapView->getHeight() - pixel.y;
-
     env->SetFloatField(pointF, pointFXId, static_cast<jfloat>(pixel.x));
     env->SetFloatField(pointF, pointFYId, static_cast<jfloat>(pixel.y));
 }
