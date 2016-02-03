@@ -94,15 +94,15 @@ final class MapOverlayDispatch extends View {
         }
     }
 
+    //endregion
+
+    //region PACKAGE LOCAL ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
     void onOverlayTouchEvent(MotionEvent event) {
         for (int i = 0; i < mOverlayList.size(); i++) {
             mOverlayList.get(i).onOverlayTouchEvent(event);
         }
     }
-
-    //endregion
-
-    //region PACKAGE LOCAL ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     void setMapBoxMap(MapboxMap mapboxMap) {
         mMapboxMap = mapboxMap;
@@ -126,6 +126,7 @@ final class MapOverlayDispatch extends View {
         }
 
         mOverlayList.add(overlay);
+        overlay.onMapViewPixelBoundsChanged(mMapPixelBounds);
     }
 
     void removeOverlay(Overlay overlay) {
