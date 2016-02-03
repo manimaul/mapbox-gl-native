@@ -96,6 +96,12 @@
                 android:title="@string/action_map_fragment" />
 
             <item
+                android:id="@+id/action_support_map_fragment"
+                android:checkable="false"
+                android:icon="@drawable/ic_now_widgets_24dp"
+                android:title="@string/action_map_fragment_support" />
+
+            <item
                 android:id="@+id/action_offline_map_fragment"
                 android:checkable="false"
                 android:icon="@drawable/ic_now_widgets_24dp"

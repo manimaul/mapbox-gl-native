@@ -30,7 +30,6 @@ public:
     box cornersToBox(uint32_t z) const;
 
     // Dimensions
-    bool hasSize() const;
     uint16_t getWidth() const;
     uint16_t getHeight() const;
 
@@ -38,20 +37,16 @@ public:
     NorthOrientation getNorthOrientation() const;
     double getNorthOrientationAngle() const;
 
-    std::array<float, 2> locationCoordinate(float lon, float lat) const;
-    void getLonLat(double &lon, double &lat) const;
-
     // Position
     LatLng getLatLng() const;
     double pixel_x() const;
     double pixel_y() const;
 
     // Zoom
-    float getNormalizedZoom() const;
+    double getScale() const;
     double getZoom() const;
     int32_t getIntegerZoom() const;
     double getZoomFraction() const;
-    double getScale() const;
     void setMinZoom(const double minZoom);
     double getMinZoom() const;
     void setMaxZoom(const double maxZoom);

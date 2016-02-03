@@ -12,7 +12,6 @@ import android.support.annotation.RequiresPermission;
 import android.support.annotation.UiThread;
 import android.text.TextUtils;
 import android.util.Log;
-import android.view.Gravity;
 import android.view.View;
 
 import com.mapbox.mapboxsdk.annotations.Annotation;
@@ -24,8 +23,6 @@ import com.mapbox.mapboxsdk.annotations.PolygonOptions;
 import com.mapbox.mapboxsdk.annotations.Polyline;
 import com.mapbox.mapboxsdk.annotations.PolylineOptions;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
-import com.mapbox.mapboxsdk.camera.CameraUpdate;
-import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.constants.MapboxConstants;
 import com.mapbox.mapboxsdk.constants.MyBearingTracking;
 import com.mapbox.mapboxsdk.constants.MyLocationTracking;
@@ -42,20 +39,15 @@ import java.util.concurrent.TimeUnit;
 public class MapboxMap {
 
     private MapView mMapView;
-    private CameraPosition mCurrentCameraPosition;
+    private UiSettings mUiSettings;
+    private CameraPosition mCameraPosition;
     private String mStyleUrl;
     private List<Marker> mSelectedMarkers;
     private List<InfoWindow> mInfoWindows;
     private MapboxMap.InfoWindowAdapter mInfoWindowAdapter;
 
-    private boolean mZoomEnabled = true;
-    private boolean mScrollEnabled = true;
-    private boolean mRotateEnabled = true;
-    private boolean mTiltEnabled = true;
-    private boolean mCompassEnabled = true;
     private boolean mMyLocationEnabled;
     private boolean mAllowConcurrentMultipleInfoWindows;
-    private boolean mZoomControlsEnabled;
 
     private MapboxMap.OnMapClickListener mOnMapClickListener;
     private MapboxMap.OnMapLongClickListener mOnMapLongClickListener;
@@ -69,8 +61,22 @@ public class MapboxMap {
 
     MapboxMap(@NonNull MapView mapView) {
         mMapView = mapView;
+        mUiSettings = new UiSettings(mapView);
         mSelectedMarkers = new ArrayList<>();
         mInfoWindows = new ArrayList<>();
+    }
+
+    //
+    // UiSettings
+    //
+
+    /**
+     * Gets the user interface settings for the map.
+     *
+     * @return
+     */
+    public UiSettings getUiSettings() {
+        return mUiSettings;
     }
 
     //
@@ -84,7 +90,7 @@ public class MapboxMap {
      * @return The current position of the Camera.
      */
     public final CameraPosition getCameraPosition() {
-        return mCurrentCameraPosition;
+        return mCameraPosition;
     }
 
     /**
@@ -107,14 +113,8 @@ public class MapboxMap {
      */
     @UiThread
     public final void moveCamera(CameraUpdate update) {
-        if (update instanceof CameraUpdateFactory.PositionCameraUpdate) {
-            CameraUpdateFactory.PositionCameraUpdate positionCameraUpdate = (CameraUpdateFactory.PositionCameraUpdate) update;
-            CameraPosition cameraPosition = new CameraPosition.Builder(positionCameraUpdate).build();
-            updateCameraPosition(cameraPosition);
-            mMapView.jumpTo(cameraPosition.bearing, cameraPosition.target, cameraPosition.tilt, cameraPosition.zoom);
-        }else if (update instanceof CameraUpdateFactory.ZoomUpdate) {
-            mMapView.setZoom((CameraUpdateFactory.ZoomUpdate) update, 0);
-        }
+        mCameraPosition = update.getCameraPosition(this);
+        mMapView.jumpTo(mCameraPosition.bearing, mCameraPosition.target, mCameraPosition.tilt, mCameraPosition.zoom);
     }
 
     /**
@@ -139,14 +139,8 @@ public class MapboxMap {
      */
     @UiThread
     public final void easeCamera(CameraUpdate update, int durationMs, final MapboxMap.CancelableCallback callback) {
-        if (update instanceof CameraUpdateFactory.PositionCameraUpdate) {
-            CameraUpdateFactory.PositionCameraUpdate positionCameraUpdate = (CameraUpdateFactory.PositionCameraUpdate) update;
-            CameraPosition cameraPosition = new CameraPosition.Builder(positionCameraUpdate).build();
-            updateCameraPosition(cameraPosition);
-            mMapView.easeTo(cameraPosition.bearing, cameraPosition.target, getDurationNano(durationMs), cameraPosition.tilt, cameraPosition.zoom, callback);
-        }else if (update instanceof CameraUpdateFactory.ZoomUpdate) {
-            mMapView.setZoom((CameraUpdateFactory.ZoomUpdate) update, durationMs);
-        }
+        mCameraPosition = update.getCameraPosition(this);
+        mMapView.easeTo(mCameraPosition.bearing, mCameraPosition.target, getDurationNano(durationMs), mCameraPosition.tilt, mCameraPosition.zoom, callback);
     }
 
     /**
@@ -197,19 +191,8 @@ public class MapboxMap {
      */
     @UiThread
     public final void animateCamera(CameraUpdate update, int durationMs, final MapboxMap.CancelableCallback callback) {
-        if (update instanceof CameraUpdateFactory.PositionCameraUpdate) {
-            CameraUpdateFactory.PositionCameraUpdate positionCameraUpdate = (CameraUpdateFactory.PositionCameraUpdate) update;
-            CameraPosition cameraPosition = new CameraPosition.Builder(positionCameraUpdate).build();
-            updateCameraPosition(cameraPosition);
-            mMapView.flyTo(cameraPosition.bearing, cameraPosition.target, getDurationNano(durationMs), cameraPosition.tilt, cameraPosition.zoom, callback);
-        } else if (update instanceof CameraUpdateFactory.ZoomUpdate) {
-            mMapView.setZoom((CameraUpdateFactory.ZoomUpdate) update, durationMs);
-        }
-    }
-
-    // internal setter for CameraPosition
-    void updateCameraPosition(@NonNull CameraPosition cameraPosition) {
-        mCurrentCameraPosition = cameraPosition;
+        mCameraPosition = update.getCameraPosition(this);
+        mMapView.flyTo(mCameraPosition.bearing, mCameraPosition.target, getDurationNano(durationMs), mCameraPosition.tilt, mCameraPosition.zoom, callback);
     }
 
     // internal time layer conversion
@@ -218,98 +201,8 @@ public class MapboxMap {
     }
 
     //
-    // Scroll
-    //
-
-    /**
-     * Returns whether the user may scroll around the map.
-     *
-     * @return If true, scrolling is enabled.
-     */
-    @UiThread
-    public boolean isScrollEnabled() {
-        return mScrollEnabled;
-    }
-
-    /**
-     * <p>
-     * Changes whether the user may scroll around the map.
-     * </p>
-     * <p>
-     * This setting controls only user interactions with the map. If you set the value to false,
-     * you may still change the map location programmatically.
-     * </p>
-     * The default value is true.
-     *
-     * @param scrollEnabled If true, scrolling is enabled.
-     */
-    @UiThread
-    public void setScrollEnabled(boolean scrollEnabled) {
-        mScrollEnabled = scrollEnabled;
-    }
-
-    //
-    // Rotation
-    //
-
-    /**
-     * Returns whether the user may rotate the map.
-     *
-     * @return If true, rotating is enabled.
-     */
-    @UiThread
-    public boolean isRotateEnabled() {
-        return mRotateEnabled;
-    }
-
-    /**
-     * <p>
-     * Changes whether the user may rotate the map.
-     * </p>
-     * <p>
-     * This setting controls only user interactions with the map. If you set the value to false,
-     * you may still change the map location programmatically.
-     * </p>
-     * The default value is true.
-     *
-     * @param rotateEnabled If true, rotating is enabled.
-     */
-    @UiThread
-    public void setRotateEnabled(boolean rotateEnabled) {
-        mRotateEnabled = rotateEnabled;
-    }
-
-    //
     // ZOOM
     //
-
-    /**
-     * Returns whether the user may zoom the map.
-     *
-     * @return If true, zooming is enabled.
-     */
-    @UiThread
-    public boolean isZoomEnabled() {
-        return mZoomEnabled;
-    }
-
-    /**
-     * <p>
-     * Changes whether the user may zoom the map.
-     * </p>
-     * <p>
-     * This setting controls only user interactions with the map. If you set the value to false,
-     * you may still change the map location programmatically.
-     * </p>
-     * The default value is true.
-     *
-     * @param zoomEnabled If true, zooming is enabled.
-     */
-    @UiThread
-    public void setZoomEnabled(boolean zoomEnabled) {
-        mZoomEnabled = zoomEnabled;
-        mMapView.setZoomEnabled(true);
-    }
 
     /**
      * <p>
@@ -371,61 +264,9 @@ public class MapboxMap {
     // Manual zoom controls
     //
 
-    /**
-     * Gets whether the zoom controls are enabled.
-     *
-     * @return If true, the zoom controls are enabled.
-     */
-    public boolean isZoomControlsEnabled() {
-        return mZoomControlsEnabled;
-    }
-
-    /**
-     * <p>
-     * Sets whether the zoom controls are enabled.
-     * If enabled, the zoom controls are a pair of buttons
-     * (one for zooming in, one for zooming out) that appear on the screen.
-     * When pressed, they cause the camera to zoom in (or out) by one zoom level.
-     * If disabled, the zoom controls are not shown.
-     * </p>
-     * By default the zoom controls are enabled if the device is only single touch capable;
-     *
-     * @param enabled If true, the zoom controls are enabled.
-     */
-    public void setZoomControlsEnabled(boolean enabled) {
-        mZoomControlsEnabled = enabled;
+    // used by UiSettings
+    void setZoomControlsEnabled(boolean enabled) {
         mMapView.setZoomControlsEnabled(enabled);
-    }
-
-    //
-    // Tilt
-    //
-
-    /**
-     * Returns whether the user may tilt the map.
-     *
-     * @return If true, tilting is enabled.
-     */
-    @UiThread
-    public boolean isTiltEnabled() {
-        return mTiltEnabled;
-    }
-
-    /**
-     * <p>
-     * Changes whether the user may tilt the map.
-     * </p>
-     * <p>
-     * This setting controls only user interactions with the map. If you set the value to false,
-     * you may still change the map location programmatically.
-     * </p>
-     * The default value is true.
-     *
-     * @param tiltEnabled If true, tilting is enabled.
-     */
-    @UiThread
-    public void setTiltEnabled(boolean tiltEnabled) {
-        mTiltEnabled = tiltEnabled;
     }
 
     //
@@ -835,7 +676,7 @@ public class MapboxMap {
         }
 
         if (!handledDefaultClick) {
-            if (isInfoWindowValidForMarker(marker)) {
+            if (isInfoWindowValidForMarker(marker) || getInfoWindowAdapter() != null) {
                 mInfoWindows.add(marker.showInfoWindow(this, mMapView));
             }
         }
@@ -946,33 +787,6 @@ public class MapboxMap {
 
     private boolean isInfoWindowValidForMarker(@NonNull Marker marker) {
         return !TextUtils.isEmpty(marker.getTitle()) || !TextUtils.isEmpty(marker.getSnippet());
-    }
-
-    //
-    // Touch events
-    //
-
-    /**
-     * <p>
-     * Sets the preference for whether all gestures should be enabled or disabled.
-     * </p>
-     * <p>
-     * This setting controls only user interactions with the map. If you set the value to false,
-     * you may still change the map location programmatically.
-     * </p>
-     * The default value is true.
-     *
-     * @param enabled If true, all gestures are available; otherwise, all gestures are disabled.
-     * @see MapboxMap#setZoomEnabled(boolean)
-     * @see MapboxMap#setScrollEnabled(boolean)
-     * @see MapboxMap#setRotateEnabled(boolean)
-     * @see MapboxMap#setTiltEnabled(boolean)
-     */
-    public void setAllGesturesEnabled(boolean enabled) {
-        setZoomEnabled(enabled);
-        setScrollEnabled(enabled);
-        setRotateEnabled(enabled);
-        setTiltEnabled(enabled);
     }
 
     //
@@ -1246,163 +1060,9 @@ public class MapboxMap {
         mOnMyBearingTrackingModeChangeListener = listener;
     }
 
-    // used by mapview
+    // used by MapView
     OnMyBearingTrackingModeChangeListener getOnMyBearingTrackingModeChangeListener() {
         return mOnMyBearingTrackingModeChangeListener;
-    }
-
-    //
-    // Compass
-    //
-
-    /**
-     * Returns whether the compass is enabled.
-     *
-     * @return True if the compass is enabled; false if the compass is disabled.
-     */
-    @UiThread
-    public boolean isCompassEnabled() {
-        return mCompassEnabled;
-    }
-
-    /**
-     * <p>
-     * Enables or disables the compass. The compass is an icon on the map that indicates the
-     * direction of north on the map. When a user clicks
-     * the compass, the camera orients itself to its default orientation and fades away shortly
-     * after. If disabled, the compass will never be displayed.
-     * </p>
-     * By default, the compass is enabled.
-     *
-     * @param compassEnabled True to enable the compass; false to disable the compass.
-     */
-    @UiThread
-    public void setCompassEnabled(boolean compassEnabled) {
-        mCompassEnabled = compassEnabled;
-        mMapView.setCompassEnabled(compassEnabled);
-    }
-
-    /**
-     * <p>
-     * Sets the gravity of the compass view. Use this to change the corner of the map view that the
-     * compass is displayed in.
-     * </p>
-     * By default, the compass is in the top right corner.
-     *
-     * @param gravity One of the values from {@link Gravity}.
-     * @see Gravity
-     */
-    @UiThread
-    public void setCompassGravity(int gravity) {
-        mMapView.setCompassGravity(gravity);
-    }
-
-    /**
-     * Sets the margins of the compass view. Use this to change the distance of the compass from the
-     * map view edge.
-     *
-     * @param left   The left margin in pixels.
-     * @param top    The top margin in pixels.
-     * @param right  The right margin in pixels.
-     * @param bottom The bottom margin in pixels.
-     */
-    @UiThread
-    public void setCompassMargins(int left, int top, int right, int bottom) {
-        mMapView.setCompassMargins(left, top, right, bottom);
-    }
-
-    //
-    // Logo
-    //
-
-    /**
-     * <p>
-     * Sets the gravity of the logo view. Use this to change the corner of the map view that the
-     * Mapbox logo is displayed in.
-     * </p>
-     * By default, the logo is in the bottom left corner.
-     *
-     * @param gravity One of the values from {@link Gravity}.
-     * @see Gravity
-     */
-    @UiThread
-    public void setLogoGravity(int gravity) {
-        mMapView.setLogoGravity(gravity);
-    }
-
-    /**
-     * Sets the margins of the logo view. Use this to change the distance of the Mapbox logo from the
-     * map view edge.
-     *
-     * @param left   The left margin in pixels.
-     * @param top    The top margin in pixels.
-     * @param right  The right margin in pixels.
-     * @param bottom The bottom margin in pixels.
-     */
-    @UiThread
-    public void setLogoMargins(int left, int top, int right, int bottom) {
-        mMapView.setLogoMargins(left, top, right, bottom);
-    }
-
-    /**
-     * <p>
-     * Enables or disables the Mapbox logo.
-     * </p>
-     * By default, the compass is enabled.
-     *
-     * @param visibility True to enable the logo; false to disable the logo.
-     */
-    @UiThread
-    public void setLogoVisibility(int visibility) {
-        mMapView.setLogoVisibility(visibility);
-    }
-
-    //
-    // Attribution
-    //
-
-    /**
-     * <p>
-     * Sets the gravity of the attribution button view. Use this to change the corner of the map
-     * view that the attribution button is displayed in.
-     * </p>
-     * By default, the attribution button is in the bottom left corner.
-     *
-     * @param gravity One of the values from {@link Gravity}.
-     * @see Gravity
-     */
-    @UiThread
-    public void setAttributionGravity(int gravity) {
-        mMapView.setAttributionGravity(gravity);
-    }
-
-    /**
-     * Sets the margins of the attribution button view. Use this to change the distance of the
-     * attribution button from the map view edge.
-     *
-     * @param left   The left margin in pixels.
-     * @param top    The top margin in pixels.
-     * @param right  The right margin in pixels.
-     * @param bottom The bottom margin in pixels.
-     */
-    @UiThread
-    public void setAttributionMargins(int left, int top, int right, int bottom) {
-        mMapView.setAttributionMargins(left, top, right, bottom);
-    }
-
-    /**
-     * <p>
-     * Enables or disables the attribution button. The attribution is a button with an "i" than when
-     * clicked shows a menu with copyright and legal notices. The menu also inlcudes the "Improve
-     * this map" link which user can report map errors with.
-     * </p>
-     * By default, the attribution button is enabled.
-     *
-     * @param visibility True to enable the attribution button; false to disable the attribution button.
-     */
-    @UiThread
-    public void setAttributionVisibility(int visibility) {
-        mMapView.setAttributionVisibility(visibility);
     }
 
     //
@@ -1424,9 +1084,13 @@ public class MapboxMap {
         mMapView.invalidateCustomLayers();
     }
 
-    //
-    // Interfaces
-    //
+    MapView getMapView(){
+        return mMapView;
+    }
+
+//
+// Interfaces
+//
 
     /**
      * Interface definition for a callback to be invoked when the map is flinged.

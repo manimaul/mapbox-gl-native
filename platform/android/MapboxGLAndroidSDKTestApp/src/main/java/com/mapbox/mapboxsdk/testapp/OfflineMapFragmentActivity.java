@@ -1,17 +1,17 @@
 package com.mapbox.mapboxsdk.testapp;
 
+import android.app.Activity;
+import android.app.FragmentTransaction;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
-import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.view.Gravity;
 import android.view.MenuItem;
 
 import com.mapbox.mapboxsdk.camera.CameraPosition;
-import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.geometry.LatLng;
+import com.mapbox.mapboxsdk.maps.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.maps.MapFragment;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
@@ -35,11 +35,11 @@ public class OfflineMapFragmentActivity extends AppCompatActivity {
 
         MapFragment mapFragment;
         if (savedInstanceState == null) {
-            FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+            FragmentTransaction transaction = getFragmentManager().beginTransaction();
             transaction.add(R.id.fragment_container, mapFragment = new MapFragment(), TAG_FRAGMENT);
             transaction.commit();
         } else {
-            mapFragment = (MapFragment) getSupportFragmentManager().findFragmentByTag(TAG_FRAGMENT);
+            mapFragment = (MapFragment) getFragmentManager().findFragmentByTag(TAG_FRAGMENT);
         }
 
         mapFragment.getMapAsync(new OnMapReadyCallback() {
@@ -53,12 +53,6 @@ public class OfflineMapFragmentActivity extends AppCompatActivity {
                                 .bearing(0)
                                 .tilt(0)
                                 .build()));
-
-
-                // move attribution control to right of screen
-                mapboxMap.setAttributionGravity(Gravity.BOTTOM | Gravity.END);
-                int tenDp = (int) getResources().getDimension(R.dimen.attr_margin);
-                mapboxMap.setAttributionMargins(0, 0, tenDp, tenDp);
             }
         });
     }

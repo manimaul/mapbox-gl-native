@@ -52,6 +52,11 @@ public class MapboxConstants {
      */
     public static final double MINIMUM_DIRECTION = 0;
 
+    /**
+     * Fragment Argument Key for MapboxMapOptions
+     */
+    public static final String FRAG_ARG_MAPBOXMAPOPTIONS = "MapboxMapOptions";
+
     // Save instance state keys
     public static final String STATE_CAMERA_POSITION = "cameraPosition";
     public static final String STATE_ZOOM_ENABLED = "zoomEnabled";
@@ -77,13 +82,13 @@ public class MapboxConstants {
     public static final String STATE_LOGO_MARGIN_TOP = "logoMarginTop";
     public static final String STATE_LOGO_MARGIN_RIGHT = "logoMarginRight";
     public static final String STATE_LOGO_MARGIN_BOTTOM = "logoMarginBottom";
-    public static final String STATE_LOGO_VISIBILITY = "logoVisibility";
+    public static final String STATE_LOGO_ENABLED = "logoEnabled";
     public static final String STATE_ATTRIBUTION_GRAVITY = "attrGravity";
     public static final String STATE_ATTRIBUTION_MARGIN_LEFT = "attrMarginLeft";
     public static final String STATE_ATTRIBUTION_MARGIN_TOP = "attrMarginTop";
     public static final String STATE_ATTRIBUTION_MARGIN_RIGHT = "attrMarginRight";
     public static final String STATE_ATTRIBUTION_MARGIN_BOTTOM = "atrrMarginBottom";
-    public static final String STATE_ATTRIBUTION_VISIBILITY = "atrrVisibility";
+    public static final String STATE_ATTRIBUTION_ENABLED = "atrrEnabled";
 
     public static final String TAG = "MapboxMap";
 }

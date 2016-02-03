@@ -38,6 +38,8 @@ import com.mapbox.mapboxsdk.constants.Style;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.layers.CustomLayer;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
+import com.mapbox.mapboxsdk.maps.SupportMapFragment;
+import com.mapbox.mapboxsdk.maps.UiSettings;
 import com.mapbox.mapboxsdk.testapp.layers.ExampleCustomLayer;
 import com.mapbox.mapboxsdk.testapp.utils.GeoParseUtil;
 import com.mapbox.mapboxsdk.utils.ApiAccess;
@@ -164,7 +166,7 @@ public class MainActivity extends AppCompatActivity {
                 });
 
                 // Set default UI state
-                mNavigationView.getMenu().findItem(R.id.action_compass).setChecked(mapboxMap.isCompassEnabled());
+                mNavigationView.getMenu().findItem(R.id.action_compass).setChecked(mapboxMap.getUiSettings().isCompassEnabled());
                 mNavigationView.getMenu().findItem(R.id.action_debug).setChecked(mapboxMap.isDebugActive());
                 mNavigationView.getMenu().findItem(R.id.action_markers).setChecked(mIsAnnotationsOn);
                 toggleGps(mapboxMap.isMyLocationEnabled());
@@ -224,10 +226,6 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    /**
-     * Dispatch onStart() to all fragments.  Ensure any created loaders are
-     * now started.
-     */
     @Override
     protected void onStart() {
         super.onStart();
@@ -348,7 +346,8 @@ public class MainActivity extends AppCompatActivity {
 
                             case R.id.action_compass:
                                 // Toggle compass
-                                mMapboxMap.setCompassEnabled(!mMapboxMap.isCompassEnabled());
+                                UiSettings uiSettings = mMapboxMap.getUiSettings();
+                                uiSettings.setCompassEnabled(!uiSettings.isCompassEnabled());
                                 return true;
 
                             case R.id.action_mapboxmap:
@@ -369,6 +368,10 @@ public class MainActivity extends AppCompatActivity {
 
                             case R.id.action_map_fragment:
                                 startActivity(new Intent(getApplicationContext(), MapFragmentActivity.class));
+                                return true;
+
+                            case R.id.action_support_map_fragment:
+                                startActivity(new Intent(getApplicationContext(), SupportMapFragmentActivity.class));
                                 return true;
 
                             case R.id.action_offline_map_fragment:
