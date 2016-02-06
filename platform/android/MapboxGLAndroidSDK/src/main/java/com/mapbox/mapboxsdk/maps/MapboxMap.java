@@ -2,7 +2,7 @@ package com.mapbox.mapboxsdk.maps;
 
 import android.Manifest;
 import android.content.Context;
-import android.graphics.PointF;
+
 import android.location.Location;
 import android.os.Bundle;
 import android.support.annotation.FloatRange;
@@ -40,7 +40,9 @@ public class MapboxMap {
 
     private MapView mMapView;
     private UiSettings mUiSettings;
+    private Projection mProjection;
     private CameraPosition mCameraPosition;
+    private boolean mInvalidCameraPosition;
     private String mStyleUrl;
     private List<Marker> mSelectedMarkers;
     private List<InfoWindow> mInfoWindows;
@@ -61,7 +63,9 @@ public class MapboxMap {
 
     MapboxMap(@NonNull MapView mapView) {
         mMapView = mapView;
+        mMapView.addOnMapChangedListener(new MapChangeCameraPositionListener());
         mUiSettings = new UiSettings(mapView);
+        mProjection = new Projection(mapView);
         mSelectedMarkers = new ArrayList<>();
         mInfoWindows = new ArrayList<>();
     }
@@ -80,6 +84,17 @@ public class MapboxMap {
     }
 
     //
+    // Projection
+    //
+
+    /**
+     * Get the Projection object that you can use to convert between screen coordinates and latitude/longitude coordinates.
+     */
+    public Projection getProjection() {
+        return mProjection;
+    }
+
+    //
     // Camera API
     //
 
@@ -90,6 +105,16 @@ public class MapboxMap {
      * @return The current position of the Camera.
      */
     public final CameraPosition getCameraPosition() {
+        if (mInvalidCameraPosition) {
+            // Camera position has changed, need to regenerate position
+            mCameraPosition = new CameraPosition.Builder(true)
+                    .bearing((float) mMapView.getBearing())
+                    .target(mMapView.getLatLng())
+                    .tilt((float) mMapView.getTilt())
+                    .zoom((float) mMapView.getZoom())
+                    .build();
+            mInvalidCameraPosition = false;
+        }
         return mCameraPosition;
     }
 
@@ -115,6 +140,17 @@ public class MapboxMap {
     public final void moveCamera(CameraUpdate update) {
         mCameraPosition = update.getCameraPosition(this);
         mMapView.jumpTo(mCameraPosition.bearing, mCameraPosition.target, mCameraPosition.tilt, mCameraPosition.zoom);
+    }
+
+    /**
+     * Ease the map according to the update with an animation over a specified duration, and calls an optional callback on completion. See CameraUpdateFactory for a set of updates.
+     * If getCameraPosition() is called during the animation, it will return the current location of the camera in flight.
+     *
+     * @param update The change that should be applied to the camera.
+     */
+    @UiThread
+    public final void easeCamera(CameraUpdate update) {
+        easeCamera(update, MapboxConstants.ANIMATION_DURATION);
     }
 
     /**
@@ -454,57 +490,44 @@ public class MapboxMap {
     // Projection
     //
 
-    /**
-     * Converts a point in this view's coordinate system to a map coordinate.
-     *
-     * @param point A point in this view's coordinate system.
-     * @return The converted map coordinate.
-     */
-    @UiThread
-    @NonNull
-    public LatLng fromScreenLocation(@NonNull PointF point) {
-        return mMapView.fromScreenLocation(point);
-    }
-
-    /**
-     * Converts a map coordinate to a point in this view's coordinate system.
-     *
-     * @param location A map coordinate.
-     * @return The converted point in this view's coordinate system.
-     */
-    @UiThread
-    @NonNull
-    public PointF toScreenLocation(@NonNull LatLng location) {
-        return mMapView.toScreenLocation(location, null);
-    }
-
-    /**
-     * Converts a map coordinate to a point in this view's coordinate system.
-     *
-     * @param location A map coordinate.
-     * @param reuse    supply a point to be reused : null to have one created
-     * @return The converted point in this view's coordinate system.
-     */
-    @UiThread
-    @NonNull
-    public PointF toScreenLocation(@NonNull LatLng location, @Nullable PointF reuse) {
-        return mMapView.toScreenLocation(location, reuse);
-    }
-
-    /**
-     * <p>
-     * Returns the distance spanned by one pixel at the specified latitude and current zoom level.
-     * </p>
-     * The distance between pixels decreases as the latitude approaches the poles.
-     * This relationship parallels the relationship between longitudinal coordinates at different latitudes.
-     *
-     * @param latitude The latitude for which to return the value.
-     * @return The distance measured in meters.
-     */
-    @UiThread
-    public double getMetersPerPixelAtLatitude(@FloatRange(from = -180, to = 180) double latitude) {
-        return mMapView.getMetersPerPixelAtLatitude(latitude);
-    }
+//    /**
+//     * Converts a point in this view's coordinate system to a map coordinate.
+//     *
+//     * @param point A point in this view's coordinate system.
+//     * @return The converted map coordinate.
+//     */
+//    @UiThread
+//    @NonNull
+//    public LatLng fromScreenLocation(@NonNull PointF point) {
+//        return mMapView.fromScreenLocation(point);
+//    }
+//
+//    /**
+//     * Converts a map coordinate to a point in this view's coordinate system.
+//     *
+//     * @param location A map coordinate.
+//     * @return The converted point in this view's coordinate system.
+//     */
+//    @UiThread
+//    @NonNull
+//    public PointF toScreenLocation(@NonNull LatLng location) {
+//        return mMapView.toScreenLocation(location);
+//    }
+//
+//    /**
+//     * <p>
+//     * Returns the distance spanned by one pixel at the specified latitude and current zoom level.
+//     * </p>
+//     * The distance between pixels decreases as the latitude approaches the poles.
+//     * This relationship parallels the relationship between longitudinal coordinates at different latitudes.
+//     *
+//     * @param latitude The latitude for which to return the value.
+//     * @return The distance measured in meters.
+//     */
+//    @UiThread
+//    public double getMetersPerPixelAtLatitude(@FloatRange(from = -180, to = 180) double latitude) {
+//        return mMapView.getMetersPerPixelAtLatitude(latitude);
+//    }
 
     //
     // Annotations
@@ -1084,7 +1107,7 @@ public class MapboxMap {
         mMapView.invalidateCustomLayers();
     }
 
-    MapView getMapView(){
+    MapView getMapView() {
         return mMapView;
     }
 
@@ -1266,4 +1289,15 @@ public class MapboxMap {
         void onFinish();
     }
 
+    private class MapChangeCameraPositionListener implements MapView.OnMapChangedListener {
+        @Override
+        public void onMapChanged(@MapView.MapChange int change) {
+            if (!mInvalidCameraPosition && (change == MapView.REGION_DID_CHANGE
+                    || change == MapView.REGION_DID_CHANGE_ANIMATED
+                    || change == MapView.REGION_WILL_CHANGE
+                    || change == MapView.REGION_WILL_CHANGE_ANIMATED)) {
+                mInvalidCameraPosition = true;
+            }
+        }
+    }
 }

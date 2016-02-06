@@ -142,18 +142,17 @@ TEST(Transform, PerspectiveProjection) {
 TEST(Transform, ConstrainHeightOnly) {
     MockView view;
     LatLng loc;
-    LatLngBounds bounds;
 
     Transform transform(view, ConstrainMode::HeightOnly);
     transform.resize({{ 1000, 1000 }});
     transform.setScale(1024);
 
-    transform.setLatLng(bounds.sw);
+    transform.setLatLng(LatLngBounds::world().southwest());
     loc = transform.getState().pointToLatLng({ 500, 500 });
     ASSERT_NEAR(-85.021422866378714, loc.latitude, 0.0001);
     ASSERT_NEAR(180, std::abs(loc.longitude), 0.0001);
 
-    transform.setLatLng(bounds.ne);
+    transform.setLatLng(LatLngBounds::world().northeast());
     loc = transform.getState().pointToLatLng({ 500, 500 });
     ASSERT_NEAR(85.021422866378742, loc.latitude, 0.0001);
     ASSERT_NEAR(180, std::abs(loc.longitude), 0.0001);
@@ -162,18 +161,17 @@ TEST(Transform, ConstrainHeightOnly) {
 TEST(Transform, ConstrainWidthAndHeight) {
     MockView view;
     LatLng loc;
-    LatLngBounds bounds;
 
     Transform transform(view, ConstrainMode::WidthAndHeight);
     transform.resize({{ 1000, 1000 }});
     transform.setScale(1024);
 
-    transform.setLatLng(bounds.sw);
+    transform.setLatLng(LatLngBounds::world().southwest());
     loc = transform.getState().pointToLatLng({ 500, 500 });
     ASSERT_NEAR(-85.021422866378714, loc.latitude, 0.0001);
     ASSERT_NEAR(-179.65667724609375, loc.longitude, 0.0001);
 
-    transform.setLatLng(bounds.ne);
+    transform.setLatLng(LatLngBounds::world().northeast());
     loc = transform.getState().pointToLatLng({ 500, 500 });
     ASSERT_NEAR(85.021422866378742, loc.latitude, 0.0001);
     ASSERT_NEAR(179.65667724609358, std::abs(loc.longitude), 0.0001);
@@ -200,7 +198,6 @@ TEST(Transform, Anchor) {
 
     ASSERT_NEAR(M_PI_4, transform.getAngle(), 0.000001);
     ASSERT_NE(anchorLatLng, transform.getLatLng());
-    ASSERT_DOUBLE_EQ(anchorLatLng, transform.getState().pointToLatLng(anchorPoint));
 }
 
 TEST(Transform, Padding) {
@@ -226,7 +223,7 @@ TEST(Transform, Padding) {
     EdgeInsets padding;
     padding.top = 1000.0 / 2.0;
     ASSERT_GT(padding.top, 0);
-    ASSERT_TRUE(padding);
+    ASSERT_TRUE(bool(padding));
     
     const LatLng shiftedCenter = transform.getLatLng(padding);
     ASSERT_NE(trueCenter.latitude, shiftedCenter.latitude);
