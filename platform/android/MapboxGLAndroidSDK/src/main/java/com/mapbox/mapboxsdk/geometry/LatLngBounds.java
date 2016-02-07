@@ -239,12 +239,12 @@ public class LatLngBounds implements Parcelable {
 
     public boolean contains(LatLng latLng) {
         return latLng.latitude <= mLatNorth && latLng.latitude >= mLatSouth &&
-                latLng.longitude <= mLonEast && latLng.longitude >= mLatSouth;
+                latLng.longitude <= mLonEast && latLng.longitude >= mLonWest;
     }
 
     public boolean contains(ILatLng latLng) {
         return latLng.getLatitude() <= mLatNorth && latLng.getLatitude() >= mLatSouth &&
-                latLng.getLongitude() <= mLonEast && latLng.getLongitude() >= mLatSouth;
+                latLng.getLongitude() <= mLonEast && latLng.getLongitude() >= mLonWest;
     }
 
     public static final Parcelable.Creator<LatLngBounds> CREATOR =
