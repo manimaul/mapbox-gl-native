@@ -1,7 +1,10 @@
 package com.mapbox.mapboxsdk.maps;
 
 import android.graphics.PointF;
+import android.support.annotation.FloatRange;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.support.annotation.UiThread;
 
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.geometry.LatLngBounds;
@@ -68,5 +71,33 @@ public class Projection {
      */
     public PointF toScreenLocation(LatLng location) {
         return mMapView.toScreenLocation(location);
+    }
+
+    /**
+     * Converts a map coordinate to a point in this view's coordinate system.
+     *
+     * @param location A map coordinate.
+     * @param reuse    supply a point to be reused : null to have one created
+     * @return The converted point in this view's coordinate system.
+     */
+    @UiThread
+    @NonNull
+    public PointF toScreenLocation(@NonNull LatLng location, @Nullable PointF reuse) {
+        return mMapView.toScreenLocation(location, reuse);
+    }
+
+    /**
+     * <p>
+     * Returns the distance spanned by one pixel at the specified latitude and current zoom level.
+     * </p>
+     * The distance between pixels decreases as the latitude approaches the poles.
+     * This relationship parallels the relationship between longitudinal coordinates at different latitudes.
+     *
+     * @param latitude The latitude for which to return the value.
+     * @return The distance measured in meters.
+     */
+    @UiThread
+    public double getMetersPerPixelAtLatitude(@FloatRange(from = -180, to = 180) double latitude) {
+        return mMapView.getMetersPerPixelAtLatitude(latitude);
     }
 }

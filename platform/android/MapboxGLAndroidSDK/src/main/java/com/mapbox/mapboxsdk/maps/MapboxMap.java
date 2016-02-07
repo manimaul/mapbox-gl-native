@@ -487,49 +487,6 @@ public class MapboxMap {
     }
 
     //
-    // Projection
-    //
-
-//    /**
-//     * Converts a point in this view's coordinate system to a map coordinate.
-//     *
-//     * @param point A point in this view's coordinate system.
-//     * @return The converted map coordinate.
-//     */
-//    @UiThread
-//    @NonNull
-//    public LatLng fromScreenLocation(@NonNull PointF point) {
-//        return mMapView.fromScreenLocation(point);
-//    }
-//
-//    /**
-//     * Converts a map coordinate to a point in this view's coordinate system.
-//     *
-//     * @param location A map coordinate.
-//     * @return The converted point in this view's coordinate system.
-//     */
-//    @UiThread
-//    @NonNull
-//    public PointF toScreenLocation(@NonNull LatLng location) {
-//        return mMapView.toScreenLocation(location);
-//    }
-//
-//    /**
-//     * <p>
-//     * Returns the distance spanned by one pixel at the specified latitude and current zoom level.
-//     * </p>
-//     * The distance between pixels decreases as the latitude approaches the poles.
-//     * This relationship parallels the relationship between longitudinal coordinates at different latitudes.
-//     *
-//     * @param latitude The latitude for which to return the value.
-//     * @return The distance measured in meters.
-//     */
-//    @UiThread
-//    public double getMetersPerPixelAtLatitude(@FloatRange(from = -180, to = 180) double latitude) {
-//        return mMapView.getMetersPerPixelAtLatitude(latitude);
-//    }
-
-    //
     // Annotations
     //
 

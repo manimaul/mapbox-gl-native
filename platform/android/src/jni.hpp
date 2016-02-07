@@ -37,18 +37,19 @@ extern jmethodID latLngConstructorId;
 extern jfieldID latLngLatitudeId;
 extern jfieldID latLngLongitudeId;
 
-extern jclass latLngZoomClass;
-extern jmethodID latLngZoomConstructorId;
-extern jfieldID latLngZoomLatitudeId;
-extern jfieldID latLngZoomLongitudeId;
-extern jfieldID latLngZoomZoomId;
+extern jclass latLngBoundsClass;
+extern jmethodID latLngBoundsConstructorId;
+extern jfieldID latLngBoundsLatNorthId;
+extern jfieldID latLngBoundsLatSouthId;
+extern jfieldID latLngBoundsLonEastId;
+extern jfieldID latLngBoundsLonWestId;
 
-extern jclass bboxClass;
-extern jmethodID bboxConstructorId;
-extern jfieldID bboxLatNorthId;
-extern jfieldID bboxLatSouthId;
-extern jfieldID bboxLonEastId;
-extern jfieldID bboxLonWestId;
+extern jclass visibleRegionClass;
+extern jfieldID visibleRegionFarLeftId;
+extern jfieldID visibleRegionFarRightId;
+extern jfieldID visibleRegionNearLeftId;
+extern jfieldID visibleRegionNearRightId;
+extern jfieldID visibleRegionLatLngBoundsId;
 
 extern jclass iconClass;
 extern jfieldID iconIdId;

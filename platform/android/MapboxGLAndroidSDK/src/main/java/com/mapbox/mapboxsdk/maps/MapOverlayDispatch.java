@@ -7,8 +7,8 @@ import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
 
-import com.mapbox.mapboxsdk.geometry.BoundingBox;
 import com.mapbox.mapboxsdk.geometry.LatLng;
+import com.mapbox.mapboxsdk.geometry.VisibleRegion;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,7 +22,7 @@ final class MapOverlayDispatch extends View {
 
     private List<Overlay> mOverlayList = new ArrayList<>();
     private LatLng mWgsCenter = null;
-    private BoundingBox mWgsBounds = null;
+    private VisibleRegion mVisibleRegion = null;
     private final Rect mMapPixelBounds = new Rect();
     private float mBearing = 0;
     private float mZoom = 0;
@@ -51,12 +51,12 @@ final class MapOverlayDispatch extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        if (mMapboxMap != null && mWgsBounds != null && mWgsCenter != null) {
+        if (mMapboxMap != null && mVisibleRegion != null && mWgsCenter != null) {
             Overlay overlay;
             for (int i = 0; i < mOverlayList.size(); i++) {
                 overlay = mOverlayList.get(i);
                 if (overlay.isOverlayDrawEnabled()) {
-                    overlay.onOverlayDraw(mMapboxMap, canvas, mWgsBounds, mWgsCenter, mBearing, mZoom);
+                    overlay.onOverlayDraw(mMapboxMap, canvas, mVisibleRegion, mWgsCenter, mBearing, mZoom);
                 }
             }
         }
@@ -133,9 +133,9 @@ final class MapOverlayDispatch extends View {
         mOverlayList.remove(overlay);
     }
 
-    void update(final BoundingBox wgsBounds, final LatLng wgsCenter, float bearing, float zoom) {
+    void update(final VisibleRegion visibleRegion, final LatLng wgsCenter, float bearing, float zoom) {
         mWgsCenter = wgsCenter;
-        mWgsBounds = wgsBounds;
+        mVisibleRegion = visibleRegion;
         mBearing = bearing;
         mZoom = zoom;
         super.invalidate();

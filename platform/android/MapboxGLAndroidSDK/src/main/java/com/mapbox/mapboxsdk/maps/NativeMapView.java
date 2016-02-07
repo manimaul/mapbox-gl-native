@@ -13,6 +13,7 @@ import com.mapbox.mapboxsdk.annotations.Polyline;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.geometry.LatLngBounds;
 import com.mapbox.mapboxsdk.geometry.ProjectedMeters;
+import com.mapbox.mapboxsdk.geometry.VisibleRegion;
 import com.mapbox.mapboxsdk.layers.CustomLayer;
 
 import java.util.List;
@@ -475,7 +476,7 @@ final class NativeMapView {
         nativeFlyTo(mNativeMapViewPtr, angle, center, duration, pitch, zoom);
     }
 
-    public void updateMapBounds(BoundingBox wgsBounds, LatLng wgsCenter) {
+    public void updateMapBounds(VisibleRegion wgsBounds, LatLng wgsCenter) {
         nativeUpdateMapBounds(mNativeMapViewPtr, wgsBounds, wgsCenter);
     }
 
@@ -675,7 +676,7 @@ final class NativeMapView {
 
     private native void nativeFlyTo(long nativeMapViewPtr, double angle, LatLng center, long duration, double pitch, double zoom);
 
-    private native void nativeUpdateMapBounds(long nativeMapViewPtr, BoundingBox wgsBounds, LatLng wgsCenter);
+    private native void nativeUpdateMapBounds(long nativeMapViewPtr, VisibleRegion wgsBounds, LatLng wgsCenter);
 
     private native void nativeAddCustomLayer(long nativeMapViewPtr, CustomLayer customLayer, String before);
 

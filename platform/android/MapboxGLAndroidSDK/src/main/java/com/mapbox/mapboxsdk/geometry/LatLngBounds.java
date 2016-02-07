@@ -19,6 +19,13 @@ public class LatLngBounds implements Parcelable {
     private final double mLonEast;
     private final double mLonWest;
 
+    public LatLngBounds(LatLng latLngOne, LatLng latLngTwo) {
+        mLatNorth = Math.max(latLngOne.latitude, latLngTwo.latitude);
+        mLatSouth = Math.min(latLngOne.latitude, latLngTwo.latitude);
+        mLonEast = Math.max(latLngOne.longitude, latLngTwo.longitude);
+        mLonWest = Math.min(latLngOne.longitude, latLngTwo.longitude);
+    }
+
     /**
      * Construct a new LatLngBounds based on its corners, given in NESW
      * order.
@@ -28,7 +35,7 @@ public class LatLngBounds implements Parcelable {
      * @param southLatitude Southern Latitude
      * @param westLongitude Western Longitude
      */
-    LatLngBounds(final double northLatitude, final double eastLongitude, final double southLatitude, final double westLongitude) {
+    public LatLngBounds(final double northLatitude, final double eastLongitude, final double southLatitude, final double westLongitude) {
         this.mLatNorth = northLatitude;
         this.mLonEast = eastLongitude;
         this.mLatSouth = southLatitude;
@@ -113,7 +120,7 @@ public class LatLngBounds implements Parcelable {
      * @param latLngs List of LatLng objects
      * @return LatLngBounds
      */
-    static LatLngBounds fromLatLngs(final List<? extends ILatLng> latLngs) {
+    public static LatLngBounds fromLatLngs(final List<? extends ILatLng> latLngs) {
         double minLat = 90,
                 minLon = 180,
                 maxLat = -90,
@@ -228,6 +235,16 @@ public class LatLngBounds implements Parcelable {
      */
     public LatLngBounds intersect(double northLatitude, double eastLongitude, double southLatitude, double westLongitude) {
         return intersect(new LatLngBounds(northLatitude, eastLongitude, southLatitude, westLongitude));
+    }
+
+    public boolean contains(LatLng latLng) {
+        return latLng.latitude <= mLatNorth && latLng.latitude >= mLatSouth &&
+                latLng.longitude <= mLonEast && latLng.longitude >= mLatSouth;
+    }
+
+    public boolean contains(ILatLng latLng) {
+        return latLng.getLatitude() <= mLatNorth && latLng.getLatitude() >= mLatSouth &&
+                latLng.getLongitude() <= mLonEast && latLng.getLongitude() >= mLatSouth;
     }
 
     public static final Parcelable.Creator<LatLngBounds> CREATOR =

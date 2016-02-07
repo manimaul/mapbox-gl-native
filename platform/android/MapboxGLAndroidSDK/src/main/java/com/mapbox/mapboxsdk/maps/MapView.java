@@ -75,6 +75,7 @@ import com.mapbox.mapboxsdk.exceptions.IconBitmapChangedException;
 import com.mapbox.mapboxsdk.exceptions.InvalidAccessTokenException;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.geometry.LatLngBounds;
+import com.mapbox.mapboxsdk.geometry.VisibleRegion;
 import com.mapbox.mapboxsdk.layers.CustomLayer;
 import com.mapbox.mapboxsdk.provider.OfflineProvider;
 import com.mapbox.mapboxsdk.provider.OfflineProviderManager;
@@ -84,7 +85,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -1515,7 +1515,21 @@ public class MapView extends FrameLayout {
     private class SurfaceTextureListener implements TextureView.SurfaceTextureListener {
 
         private final LatLng mWgsCenter = new LatLng();
-        private final BoundingBox mWgsBounds = new BoundingBox(0, 0, 0, 0);
+        private final VisibleRegion mWgsVisibleRegion;
+        {
+            LatLngBounds.Builder builder = new LatLngBounds.Builder();
+
+            LatLng topLeft = new LatLng();
+            LatLng topRight = new LatLng();
+            LatLng bottomRight = new LatLng();
+            LatLng bottomLeft = new LatLng();
+
+            builder.include(topLeft)
+                    .include(topRight)
+                    .include(bottomRight)
+                    .include(bottomLeft);
+            mWgsVisibleRegion = new VisibleRegion(topLeft, topRight, bottomLeft, bottomRight, builder.build());
+        }
 
         // Called when the native surface texture has been created
         // Must do all EGL/GL ES initialization here
@@ -1546,8 +1560,8 @@ public class MapView extends FrameLayout {
         // Must sync with UI here
         @Override
         public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-            mNativeMapView.updateMapBounds(mWgsBounds, mWgsCenter);
-            mMapOverlayDispatch.update(mWgsBounds, mWgsCenter, (float) getDirection(), (float) getZoom());
+            mNativeMapView.updateMapBounds(mWgsVisibleRegion, mWgsCenter);
+            mMapOverlayDispatch.update(mWgsVisibleRegion, mWgsCenter, (float) getDirection(), (float) getZoom());
             mCompassView.update(getDirection());
             mUserLocationView.update();
             for (InfoWindow infoWindow : mMapboxMap.getInfoWindows()) {
