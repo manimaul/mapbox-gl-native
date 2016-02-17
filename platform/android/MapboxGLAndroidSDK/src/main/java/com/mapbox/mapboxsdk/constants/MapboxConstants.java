@@ -18,6 +18,16 @@ public class MapboxConstants {
     public static final String KEY_META_DATA_MANIFEST = "com.mapbox.AccessToken";
 
     /**
+     * Key used to store staging data server url in AndroidManifest.xml
+     */
+    public static final String KEY_META_DATA_STAGING_SERVER = "com.mapbox.TestEventsServer";
+
+    /**
+     * Key used to store staging data server access token in AndroidManifest.xml
+     */
+    public static final String KEY_META_DATA_STAGING_ACCESS_TOKEN = "com.mapbox.TestEventsAccessToken";
+
+    /**
      * Default animation time
      */
     public static final int ANIMATION_DURATION = 300;
@@ -58,6 +68,7 @@ public class MapboxConstants {
     public static final String FRAG_ARG_MAPBOXMAPOPTIONS = "MapboxMapOptions";
 
     // Save instance state keys
+    public static final String STATE_HAS_SAVED_STATE = "savedState";
     public static final String STATE_CAMERA_POSITION = "cameraPosition";
     public static final String STATE_ZOOM_ENABLED = "zoomEnabled";
     public static final String STATE_SCROLL_ENABLED = "scrollEnabled";
@@ -91,4 +102,8 @@ public class MapboxConstants {
     public static final String STATE_ATTRIBUTION_ENABLED = "atrrEnabled";
 
     public static final String TAG = "MapboxMap";
+
+    public static final String MAPBOX_SHARED_PREFERENCES_FILE = "MapboxSharedPreferences";
+    public static final String MAPBOX_SHARED_PREFERENCE_KEY_VENDORID = "mapboxVendorId";
+    public static final String MAPBOX_SHARED_PREFERENCE_KEY_TELEMETRY_ENABLED = "mapboxTelemetryEnabled";
 }

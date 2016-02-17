@@ -21,6 +21,7 @@ import com.mapbox.mapboxsdk.constants.MyBearingTracking;
 import com.mapbox.mapboxsdk.constants.MyLocationTracking;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
+import com.mapbox.mapboxsdk.maps.TrackingSettings;
 import com.mapbox.mapboxsdk.utils.ApiAccess;
 import com.mapbox.mapboxsdk.maps.MapView;
 
@@ -39,24 +40,12 @@ public class MyLocationTrackingModeActivity extends AppCompatActivity implements
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        ActionBar actionBar = getSupportActionBar();
+        final ActionBar actionBar = getSupportActionBar();
         if (actionBar != null) {
             actionBar.setDisplayShowTitleEnabled(false);
             actionBar.setDisplayHomeAsUpEnabled(true);
             actionBar.setDisplayShowHomeEnabled(true);
         }
-
-        ArrayAdapter<CharSequence> locationTrackingAdapter = ArrayAdapter.createFromResource(actionBar.getThemedContext(), R.array.user_tracking_mode, android.R.layout.simple_spinner_item);
-        locationTrackingAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        mLocationSpinner = (Spinner) findViewById(R.id.spinner_location);
-        mLocationSpinner.setAdapter(locationTrackingAdapter);
-        mLocationSpinner.setOnItemSelectedListener(this);
-
-        ArrayAdapter<CharSequence> bearingTrackingAdapter = ArrayAdapter.createFromResource(actionBar.getThemedContext(), R.array.user_bearing_mode, android.R.layout.simple_spinner_item);
-        bearingTrackingAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        mBearingSpinner = (Spinner) findViewById(R.id.spinner_bearing);
-        mBearingSpinner.setAdapter(bearingTrackingAdapter);
-        mBearingSpinner.setOnItemSelectedListener(this);
 
         mMapView = (MapView) findViewById(R.id.mapView);
         mMapView.setAccessToken(ApiAccess.getToken(this));
@@ -67,6 +56,18 @@ public class MyLocationTrackingModeActivity extends AppCompatActivity implements
                 mMapboxMap = mapboxMap;
 
                 mapboxMap.setOnMyLocationChangeListener(MyLocationTrackingModeActivity.this);
+
+                ArrayAdapter<CharSequence> locationTrackingAdapter = ArrayAdapter.createFromResource(actionBar.getThemedContext(), R.array.user_tracking_mode, android.R.layout.simple_spinner_item);
+                locationTrackingAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                mLocationSpinner = (Spinner) findViewById(R.id.spinner_location);
+                mLocationSpinner.setAdapter(locationTrackingAdapter);
+                mLocationSpinner.setOnItemSelectedListener(MyLocationTrackingModeActivity.this);
+
+                ArrayAdapter<CharSequence> bearingTrackingAdapter = ArrayAdapter.createFromResource(actionBar.getThemedContext(), R.array.user_bearing_mode, android.R.layout.simple_spinner_item);
+                bearingTrackingAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                mBearingSpinner = (Spinner) findViewById(R.id.spinner_bearing);
+                mBearingSpinner.setAdapter(bearingTrackingAdapter);
+                mBearingSpinner.setOnItemSelectedListener(MyLocationTrackingModeActivity.this);
 
                 try {
                     mapboxMap.setMyLocationEnabled(true);
@@ -135,28 +136,29 @@ public class MyLocationTrackingModeActivity extends AppCompatActivity implements
 
     @Override
     public void onItemSelected(AdapterView<?> parent, View view, int position, long id) throws SecurityException {
+        TrackingSettings trackingSettings = mMapboxMap.getTrackingSettings();
         if (parent.getId() == R.id.spinner_location) {
             switch (position) {
                 case 0:
-                    mMapboxMap.setMyLocationTrackingMode(MyLocationTracking.TRACKING_NONE);
+                    trackingSettings.setMyLocationTrackingMode(MyLocationTracking.TRACKING_NONE);
                     break;
 
                 case 1:
-                    mMapboxMap.setMyLocationTrackingMode(MyLocationTracking.TRACKING_FOLLOW);
+                    trackingSettings.setMyLocationTrackingMode(MyLocationTracking.TRACKING_FOLLOW);
                     break;
             }
         } else if (parent.getId() == R.id.spinner_bearing) {
             switch (position) {
                 case 0:
-                    mMapboxMap.setMyBearingTrackingMode(MyBearingTracking.NONE);
+                    trackingSettings.setMyBearingTrackingMode(MyBearingTracking.NONE);
                     break;
 
                 case 1:
-                    mMapboxMap.setMyBearingTrackingMode(MyBearingTracking.GPS);
+                    trackingSettings.setMyBearingTrackingMode(MyBearingTracking.GPS);
                     break;
 
                 case 2:
-                    mMapboxMap.setMyBearingTrackingMode(MyBearingTracking.COMPASS);
+                    trackingSettings.setMyBearingTrackingMode(MyBearingTracking.COMPASS);
                     break;
             }
         }

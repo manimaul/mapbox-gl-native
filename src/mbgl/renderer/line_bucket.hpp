@@ -2,7 +2,7 @@
 #define MBGL_RENDERER_LINEBUCKET
 
 #include <mbgl/renderer/bucket.hpp>
-#include <mbgl/map/geometry_tile.hpp>
+#include <mbgl/tile/geometry_tile.hpp>
 #include <mbgl/geometry/vao.hpp>
 #include <mbgl/geometry/elements_buffer.hpp>
 #include <mbgl/geometry/line_buffer.hpp>
@@ -24,7 +24,7 @@ class LineBucket : public Bucket {
     using TriangleGroup = ElementGroup<3>;
 
 public:
-    LineBucket();
+    LineBucket(float overscaling);
     ~LineBucket() override;
 
     void upload() override;
@@ -62,6 +62,8 @@ private:
     GLint e3;
 
     std::vector<std::unique_ptr<TriangleGroup>> triangleGroups;
+
+    const float overscaling;
 };
 
 } // namespace mbgl

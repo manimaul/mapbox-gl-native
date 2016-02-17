@@ -53,9 +53,9 @@ SUBMODULES += platform/ios/vendor/SMCalloutView/SMCalloutView.h
 platform/ios/vendor/SMCalloutView/SMCalloutView.h:
 	./scripts/flock.py .git/Submodule.lock git submodule update --init platform/ios/vendor/SMCalloutView
 
-SUBMODULES += test/ios/KIF/KIF.xcodeproj
-test/ios/KIF/KIF.xcodeproj:
-	./scripts/flock.py .git/Submodule.lock git submodule update --init test/ios/KIF
+SUBMODULES += platform/ios/test/KIF/KIF.xcodeproj
+platform/ios/test/KIF/KIF.xcodeproj:
+	./scripts/flock.py .git/Submodule.lock git submodule update --init platform/ios/test/KIF
 endif
 endif
 
@@ -78,6 +78,7 @@ GYP_FLAGS += -Dasset_lib=$(ASSET)
 GYP_FLAGS += -Dheadless_lib=$(HEADLESS)
 GYP_FLAGS += -Dtest=$(BUILD_TEST)
 GYP_FLAGS += -Drender=$(BUILD_RENDER)
+GYP_FLAGS += -Doffline=$(BUILD_OFFLINE)
 GYP_FLAGS += -Dcxx_host=$(CXX_HOST)
 GYP_FLAGS += --depth=.
 GYP_FLAGS += -Goutput_dir=.

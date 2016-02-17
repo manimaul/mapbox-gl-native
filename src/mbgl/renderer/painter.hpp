@@ -10,11 +10,11 @@
 #include <mbgl/geometry/vao.hpp>
 #include <mbgl/geometry/static_vertex_buffer.hpp>
 
-#include <mbgl/renderer/gl_config.hpp>
+#include <mbgl/gl/gl_config.hpp>
 
 #include <mbgl/style/types.hpp>
 
-#include <mbgl/platform/gl.hpp>
+#include <mbgl/gl/gl.hpp>
 
 #include <mbgl/util/noncopyable.hpp>
 #include <mbgl/util/chrono.hpp>
@@ -93,8 +93,7 @@ public:
     float contrastFactor(float contrast);
     std::array<float, 3> spinWeights(float spin_value);
 
-    void drawClippingMasks(const std::set<Source*>&);
-    void drawClippingMask(const mat4& matrix, const ClipID& clip);
+    void drawClippingMasks(const std::map<TileID, ClipID>&);
 
     bool needsAnimation() const;
 

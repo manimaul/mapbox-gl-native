@@ -3,7 +3,7 @@
 #import "MGLMapView+MGLCustomStyleLayerAdditions.h"
 
 #import <mbgl/platform/log.hpp>
-#import <mbgl/platform/gl.hpp>
+#import <mbgl/gl/gl.hpp>
 
 #import <GLKit/GLKit.h>
 #import <OpenGLES/EAGL.h>
@@ -28,8 +28,8 @@
 #include <mbgl/util/chrono.hpp>
 
 #import "Mapbox.h"
-#import "../../darwin/MGLGeometry_Private.h"
-#import "../../darwin/MGLMultiPoint_Private.h"
+#import "../../darwin/src/MGLGeometry_Private.h"
+#import "../../darwin/src/MGLMultiPoint_Private.h"
 
 #import "NSBundle+MGLAdditions.h"
 #import "NSString+MGLAdditions.h"

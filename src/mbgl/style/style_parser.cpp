@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <sstream>
+#include <set>
 
 namespace mbgl {
 
@@ -255,7 +256,7 @@ std::unique_ptr<mapbox::geojsonvt::GeoJSONVT> StyleParser::parseGeoJSON(const JS
     }
 }
 
-std::unique_ptr<SourceInfo> StyleParser::parseTileJSON(const std::string& json, const std::string& sourceURL, SourceType type) {
+std::unique_ptr<SourceInfo> StyleParser::parseTileJSON(const std::string& json, const std::string& sourceURL, SourceType type, uint16_t tileSize) {
     rapidjson::GenericDocument<rapidjson::UTF8<>, rapidjson::CrtAllocator> document;
     document.Parse<0>(json.c_str());
 
@@ -268,11 +269,10 @@ std::unique_ptr<SourceInfo> StyleParser::parseTileJSON(const std::string& json, 
     std::unique_ptr<SourceInfo> result = StyleParser::parseTileJSON(document);
 
     // TODO: Remove this hack by delivering proper URLs in the TileJSON to begin with.
-    if (type == SourceType::Raster && util::mapbox::isMapboxURL(sourceURL)) {
-        std::transform(result->tiles.begin(),
-                       result->tiles.end(),
-                       result->tiles.begin(),
-                       util::mapbox::normalizeRasterTileURL);
+    if (util::mapbox::isMapboxURL(sourceURL)) {
+        for (auto& url : result->tiles) {
+            url = util::mapbox::canonicalizeTileURL(url, type, tileSize);
+        }
     }
 
     return result;
@@ -482,6 +482,25 @@ void StyleParser::parseVisibility(StyleLayer& layer, const JSValue& value) {
         return;
     }
     layer.visibility = VisibilityTypeClass({ value["visibility"].GetString(), value["visibility"].GetStringLength() });
+}
+
+std::vector<std::string> StyleParser::fontStacks() const {
+    std::set<std::string> result;
+
+    for (const auto& layer : layers) {
+        if (layer->is<SymbolLayer>()) {
+            LayoutProperty<std::string> property = layer->as<SymbolLayer>()->layout.text.font;
+            if (property.parsedValue) {
+                for (const auto& stop : property.parsedValue->getStops()) {
+                    result.insert(stop.second);
+                }
+            } else {
+                result.insert(property.value);
+            }
+        }
+    }
+
+    return std::vector<std::string>(result.begin(), result.end());
 }
 
 } // namespace mbgl

@@ -38,6 +38,7 @@ import com.mapbox.mapboxsdk.constants.Style;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.layers.CustomLayer;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
+import com.mapbox.mapboxsdk.maps.TrackingSettings;
 import com.mapbox.mapboxsdk.maps.UiSettings;
 import com.mapbox.mapboxsdk.testapp.layers.ExampleCustomLayer;
 import com.mapbox.mapboxsdk.testapp.utils.GeoParseUtil;
@@ -213,10 +214,18 @@ public class MainActivity extends AppCompatActivity {
 
                 mMapboxMap.setOnInfoWindowClickListener(new MapboxMap.OnInfoWindowClickListener() {
                     @Override
-                    public boolean onMarkerClick(@NonNull Marker marker) {
+                    public boolean onInfoWindowClick(@NonNull Marker marker) {
                         Snackbar.make(mCoordinatorLayout, "InfoWindow Click Listener for " + marker.getTitle(), Snackbar.LENGTH_SHORT).show();
                         marker.hideInfoWindow();
                         return true;
+                    }
+                });
+
+
+                mMapboxMap.setOnCameraChangeListener(new MapboxMap.OnCameraChangeListener() {
+                    @Override
+                    public void onCameraChange(CameraPosition position) {
+                        Log.v(TAG, "OnCameraChange : " + position);
                     }
                 });
 
@@ -459,6 +468,14 @@ public class MainActivity extends AppCompatActivity {
                                 startActivity(new Intent(getApplicationContext(), ScrollByActivity.class));
                                 return true;
 
+                            case R.id.action_dynamic_marker:
+                                startActivity(new Intent(getApplicationContext(), DynamicMarkerChangeActivity.class));
+                                return true;
+                            
+                            case R.id.action_map_padding:
+                                startActivity(new Intent(getApplicationContext(),MapPaddingActivity.class));
+                                return true;
+
                             default:
                                 return changeMapStyle(menuItem.getItemId());
                         }
@@ -543,12 +560,20 @@ public class MainActivity extends AppCompatActivity {
                     }
                 });
                 mMapboxMap.setMyLocationEnabled(true);
-                mMapboxMap.setMyLocationTrackingMode(MyLocationTracking.TRACKING_NONE);
-                mMapboxMap.setMyBearingTrackingMode(MyBearingTracking.GPS);
+
+                TrackingSettings trackingSettings = mMapboxMap.getTrackingSettings();
+                trackingSettings.setMyLocationTrackingMode(MyLocationTracking.TRACKING_NONE);
+                trackingSettings.setMyBearingTrackingMode(MyBearingTracking.GPS);
+
                 mLocationFAB.setColorFilter(ContextCompat.getColor(this, R.color.primary));
             }
         } else {
-            mMapboxMap.setMyLocationEnabled(false);
+            if ((ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                    == PackageManager.PERMISSION_GRANTED) ||
+                    (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                            == PackageManager.PERMISSION_GRANTED)) {
+                mMapboxMap.setMyLocationEnabled(false);
+            }
             mLocationFAB.setColorFilter(Color.TRANSPARENT);
         }
     }
@@ -634,7 +659,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void removeAnnotations() {
         mMarkerList.clear();
-        mMapboxMap.removeAllAnnotations();
+        mMapboxMap.removeAnnotations();
     }
 
     private void addCustomLayer() {

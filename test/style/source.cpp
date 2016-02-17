@@ -3,7 +3,7 @@
 #include "../fixtures/mock_view.hpp"
 #include "../fixtures/stub_style_observer.hpp"
 
-#include <mbgl/map/source.hpp>
+#include <mbgl/source/source.hpp>
 #include <mbgl/util/run_loop.hpp>
 #include <mbgl/util/string.hpp>
 #include <mbgl/util/io.hpp>
@@ -112,6 +112,64 @@ TEST(Source, LoadingCorrupt) {
     Source source(SourceType::Vector, "source", "url", 512, nullptr, nullptr);
     source.setObserver(&test.observer);
     source.load();
+
+    test.run();
+}
+
+TEST(Source, RasterTileEmpty) {
+    SourceTest test;
+
+    test.fileSource.tileResponse = [&] (const Resource&) {
+        Response response;
+        response.noContent = true;
+        return response;
+    };
+
+    test.observer.tileLoaded = [&] (Source& source, const TileID&, bool) {
+        EXPECT_EQ("source", source.id);
+        test.end();
+    };
+
+    test.observer.tileError = [&] (Source&, const TileID&, std::exception_ptr) {
+        FAIL() << "Should never be called";
+    };
+
+    auto info = std::make_unique<SourceInfo>();
+    info->tiles = { "tiles" };
+
+    Source source(SourceType::Raster, "source", "", 512, std::move(info), nullptr);
+    source.setObserver(&test.observer);
+    source.load();
+    source.update(test.updateParameters);
+
+    test.run();
+}
+
+TEST(Source, VectorTileEmpty) {
+    SourceTest test;
+
+    test.fileSource.tileResponse = [&] (const Resource&) {
+        Response response;
+        response.noContent = true;
+        return response;
+    };
+
+    test.observer.tileLoaded = [&] (Source& source, const TileID&, bool) {
+        EXPECT_EQ("source", source.id);
+        test.end();
+    };
+
+    test.observer.tileError = [&] (Source&, const TileID&, std::exception_ptr) {
+        FAIL() << "Should never be called";
+    };
+
+    auto info = std::make_unique<SourceInfo>();
+    info->tiles = { "tiles" };
+
+    Source source(SourceType::Vector, "source", "", 512, std::move(info), nullptr);
+    source.setObserver(&test.observer);
+    source.load();
+    source.update(test.updateParameters);
 
     test.run();
 }

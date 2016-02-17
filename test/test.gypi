@@ -47,6 +47,7 @@
         'util/text_conversions.cpp',
         'util/thread.cpp',
         'util/thread_local.cpp',
+        'util/tile_cover.cpp',
         'util/timer.cpp',
         'util/token.cpp',
         'util/work_queue.cpp',
@@ -57,6 +58,7 @@
         'api/render_missing.cpp',
         'api/set_style.cpp',
         'api/custom_layer.cpp',
+        'api/offline.cpp',
 
         'geometry/binpack.cpp',
 
@@ -67,12 +69,10 @@
 
         'storage/storage.hpp',
         'storage/storage.cpp',
-        'storage/cache_response.cpp',
-        'storage/cache_revalidate.cpp',
-        'storage/cache_shared.cpp',
-        'storage/cache_size.cpp',
-        'storage/cache_stale.cpp',
-        'storage/database.cpp',
+        'storage/default_file_source.cpp',
+        'storage/offline.cpp',
+        'storage/offline_database.cpp',
+        'storage/offline_download.cpp',
         'storage/asset_file_source.cpp',
         'storage/headers.cpp',
         'storage/http_cancel.cpp',

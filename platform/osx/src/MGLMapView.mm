@@ -5,20 +5,20 @@
 #import "MGLOpenGLLayer.h"
 #import "MGLStyle.h"
 
-#import "../../darwin/MGLGeometry_Private.h"
-#import "../../darwin/MGLMultiPoint_Private.h"
+#import "../../darwin/src/MGLGeometry_Private.h"
+#import "../../darwin/src/MGLMultiPoint_Private.h"
 
-#import <mbgl/darwin/MGLMapCamera.h>
-#import <mbgl/darwin/MGLPolygon.h>
-#import <mbgl/darwin/MGLPolyline.h>
-#import <mbgl/osx/MGLAnnotationImage.h>
-#import <mbgl/osx/MGLMapViewDelegate.h>
+#import <MGLMapCamera.h>
+#import <MGLPolygon.h>
+#import <MGLPolyline.h>
+#import <MGLAnnotationImage.h>
+#import <MGLMapViewDelegate.h>
 
 #import <mbgl/mbgl.hpp>
 #import <mbgl/annotation/point_annotation.hpp>
 #import <mbgl/map/camera.hpp>
 #import <mbgl/platform/darwin/reachability.h>
-#import <mbgl/platform/gl.hpp>
+#import <mbgl/gl/gl.hpp>
 #import <mbgl/sprite/sprite_image.hpp>
 #import <mbgl/storage/default_file_source.hpp>
 #import <mbgl/storage/network_status.hpp>
@@ -32,8 +32,8 @@
 
 #import "NSBundle+MGLAdditions.h"
 #import "NSProcessInfo+MGLAdditions.h"
-#import "../../darwin/NSException+MGLAdditions.h"
-#import "../../darwin/NSString+MGLAdditions.h"
+#import "../../darwin/src/NSException+MGLAdditions.h"
+#import "../../darwin/src/NSString+MGLAdditions.h"
 
 #import <QuartzCore/QuartzCore.h>
 
