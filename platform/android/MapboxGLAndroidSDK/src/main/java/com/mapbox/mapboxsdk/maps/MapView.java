@@ -903,23 +903,23 @@ public class MapView extends FrameLayout {
     // Checks that TelemetryService has been configured by developer
     private void validateTelemetryServiceConfigured() {
 
-        try {
-            // Check Implementing app's AndroidManifest.xml
-            PackageInfo packageInfo = getContext().getPackageManager().getPackageInfo(getContext().getPackageName(), PackageManager.GET_SERVICES);
-
-            if (packageInfo.services != null) {
-
-                for (ServiceInfo service : packageInfo.services) {
-                    if (TextUtils.equals("com.mapbox.mapboxsdk.telemetry.TelemetryService", service.name)) {
-                        return;
-                    }
-                }
-            }
-
-        } catch (Exception e) {
-            Log.w(TAG, "Error checking for Telemetry Service Config: " + e);
-        }
-        throw new TelemetryServiceNotConfiguredException();
+//        try {
+//            // Check Implementing app's AndroidManifest.xml
+//            PackageInfo packageInfo = getContext().getPackageManager().getPackageInfo(getContext().getPackageName(), PackageManager.GET_SERVICES);
+//
+//            if (packageInfo.services != null) {
+//
+//                for (ServiceInfo service : packageInfo.services) {
+//                    if (TextUtils.equals("com.mapbox.mapboxsdk.telemetry.TelemetryService", service.name)) {
+//                        return;
+//                    }
+//                }
+//            }
+//
+//        } catch (Exception e) {
+//            Log.w(TAG, "Error checking for Telemetry Service Config: " + e);
+//        }
+//        throw new TelemetryServiceNotConfiguredException();
     }
 
     /**
