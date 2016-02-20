@@ -5,7 +5,7 @@ import java.io.Serializable;
 public class MapboxEvent implements Serializable {
     public static final int VERSION_NUMBER = 1;
     public static final String MGLMapboxEventsUserAgent = "MapboxEventsAndroid/1.1";
-    public static final String MGLMapboxEventsAPIBase = "https://api.tiles.mapbox.com";
+    public static final String MAPBOX_EVENTS_BASE_URL = "https://api.mapbox.com";
 
     // Event Types
     public static final String TYPE_TURNSTILE = "appUserTurnstile";
@@ -22,6 +22,7 @@ public class MapboxEvent implements Serializable {
     public static final String KEY_COURSE = "course";
     public static final String KEY_ALTITUDE = "altitude";
     public static final String KEY_HORIZONTAL_ACCURACY = "horizontalAccuracy";
+    public static final String KEY_ZOOM = "zoom";
 
     public static final String KEY_PUSH_ENABLED = "enabled.push";
     public static final String KEY_EMAIL_ENABLED = "enabled.email";

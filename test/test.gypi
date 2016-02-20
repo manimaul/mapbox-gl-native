@@ -126,6 +126,17 @@
             'OTHER_CPLUSPLUSFLAGS': [ '<@(cflags_cc)' ],
             'OTHER_LDFLAGS': [ '<@(ldflags)' ],
           },
+          'configurations': {
+            'Debug': {
+              'xcode_settings': {
+                'conditions': [
+                  ['enable_coverage=="1"', {
+                    'OTHER_LDFLAGS': [ '--coverage' ],
+                  }],
+                ],
+              },
+            },
+          },
         }, {
          'cflags_cc': [ '<@(cflags_cc)' ],
          'libraries': [ '<@(ldflags)' ],

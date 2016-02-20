@@ -47,7 +47,18 @@
             'OTHER_LDFLAGS': [ '<@(ldflags)' ],
             'SDKROOT': 'macosx',
             'MACOSX_DEPLOYMENT_TARGET': '10.10',
-          }
+          },
+          'configurations': {
+            'Debug': {
+              'xcode_settings': {
+                'conditions': [
+                  ['enable_coverage=="1"', {
+                    'OTHER_LDFLAGS': [ '--coverage' ],
+                  }],
+                ],
+              },
+            },
+          },
         }, {
           'cflags_cc': [ '<@(cflags_cc)' ],
           'libraries': [ '<@(libraries)', '<@(ldflags)' ],

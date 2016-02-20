@@ -117,6 +117,9 @@ ifeq ($(BUILD),osx)
 xtest: ; $(RUN) HOST=osx HOST_VERSION=x86_64 Xcode/test
 endif
 
+.PHONY: check
+check: ; $(RUN) BUILDTYPE=Debug ENABLE_COVERAGE=1 check
+
 .PHONY: render
 render: ; $(RUN) Makefile/mbgl-render
 
@@ -152,15 +155,10 @@ endif
 
 clean: clear_sqlite_cache clear_xcode_cache
 	-find ./deps/gyp -name "*.pyc" -exec rm {} \;
-	-rm -rf ./build/
+	-find ./build -type f -not -path '*/*.xcodeproj/*' -exec rm {} \;
 	-rm -rf ./gyp/build/
-	-rm -rf ./macosx/build
-	-rm -rf ./linux/build
-	-rm -rf ./ios/build
-	-rm -rf ./test/build
 	-rm -rf ./config/*.gypi
-	-rm -rf ./platform/android/build \
-	        ./platform/android/MapboxGLAndroidSDK/build \
+	-rm -rf ./platform/android/MapboxGLAndroidSDK/build \
 	        ./platform/android/MapboxGLAndroidSDKTestApp/build \
 	        ./platform/android/MapboxGLAndroidSDK/src/main/jniLibs \
 	        ./platform/android/MapboxGLAndroidSDK/src/main/obj.target \

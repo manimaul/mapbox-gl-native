@@ -1,9 +1,7 @@
 package com.mapbox.mapboxsdk.maps;
 
-import android.Manifest;
 import android.content.Context;
 
-import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -11,7 +9,6 @@ import android.support.annotation.FloatRange;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.UiThread;
-import android.support.v4.content.ContextCompat;
 import android.support.v4.util.LongSparseArray;
 import android.text.TextUtils;
 import android.util.Log;
@@ -307,73 +304,8 @@ public class MapboxMap {
     }
 
     //
-    // ZOOM
-    //
-
-    /**
-     * <p>
-     * Sets the minimum zoom level the map can be displayed at.
-     * </p>
-     *
-     * @param minZoom The new minimum zoom level.
-     */
-    @UiThread
-    public void setMinZoom(@FloatRange(from = MapboxConstants.MINIMUM_ZOOM, to = MapboxConstants.MAXIMUM_ZOOM) double minZoom) {
-        if ((minZoom < MapboxConstants.MINIMUM_ZOOM) || (minZoom > MapboxConstants.MAXIMUM_ZOOM)) {
-            Log.e(MapboxConstants.TAG, "Not setting minZoom, value is in unsupported range: " + minZoom);
-            return;
-        }
-        mMapView.setMinZoom(minZoom);
-    }
-
-    /**
-     * <p>
-     * Gets the maximum zoom level the map can be displayed at.
-     * </p>
-     *
-     * @return The minimum zoom level.
-     */
-    @UiThread
-    public double getMinZoom() {
-        return mMapView.getMinZoom();
-    }
-
-    /**
-     * <p>
-     * Sets the maximum zoom level the map can be displayed at.
-     * </p>
-     *
-     * @param maxZoom The new maximum zoom level.
-     */
-    @UiThread
-    public void setMaxZoom(@FloatRange(from = MapboxConstants.MINIMUM_ZOOM, to = MapboxConstants.MAXIMUM_ZOOM) double maxZoom) {
-        if ((maxZoom < MapboxConstants.MINIMUM_ZOOM) || (maxZoom > MapboxConstants.MAXIMUM_ZOOM)) {
-            Log.e(MapboxConstants.TAG, "Not setting maxZoom, value is in unsupported range: " + maxZoom);
-            return;
-        }
-        mMapView.setMaxZoom(maxZoom);
-    }
-
-    /**
-     * <p>
-     * Gets the maximum zoom level the map can be displayed at.
-     * </p>
-     *
-     * @return The maximum zoom level.
-     */
-    @UiThread
-    public double getMaxZoom() {
-        return mMapView.getMaxZoom();
-    }
-
-    //
     // Manual zoom controls
     //
-
-    // used by UiSettings
-    void setZoomControlsEnabled(boolean enabled) {
-        mMapView.setZoomControlsEnabled(enabled);
-    }
 
     //
     // Debug

@@ -60,8 +60,7 @@ public class MapboxEventManager {
 
     private Context context = null;
     private String accessToken = null;
-    private static final String MAPBOX_EVENTS_BASE_URL = "https://api.mapbox.com";
-    private String eventsURL = MAPBOX_EVENTS_BASE_URL;
+    private String eventsURL = MapboxEvent.MAPBOX_EVENTS_BASE_URL;
 
     private String userAgent = MapboxEvent.MGLMapboxEventsUserAgent;
 
@@ -74,6 +73,7 @@ public class MapboxEventManager {
     private String mapboxSessionId = null;
     private long mapboxSessionIdLastSet = 0;
     private static long hourInMillis = 1000 * 60 * 60;
+    private static long flushDelayInitialInMillis = 1000 * 10;  // 10 Seconds
     private static long flushDelayInMillis = 1000 * 60 * 2;  // 2 Minutes
     private static final int SESSION_ID_ROTATION_HOURS = 24;
 
@@ -189,7 +189,7 @@ public class MapboxEventManager {
 
             // Manage Timer Flush
             timer = new Timer();
-            timer.schedule(new FlushEventsTimerTask(), 1, flushDelayInMillis);
+            timer.schedule(new FlushEventsTimerTask(), flushDelayInitialInMillis, flushDelayInMillis);
         } else {
             Log.i(TAG, "Shutting Telemetry Down");
             // Shut It Down
@@ -230,6 +230,46 @@ public class MapboxEventManager {
         events.add(event);
 
         rotateSessionId();
+    }
+
+    /**
+     * Push Interactive Events to the system for processing
+     * @param eventWithAttributes Event with attributes
+     */
+    public void pushEvent(Hashtable<String, Object> eventWithAttributes) {
+
+        if (eventWithAttributes == null) {
+            return;
+        }
+
+        String eventType = (String)eventWithAttributes.get(MapboxEvent.ATTRIBUTE_EVENT);
+        if (!TextUtils.isEmpty(eventType) && eventType.equalsIgnoreCase(MapboxEvent.TYPE_MAP_LOAD)) {
+            pushTurnstileEvent();
+        }
+
+       events.add(eventWithAttributes);
+    }
+
+    /**
+     * Pushes turnstile event for internal billing purposes
+     */
+    private void pushTurnstileEvent() {
+
+        Hashtable<String, Object> event = new Hashtable<>();
+        event.put(MapboxEvent.ATTRIBUTE_EVENT, MapboxEvent.TYPE_TURNSTILE);
+        event.put(MapboxEvent.ATTRIBUTE_CREATED, dateFormat.format(new Date()));
+/*
+        // Already set by processing
+        event.put(MapboxEvent.ATTRIBUTE_APP_BUNDLE_ID, context.getPackageName());
+        event.put(MapboxEvent.ATTRIBUTE_VERSION, MapboxEvent.VERSION_NUMBER);
+        event.put(MapboxEvent.ATTRIBUTE_VENDOR_ID, mapboxVendorId);
+*/
+
+        events.add(event);
+
+        // Send to Server Immediately
+        new FlushTheEventsTask().execute();
+        Log.d(TAG, "turnstile event pushed.");
     }
 
     /**
@@ -418,12 +458,13 @@ public class MapboxEventManager {
                     jsonObject.put(MapboxEvent.KEY_COURSE, evt.get(MapboxEvent.KEY_COURSE));
                     jsonObject.put(MapboxEvent.KEY_ALTITUDE, evt.get(MapboxEvent.KEY_ALTITUDE));
                     jsonObject.put(MapboxEvent.KEY_HORIZONTAL_ACCURACY, evt.get(MapboxEvent.KEY_HORIZONTAL_ACCURACY));
+                    jsonObject.put(MapboxEvent.KEY_ZOOM, evt.get(MapboxEvent.KEY_ZOOM));
 
                     // Basic Event Meta Data
-                    jsonObject.put(MapboxEvent.ATTRIBUTE_EVENT, evt.get("event"));
+                    jsonObject.put(MapboxEvent.ATTRIBUTE_EVENT, evt.get(MapboxEvent.ATTRIBUTE_EVENT));
+                    jsonObject.put(MapboxEvent.ATTRIBUTE_CREATED, evt.get(MapboxEvent.ATTRIBUTE_CREATED));
                     jsonObject.put(MapboxEvent.ATTRIBUTE_SESSION_ID, encodeString(mapboxSessionId));
                     jsonObject.put(MapboxEvent.ATTRIBUTE_VERSION, MapboxEvent.VERSION_NUMBER);
-                    jsonObject.put(MapboxEvent.ATTRIBUTE_CREATED, evt.get("created"));
                     jsonObject.put(MapboxEvent.ATTRIBUTE_VENDOR_ID, mapboxVendorId);
                     jsonObject.put(MapboxEvent.ATTRIBUTE_APP_BUNDLE_ID, context.getPackageName());
                     jsonObject.put(MapboxEvent.ATTRIBUTE_MODEL, Build.MODEL);
@@ -460,7 +501,7 @@ public class MapboxEventManager {
                         .post(body)
                         .build();
                 Response response = client.newCall(request).execute();
-                Log.i(TAG, "Response Code from Mapbox Events Server: " + response.code() + " for " + events.size() + " events sent in.");
+                Log.d(TAG, "Response Code from Mapbox Events Server: " + response.code() + " for " + events.size() + " events sent in.");
 
                 // Reset Events
                 // ============
