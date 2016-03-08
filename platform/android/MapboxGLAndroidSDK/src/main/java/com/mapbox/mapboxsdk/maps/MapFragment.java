@@ -9,11 +9,11 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.mapbox.mapboxsdk.R;
-import com.mapbox.mapboxsdk.constants.MapboxConstants;
+import com.mapbox.mapboxsdk.constants.Style;
 import com.mapbox.mapboxsdk.utils.ApiAccess;
 
 /**
- * Fragment wrapper around a {@link MapView}.
+ * Fragment wrapper around a map view.
  * <p>
  * A Map component in an app. This fragment is the simplest way to place a map in an application.
  * It's a wrapper around a view of a map to automatically handle the necessary life cycle needs.
@@ -32,14 +32,6 @@ public class MapFragment extends Fragment {
 
     public static MapFragment newInstance() {
         return new MapFragment();
-    }
-
-    public static MapFragment newInstance(MapboxMapOptions mapboxMapOptions) {
-        final MapFragment mapFragment = new MapFragment();
-        Bundle bundle = new Bundle();
-        bundle.putParcelable(MapboxConstants.FRAG_ARG_MAPBOXMAPOPTIONS, mapboxMapOptions);
-        mapFragment.setArguments(bundle);
-        return mapFragment;
     }
 
     @Override

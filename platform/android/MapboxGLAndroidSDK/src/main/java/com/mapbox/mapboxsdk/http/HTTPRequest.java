@@ -10,70 +10,67 @@ import java.io.InterruptedIOException;
 import java.net.ProtocolException;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.concurrent.locks.ReentrantLock;
 
 import javax.net.ssl.SSLException;
 
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.Interceptor;
+import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-public final class HTTPRequest extends DataRequest implements Callback {
-
-    public static final String LOG_TAG = HTTPRequest.class.getSimpleName();
+class HTTPRequest implements Callback {
+    private static OkHttpClient mClient = new OkHttpClient();
+    private final String LOG_TAG = HTTPRequest.class.getName();
 
     private static final int CONNECTION_ERROR = 0;
     private static final int TEMPORARY_ERROR = 1;
     private static final int PERMANENT_ERROR = 2;
-    private static final int CANCELED_ERROR = 3;
+
+    // Reentrancy is not needed, but "Lock" is an
+    // abstract class.
+    private ReentrantLock mLock = new ReentrantLock();
+
+    private long mNativePtr = 0;
 
     private Call mCall;
     private Request mRequest;
 
-    private HTTPRequest(long nativePtr) {
-        super(nativePtr);
-    }
+    private native void nativeOnFailure(int type, String message);
+    private native void nativeOnResponse(int code, String etag, String modified, String cacheControl, String expires, byte[] body);
 
-    static HTTPRequest create(long nativePtr, String resourceUrl, String userAgent,
-                                      String etag, String modified) {
-
-        HTTPRequest request = new HTTPRequest(nativePtr);
-
-        Request.Builder builder = new Request.Builder()
-                .url(resourceUrl)
-                .tag(resourceUrl.toLowerCase(MapboxConstants.MAPBOX_LOCALE))
-                .addHeader("User-Agent", userAgent);
-
+    private HTTPRequest(long nativePtr, String resourceUrl, String userAgent, String etag, String modified) {
+        mNativePtr = nativePtr;
+        Request.Builder builder = new Request.Builder().url(resourceUrl).tag(resourceUrl.toLowerCase(MapboxConstants.MAPBOX_LOCALE)).addHeader("User-Agent", userAgent);
         if (etag.length() > 0) {
             builder = builder.addHeader("If-None-Match", etag);
         } else if (modified.length() > 0) {
             builder = builder.addHeader("If-Modified-Since", modified);
         }
-        request.mRequest = builder.build();
-        return request;
-    }
-
-    // Native invocation
-    @Override
-    public void start() {
-        mCall = HTTPContext.getInstance()
-                .getClient()
-                .newCall(mRequest);
-
+        mRequest = builder.build();
+        mCall = mClient.newCall(mRequest);
         mCall.enqueue(this);
     }
 
-
-    // Native invocation
-    @Override
     public void cancel() {
         mCall.cancel();
+
+        // TODO: We need a lock here because we can try
+        // to cancel at the same time the request is getting
+        // answered on the OkHTTP thread. We could get rid of
+        // this lock by using Runnable when we move Android
+        // implementation of mbgl::RunLoop to Looper.
+        mLock.lock();
+        mNativePtr = 0;
+        mLock.unlock();
     }
 
     @Override
     public void onResponse(Call call, Response response) throws IOException {
         if (response.isSuccessful()) {
-            Log.d(LOG_TAG, String.format("[HTTP] Request was successful (code = %d).", response.code()));
+            Log.v(LOG_TAG, String.format("[HTTP] Request was successful (code = %d).", response.code()));
         } else {
             // We don't want to call this unsuccessful because a 304 isn't really an error
             String message = !TextUtils.isEmpty(response.message()) ? response.message() : "No additional information";
@@ -93,9 +90,11 @@ public final class HTTPRequest extends DataRequest implements Callback {
             response.body().close();
         }
 
-        nativeOnResponse(mNativePtr, response.code(), response.message(), response.header("ETag"),
-                response.header("Last-Modified"), response.header("Cache-Control"),
-                response.header("Expires"), body);
+        mLock.lock();
+        if (mNativePtr != 0) {
+            nativeOnResponse(response.code(), response.header("ETag"), response.header("Last-Modified"), response.header("Cache-Control"), response.header("Expires"), body);
+        }
+        mLock.unlock();
     }
 
     @Override
@@ -103,17 +102,18 @@ public final class HTTPRequest extends DataRequest implements Callback {
         Log.w(LOG_TAG, String.format("[HTTP] Request could not be executed: %s", e.getMessage()));
 
         int type = PERMANENT_ERROR;
-        if ((e instanceof UnknownHostException)  ||
-                (e instanceof SocketException)   ||
-                (e instanceof ProtocolException) ||
-                (e instanceof SSLException)) {
+        if ((e instanceof UnknownHostException) || (e instanceof SocketException) || (e instanceof ProtocolException) || (e instanceof SSLException)) {
             type = CONNECTION_ERROR;
         } else if ((e instanceof InterruptedIOException)) {
             type = TEMPORARY_ERROR;
-        } else if (mCall.isCanceled()) {
-            type = CANCELED_ERROR;
         }
 
-        nativeOnFailure(mNativePtr, type, e.getMessage());
+        String errorMessage = e.getMessage() != null ? e.getMessage() : "Error processing the request";
+
+        mLock.lock();
+        if (mNativePtr != 0) {
+            nativeOnFailure(type, errorMessage);
+        }
+        mLock.unlock();
     }
 }

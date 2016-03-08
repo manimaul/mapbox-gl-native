@@ -1,6 +1,7 @@
-package com.mapbox.mapboxsdk.maps;
+package com.mapbox.mapboxsdk.maps.widgets;
 
 import android.content.Context;
+import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.view.ViewCompat;
 import android.support.v4.view.ViewPropertyAnimatorCompat;
@@ -11,17 +12,18 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 
 import com.mapbox.mapboxsdk.R;
+import com.mapbox.mapboxsdk.maps.MapboxMap;
 
 import java.lang.ref.WeakReference;
 import java.util.Timer;
 import java.util.TimerTask;
 
 /**
- * CompassView is a UI element overlaid on a map that shows the map's bearing
+ * UI element overlaid on a map to show the map's bearing
  * when it isn't true north (0.0). Tapping the compass resets the bearing to true
  * north and hides the compass.
  */
-public class CompassView extends ImageView {
+public final class CompassView extends ImageView {
 
     private Timer mNorthTimer;
     private double mDirection = 0.0f;
@@ -46,13 +48,17 @@ public class CompassView extends ImageView {
 
         // View configuration
         setImageDrawable(ContextCompat.getDrawable(getContext(), R.drawable.compass));
-        setContentDescription(getResources().getString(R.string.mapbox_compassContentDescription));
+        setContentDescription(getResources().getString(R.string.compassContentDescription));
         setEnabled(false);
 
         // Layout params
         float mScreenDensity = context.getResources().getDisplayMetrics().density;
         ViewGroup.LayoutParams lp = new ViewGroup.LayoutParams((int) (48 * mScreenDensity), (int) (48 * mScreenDensity));
         setLayoutParams(lp);
+    }
+
+    public void setMapboxMap(@NonNull MapboxMap mapboxMap){
+        setOnClickListener(new CompassClickListener(mapboxMap));
     }
 
     @Override
@@ -137,19 +143,19 @@ public class CompassView extends ImageView {
         }
     }
 
-    public static class CompassClickListener implements View.OnClickListener {
+    static class CompassClickListener implements View.OnClickListener {
 
-        private WeakReference<MapView> mMapView;
+        private WeakReference<MapboxMap> mMapboxMap;
 
-        public CompassClickListener(final MapView mapView) {
-            mMapView = new WeakReference<>(mapView);
+        public CompassClickListener(final MapboxMap mapboxMap) {
+            mMapboxMap = new WeakReference<>(mapboxMap);
         }
 
         @Override
         public void onClick(View v) {
-            final MapView mapView = mMapView.get();
-            if (mapView != null) {
-                mapView.resetNorth();
+            final MapboxMap mapboxMap = mMapboxMap.get();
+            if (mapboxMap != null) {
+                mapboxMap.resetNorth();
             }
         }
     }

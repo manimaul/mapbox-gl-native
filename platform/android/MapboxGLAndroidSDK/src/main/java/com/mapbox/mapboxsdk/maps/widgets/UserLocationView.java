@@ -1,4 +1,4 @@
-package com.mapbox.mapboxsdk.maps;
+package com.mapbox.mapboxsdk.maps.widgets;
 
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
@@ -27,24 +27,24 @@ import android.view.ViewGroup;
 
 import com.mapbox.mapboxsdk.R;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
+import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.constants.MyBearingTracking;
 import com.mapbox.mapboxsdk.constants.MyLocationTracking;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.location.LocationListener;
 import com.mapbox.mapboxsdk.location.LocationServices;
+import com.mapbox.mapboxsdk.maps.MapboxMap;
+import com.mapbox.mapboxsdk.maps.Projection;
 
 import java.lang.ref.WeakReference;
 
 /**
- * This view shows the user's location, as determined from GPS, on the map
- * as a dot annotation.
+ * UI element overlaid on a map to show the user's location.
  */
-
 public final class UserLocationView extends View {
 
-    private MapView mMapView;
-
-    private float mDensity;
+    private MapboxMap mMapboxMap;
+    private Projection mProjection;
 
     private boolean mShowMarker;
     private boolean mShowDirection;
@@ -96,7 +96,6 @@ public final class UserLocationView extends View {
     @MyBearingTracking.Mode
     private int mMyBearingTrackingMode;
 
-
     // Compass data
     private MyBearingListener mBearingChangeListener;
 
@@ -131,9 +130,9 @@ public final class UserLocationView extends View {
 
         // Setup the custom paint
         Resources resources = context.getResources();
-        int accuracyColor = resources.getColor(R.color.my_location_ring);
+        int accuracyColor = ContextCompat.getColor(context,R.color.my_location_ring);
 
-        mDensity = resources.getDisplayMetrics().density;
+        float density = resources.getDisplayMetrics().density;
         mMarkerCoordinate = new LatLng(0.0, 0.0);
         mMarkerScreenPoint = new PointF();
         mMarkerScreenMatrix = new Matrix();
@@ -147,7 +146,7 @@ public final class UserLocationView extends View {
         mAccuracyPaintStroke = new Paint();
         mAccuracyPaintStroke.setAntiAlias(true);
         mAccuracyPaintStroke.setStyle(Paint.Style.STROKE);
-        mAccuracyPaintStroke.setStrokeWidth(0.5f * mDensity);
+        mAccuracyPaintStroke.setStrokeWidth(0.5f * density);
         mAccuracyPaintStroke.setColor(accuracyColor);
         mAccuracyPaintStroke.setAlpha((int) (255 * 0.5f));
 
@@ -194,8 +193,9 @@ public final class UserLocationView extends View {
         mUserLocationStaleDrawable.setBounds(mUserLocationStaleDrawableBounds);
     }
 
-    public void setMapView(MapView mapView) {
-        mMapView = mapView;
+    public void setMapboxMap(MapboxMap mapboxMap) {
+        mMapboxMap = mapboxMap;
+        mProjection = mapboxMap.getProjection();
     }
 
     public void onStart() {
@@ -246,7 +246,7 @@ public final class UserLocationView extends View {
         if (myLocationTrackingMode != MyLocationTracking.TRACKING_NONE && mUserLocation != null) {
             // center map directly if we have a location fix
             mMarkerCoordinate = new LatLng(mUserLocation.getLatitude(), mUserLocation.getLongitude());
-            mMapView.getMapboxMap().moveCamera(CameraUpdateFactory.newLatLng(new LatLng(mUserLocation)));
+            mMapboxMap.moveCamera(CameraUpdateFactory.newLatLng(new LatLng(mUserLocation)));
 
             // center view directly
             mMarkerScreenMatrix.reset();
@@ -278,15 +278,15 @@ public final class UserLocationView extends View {
                         mMarkerScreenPoint.y);
 
             } else if (mMyLocationTrackingMode == MyLocationTracking.TRACKING_FOLLOW) {
-                float bearing;
+                double bearing;
                 if (mShowDirection) {
                     bearing = mMyBearingTrackingMode == MyBearingTracking.COMPASS ? mBearingChangeListener.getCompassBearing() : mUserLocation.getBearing();
                 } else {
-                    bearing = (float) mMapView.getBearing();
+                    bearing = mMapboxMap.getCameraPosition().bearing;
                 }
 
                 if (mCurrentMapViewCoordinate == null) {
-                    mCurrentMapViewCoordinate = mMapView.getMapboxMap().getCameraPosition().target;
+                    mCurrentMapViewCoordinate = mMapboxMap.getCameraPosition().target;
                 }
 
                 // only update if there is an actual change
@@ -295,7 +295,7 @@ public final class UserLocationView extends View {
                             .target(mMarkerCoordinate)
                             .bearing(bearing)
                             .build();
-                    mMapView.getMapboxMap().animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), 300, null);
+                    mMapboxMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), 300, null);
                     mMarkerScreenMatrix.reset();
                     mMarkerScreenPoint = getMarkerScreenPoint();
                     mMarkerScreenMatrix.setTranslate(mMarkerScreenPoint.x, mMarkerScreenPoint.y);
@@ -309,10 +309,10 @@ public final class UserLocationView extends View {
             // rotate so arrow in points to bearing
             if (mShowDirection) {
                 if (mMyBearingTrackingMode == MyBearingTracking.COMPASS && mMyLocationTrackingMode == MyLocationTracking.TRACKING_NONE) {
-                    mMarkerScreenMatrix.preRotate(mCompassMarkerDirection + (float) mMapView.getDirection());
+                    mMarkerScreenMatrix.preRotate((float)(mCompassMarkerDirection + mMapboxMap.getCameraPosition().bearing));
                 } else if (mMyBearingTrackingMode == MyBearingTracking.GPS) {
                     if (mMyLocationTrackingMode == MyLocationTracking.TRACKING_NONE) {
-                        mMarkerScreenMatrix.preRotate(mGpsMarkerDirection + (float) mMapView.getDirection());
+                        mMarkerScreenMatrix.preRotate((float)(mGpsMarkerDirection +  mMapboxMap.getCameraPosition().bearing));
                     } else {
                         mMarkerScreenMatrix.preRotate(mGpsMarkerDirection);
                     }
@@ -323,7 +323,7 @@ public final class UserLocationView extends View {
             if (mShowAccuracy && !mStaleMarker) {
                 mAccuracyPath.reset();
                 mAccuracyPath.addCircle(0.0f, 0.0f,
-                        (float) (mMarkerAccuracy / mMapView.getMetersPerPixelAtLatitude(
+                        (float) (mMarkerAccuracy / mMapboxMap.getProjection().getMetersPerPixelAtLatitude(
                                 mMarkerCoordinate.getLatitude())),
                         Path.Direction.CW);
 
@@ -470,9 +470,8 @@ public final class UserLocationView extends View {
                 SensorManager.getRotationMatrix(mR, null, mLastAccelerometer, mLastMagnetometer);
                 SensorManager.getOrientation(mR, mOrientation);
                 float azimuthInRadians = mOrientation[0];
-                float azimuthInDegress = (float) (Math.toDegrees(azimuthInRadians) + 360) % 360;
 
-                mCompassBearing = azimuthInDegress;
+                mCompassBearing = (float) (Math.toDegrees(azimuthInRadians) + 360) % 360;
                 if (mCompassBearing < 0) {
                     // only allow positive degrees
                     mCompassBearing += 360;
@@ -657,7 +656,7 @@ public final class UserLocationView extends View {
     }
 
     void updateOnNextFrame() {
-        mMapView.update();
+        mMapboxMap.invalidate();
     }
 
     /**
@@ -759,10 +758,11 @@ public final class UserLocationView extends View {
 
     public PointF getMarkerScreenPoint() {
         if (mMyLocationTrackingMode == MyLocationTracking.TRACKING_NONE) {
-            mMarkerScreenPoint = mMapView.toScreenLocation(mMarkerCoordinate);
+            mMarkerScreenPoint = mProjection.toScreenLocation(mMarkerCoordinate);
         } else {
-            mMarkerScreenPoint = new PointF(((getMeasuredWidth() + mMapView.getContentPaddingLeft() - mMapView.getContentPaddingRight()) / 2)
-                    , ((getMeasuredHeight() - mMapView.getContentPaddingBottom() + mMapView.getContentPaddingTop()) / 2));
+            int[] contentPadding = mMapboxMap.getPadding();
+            mMarkerScreenPoint = new PointF(((getMeasuredWidth() + contentPadding[0] - contentPadding[2]) / 2)
+                    , ((getMeasuredHeight() - contentPadding[3] + contentPadding[1]) / 2));
         }
         return mMarkerScreenPoint;
     }

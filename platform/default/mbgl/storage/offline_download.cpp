@@ -7,6 +7,7 @@
 #include <mbgl/layer/symbol_layer.hpp>
 #include <mbgl/text/glyph.hpp>
 #include <mbgl/util/tile_cover.hpp>
+#include <mbgl/util/mapbox.hpp>
 
 #include <set>
 
@@ -41,6 +42,8 @@ void OfflineDownload::setState(OfflineRegionDownloadState state) {
     } else {
         deactivateDownload();
     }
+
+    observer->statusChanged(status);
 }
 
 std::vector<Resource> OfflineDownload::spriteResources(const StyleParser& parser) const {
@@ -94,7 +97,7 @@ OfflineRegionStatus OfflineDownload::getStatus() const {
     StyleParser parser;
     parser.parse(*styleResponse->data);
 
-    result.requiredResourceCountIsIndeterminate = false;
+    result.requiredResourceCountIsPrecise = true;
 
     for (const auto& source : parser.sources) {
         switch (source->type) {
@@ -109,7 +112,7 @@ OfflineRegionStatus OfflineDownload::getStatus() const {
                     result.requiredResourceCount += tileResources(source->type, source->tileSize,
                         *StyleParser::parseTileJSON(*sourceResponse->data, source->url, source->type, source->tileSize)).size();
                 } else {
-                    result.requiredResourceCountIsIndeterminate = true;
+                    result.requiredResourceCountIsPrecise = false;
                 }
             }
             break;
@@ -133,11 +136,13 @@ OfflineRegionStatus OfflineDownload::getStatus() const {
 }
 
 void OfflineDownload::activateDownload() {
-    status = offlineDatabase.getRegionCompletedStatus(id);
+    status = OfflineRegionStatus();
+    status.downloadState = OfflineRegionDownloadState::Active;
+
     requiredSourceURLs.clear();
 
     ensureResource(Resource::style(definition.styleURL), [&] (Response styleResponse) {
-        status.requiredResourceCountIsIndeterminate = false;
+        status.requiredResourceCountIsPrecise = true;
 
         StyleParser parser;
         parser.parse(*styleResponse.data);
@@ -153,7 +158,7 @@ void OfflineDownload::activateDownload() {
                 if (source->getInfo()) {
                     ensureTiles(type, tileSize, *source->getInfo());
                 } else {
-                    status.requiredResourceCountIsIndeterminate = true;
+                    status.requiredResourceCountIsPrecise = false;
                     requiredSourceURLs.insert(url);
 
                     ensureResource(Resource::source(url), [=] (Response sourceResponse) {
@@ -161,7 +166,7 @@ void OfflineDownload::activateDownload() {
 
                         requiredSourceURLs.erase(url);
                         if (requiredSourceURLs.empty()) {
-                            status.requiredResourceCountIsIndeterminate = false;
+                            status.requiredResourceCountIsPrecise = true;
                         }
                     });
                 }
@@ -187,10 +192,6 @@ void OfflineDownload::activateDownload() {
             ensureResource(resource);
         }
     });
-
-    // This will be the initial notification, after we've incremented requiredResourceCount
-    // to the reflect the extent to which required resources are already in the database.
-    observer->statusChanged(status);
 }
 
 void OfflineDownload::deactivateDownload() {
@@ -206,15 +207,23 @@ void OfflineDownload::ensureTiles(SourceType type, uint16_t tileSize, const Sour
 void OfflineDownload::ensureResource(const Resource& resource, std::function<void (Response)> callback) {
     status.requiredResourceCount++;
 
-    optional<Response> offlineResponse = offlineDatabase.getRegionResource(id, resource);
+    optional<std::pair<Response, uint64_t>> offlineResponse = offlineDatabase.getRegionResource(id, resource);
     if (offlineResponse) {
         if (callback) {
-            callback(*offlineResponse);
+            callback(offlineResponse->first);
         }
 
-        // Not incrementing status.completedResource{Size,Count} here because previously-existing
-        // resources are already accounted for by offlineDatabase.getRegionCompletedStatus();
+        status.completedResourceCount++;
+        status.completedResourceSize += offlineResponse->second;
+        observer->statusChanged(status);
 
+        return;
+    }
+
+    if (resource.kind == Resource::Kind::Tile
+        && util::mapbox::isMapboxURL(resource.url)
+        && offlineDatabase.offlineMapboxTileCountLimitExceeded()) {
+        observer->mapboxTileCountLimitExceeded(offlineDatabase.getOfflineMapboxTileCountLimit());
         return;
     }
 

@@ -6,7 +6,6 @@ import android.support.annotation.UiThread;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
-import android.widget.VideoView;
 
 import com.mapbox.mapboxsdk.constants.MapboxConstants;
 
@@ -212,7 +211,7 @@ public class UiSettings {
      */
     public void setLogoEnabled(boolean enabled) {
         logoSettings.setEnabled(enabled);
-        mapView.setLogoVisibility(enabled);
+        mapView.setLogoEnabled(enabled);
     }
 
     /**
@@ -308,7 +307,7 @@ public class UiSettings {
      */
     public void setAttributionEnabled(boolean enabled) {
         attributionSettings.setEnabled(enabled);
-        mapView.setAttributionVisibility(enabled ? View.VISIBLE : View.GONE);
+        mapView.setAttributionEnabled(enabled ? View.VISIBLE : View.GONE);
     }
 
     /**
@@ -542,6 +541,27 @@ public class UiSettings {
         setZoomGesturesEnabled(enabled);
     }
 
+    /**
+     * Returns the measured height of the MapView
+     *
+     * @return height in pixels
+     */
+    public float getHeight() {
+        return mapView.getMeasuredHeight();
+    }
+
+    /**
+     * Returns the measured width of the MapView
+     *
+     * @return widht in pixels
+     */
+    public float getWidth() {
+        return mapView.getMeasuredWidth();
+    }
+
+    /**
+     * Invalidates the ViewSettings instances shown on top of the MapView
+     */
     public void invalidate() {
         mapView.setLogoMargins(getLogoMarginLeft(), getLogoMarginTop(), getLogoMarginRight(), getLogoMarginBottom());
         mapView.setCompassMargins(getCompassMarginLeft(), getCompassMarginTop(), getCompassMarginRight(), getCompassMarginBottom());

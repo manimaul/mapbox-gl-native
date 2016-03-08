@@ -2,6 +2,7 @@ export BUILDTYPE ?= Release
 export BUILD_TEST ?= 1
 export BUILD_RENDER ?= 1
 export BUILD_OFFLINE ?= 1
+export ENABLE_COVERAGE ?= 0
 
 # Determine build platform
 ifeq ($(shell uname -s), Darwin)
@@ -119,6 +120,7 @@ endif
 
 .PHONY: check
 check: ; $(RUN) BUILDTYPE=Debug ENABLE_COVERAGE=1 check
+coveralls: ; $(RUN) BUILDTYPE=Debug ENABLE_COVERAGE=1 coveralls
 
 .PHONY: render
 render: ; $(RUN) Makefile/mbgl-render

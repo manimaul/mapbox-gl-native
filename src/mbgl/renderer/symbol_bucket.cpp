@@ -29,7 +29,7 @@
 
 namespace mbgl {
 
-SymbolInstance::SymbolInstance(Anchor& anchor, const std::vector<Coordinate>& line,
+SymbolInstance::SymbolInstance(Anchor& anchor, const GeometryCoordinates& line,
         const Shaping& shapedText, const PositionedIcon& shapedIcon,
         const SymbolLayoutProperties& layout, const bool addToBuffers, const uint32_t index_,
         const float textBoxScale, const float textPadding, const float textAlongLine,
@@ -56,9 +56,12 @@ SymbolInstance::SymbolInstance(Anchor& anchor, const std::vector<Coordinate>& li
     iconCollisionFeature(line, anchor, shapedIcon, iconBoxScale, iconPadding, iconAlongLine) {};
 
 
-SymbolBucket::SymbolBucket(float overscaling_, float zoom_, const MapMode mode_)
-    : overscaling(overscaling_), zoom(zoom_), tileSize(512 * overscaling_), tilePixelRatio(util::EXTENT / tileSize), mode(mode_) {
-}
+SymbolBucket::SymbolBucket(uint32_t overscaling_, float zoom_, const MapMode mode_)
+    : overscaling(overscaling_),
+      zoom(zoom_),
+      tileSize(util::tileSize * overscaling_),
+      tilePixelRatio(util::EXTENT / tileSize),
+      mode(mode_) {}
 
 SymbolBucket::~SymbolBucket() {
     // Do not remove. header file only contains forward definitions to unique pointers.
@@ -271,7 +274,7 @@ void SymbolBucket::addFeatures(uintptr_t tileUID,
 }
 
 
-void SymbolBucket::addFeature(const std::vector<std::vector<Coordinate>> &lines,
+void SymbolBucket::addFeature(const GeometryCollection &lines,
         const Shaping &shapedText, const PositionedIcon &shapedIcon, const GlyphPositions &face) {
 
     const float minScale = 0.5f;
@@ -285,7 +288,7 @@ void SymbolBucket::addFeature(const std::vector<std::vector<Coordinate>> &lines,
     const bool avoidEdges = layout.avoidEdges && layout.placement != PlacementType::Line;
     const float textPadding = layout.text.padding * tilePixelRatio;
     const float iconPadding = layout.icon.padding * tilePixelRatio;
-    const float textMaxAngle = layout.text.maxAngle * M_PI / 180;
+    const float textMaxAngle = layout.text.maxAngle * util::DEG2RAD;
     const bool textAlongLine =
         layout.text.rotationAlignment == RotationAlignmentType::Map &&
         layout.placement == PlacementType::Line;

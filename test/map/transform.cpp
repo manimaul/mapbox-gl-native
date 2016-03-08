@@ -109,8 +109,9 @@ TEST(Transform, InvalidBearing) {
 
 TEST(Transform, PerspectiveProjection) {
     MockView view;
-    Transform transform(view, ConstrainMode::HeightOnly);
+    LatLng loc;
 
+    Transform transform(view, ConstrainMode::HeightOnly);
     transform.resize({{ 1000, 1000 }});
     transform.setScale(2 << 9);
     transform.setPitch(0.9);
@@ -118,25 +119,52 @@ TEST(Transform, PerspectiveProjection) {
 
     // expected values are from mapbox-gl-js
 
-    LatLng loc = transform.getState().pointToLatLng({ 500, 500 });
+    loc = transform.getLatLng();
     ASSERT_NEAR(-77, loc.longitude, 0.0001);
     ASSERT_NEAR(38, loc.latitude, 0.0001);
 
-    loc = transform.getState().pointToLatLng({ 0, 1000 });
+    loc = transform.getState().screenCoordinateToLatLng({ 0, 1000 });
     ASSERT_NEAR(-77.59198961199148, loc.longitude, 0.0002);
     ASSERT_NEAR(38.74661326302018, loc.latitude, 0.0001);
 
-    loc = transform.getState().pointToLatLng({ 1000, 0 });
+    loc = transform.getState().screenCoordinateToLatLng({ 1000, 0 });
     ASSERT_NEAR(-76.75823239205641, loc.longitude, 0.0001);
     ASSERT_NEAR(37.692872969426375, loc.latitude, 0.0001);
 
-    PrecisionPoint point = transform.getState().latLngToPoint({38.74661326302018, -77.59198961199148});
+    ScreenCoordinate point = transform.getState().latLngToScreenCoordinate({38.74661326302018, -77.59198961199148});
     ASSERT_NEAR(point.x, 0, 0.01);
     ASSERT_NEAR(point.y, 1000, 0.01);
 
-    point = transform.getState().latLngToPoint({37.692872969426375, -76.75823239205641});
+    point = transform.getState().latLngToScreenCoordinate({37.692872969426375, -76.75823239205641});
     ASSERT_NEAR(point.x, 1000, 0.02);
     ASSERT_NEAR(point.y, 0, 0.02);
+}
+
+TEST(Transform, UnwrappedLatLng) {
+    MockView view;
+    Transform transform(view, ConstrainMode::HeightOnly);
+    transform.resize({{ 1000, 1000 }});
+    transform.setScale(2 << 9);
+    transform.setPitch(0.9);
+    transform.setLatLng(LatLng(38, -77));
+
+    const TransformState& state = transform.getState();
+
+    LatLng fromGetLatLng = state.getLatLng();
+    ASSERT_DOUBLE_EQ(fromGetLatLng.latitude, 38);
+    ASSERT_DOUBLE_EQ(fromGetLatLng.longitude, -77);
+
+    LatLng fromScreenCoordinate = state.screenCoordinateToLatLng({ 500, 500 });
+    ASSERT_NEAR(fromScreenCoordinate.latitude,   37.999999999999829, 0.0001); // 1.71E-13
+    ASSERT_NEAR(fromScreenCoordinate.longitude, -76.999999999999773, 0.0001); // 2.27E-13
+
+    LatLng wrappedForwards = state.screenCoordinateToLatLng(state.latLngToScreenCoordinate({ 38, 283, LatLng::Wrapped }));
+    ASSERT_NEAR(wrappedForwards.latitude, 37.999999999999716, 0.0001); // 2.84E-13
+    ASSERT_DOUBLE_EQ(wrappedForwards.longitude, fromScreenCoordinate.longitude);
+
+    LatLng wrappedBackwards = state.screenCoordinateToLatLng(state.latLngToScreenCoordinate({ 38, -437, LatLng::Wrapped }));
+    ASSERT_DOUBLE_EQ(wrappedBackwards.latitude, wrappedForwards.latitude);
+    ASSERT_DOUBLE_EQ(wrappedBackwards.longitude, fromScreenCoordinate.longitude);
 }
 
 TEST(Transform, ConstrainHeightOnly) {
@@ -145,17 +173,17 @@ TEST(Transform, ConstrainHeightOnly) {
 
     Transform transform(view, ConstrainMode::HeightOnly);
     transform.resize({{ 1000, 1000 }});
-    transform.setScale(1024);
+    transform.setScale(std::pow(2, util::MAX_ZOOM));
 
     transform.setLatLng(LatLngBounds::world().southwest());
-    loc = transform.getState().pointToLatLng({ 500, 500 });
-    ASSERT_NEAR(-85.021422866378714, loc.latitude, 0.0001);
-    ASSERT_NEAR(180, std::abs(loc.longitude), 0.0001);
+    loc = transform.getLatLng();
+    ASSERT_NEAR(-util::LATITUDE_MAX, loc.latitude, 0.001);
+    ASSERT_NEAR(-util::LONGITUDE_MAX, loc.longitude, 0.001);
 
     transform.setLatLng(LatLngBounds::world().northeast());
-    loc = transform.getState().pointToLatLng({ 500, 500 });
-    ASSERT_NEAR(85.021422866378742, loc.latitude, 0.0001);
-    ASSERT_NEAR(180, std::abs(loc.longitude), 0.0001);
+    loc = transform.getLatLng();
+    ASSERT_NEAR(util::LATITUDE_MAX, loc.latitude, 0.001);
+    ASSERT_NEAR(util::LONGITUDE_MAX, std::abs(loc.longitude), 0.001);
 }
 
 TEST(Transform, ConstrainWidthAndHeight) {
@@ -164,17 +192,17 @@ TEST(Transform, ConstrainWidthAndHeight) {
 
     Transform transform(view, ConstrainMode::WidthAndHeight);
     transform.resize({{ 1000, 1000 }});
-    transform.setScale(1024);
+    transform.setScale(std::pow(2, util::MAX_ZOOM));
 
     transform.setLatLng(LatLngBounds::world().southwest());
-    loc = transform.getState().pointToLatLng({ 500, 500 });
-    ASSERT_NEAR(-85.021422866378714, loc.latitude, 0.0001);
-    ASSERT_NEAR(-179.65667724609375, loc.longitude, 0.0001);
+    loc = transform.getLatLng();
+    ASSERT_NEAR(-util::LATITUDE_MAX, loc.latitude, 0.001);
+    ASSERT_NEAR(-util::LONGITUDE_MAX, loc.longitude, 0.001);
 
     transform.setLatLng(LatLngBounds::world().northeast());
-    loc = transform.getState().pointToLatLng({ 500, 500 });
-    ASSERT_NEAR(85.021422866378742, loc.latitude, 0.0001);
-    ASSERT_NEAR(179.65667724609358, std::abs(loc.longitude), 0.0001);
+    loc = transform.getLatLng();
+    ASSERT_NEAR(util::LATITUDE_MAX, loc.latitude, 0.001);
+    ASSERT_NEAR(util::LONGITUDE_MAX, std::abs(loc.longitude), 0.001);
 }
 
 TEST(Transform, Anchor) {
@@ -192,8 +220,8 @@ TEST(Transform, Anchor) {
     ASSERT_DOUBLE_EQ(10, transform.getZoom());
     ASSERT_DOUBLE_EQ(0, transform.getAngle());
 
-    const PrecisionPoint anchorPoint = {0, 0};
-    const LatLng anchorLatLng = transform.getState().pointToLatLng(anchorPoint);
+    const ScreenCoordinate anchorPoint = {0, 0};
+    const LatLng anchorLatLng = transform.getState().screenCoordinateToLatLng(anchorPoint);
     transform.setAngle(M_PI_4, anchorPoint);
 
     ASSERT_NEAR(M_PI_4, transform.getAngle(), 0.000001);
@@ -215,7 +243,7 @@ TEST(Transform, Padding) {
     ASSERT_DOUBLE_EQ(-100, trueCenter.longitude);
     ASSERT_DOUBLE_EQ(10, transform.getZoom());
     
-    const LatLng manualShiftedCenter = transform.getState().pointToLatLng({
+    const LatLng manualShiftedCenter = transform.getState().screenCoordinateToLatLng({
         1000.0 / 2.0,
         1000.0 / 4.0,
     });

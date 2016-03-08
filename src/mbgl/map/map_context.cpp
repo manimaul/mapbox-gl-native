@@ -233,9 +233,6 @@ bool MapContext::renderSync(const TransformState& state, const FrameData& frame)
 
     transformState = state;
 
-    // Cleanup OpenGL objects that we abandoned since the last render call.
-    glObjectStore.performCleanup();
-
     if (!painter) painter = std::make_unique<Painter>(data, transformState, glObjectStore);
     painter->render(*style, frame, data.getAnnotationManager()->getSpriteAtlas());
 
@@ -244,10 +241,13 @@ bool MapContext::renderSync(const TransformState& state, const FrameData& frame)
         callback = nullptr;
     }
 
+    // Cleanup OpenGL objects that we abandoned since the last render call.
+    glObjectStore.performCleanup();
+
     view.afterRender();
 
     if (style->hasTransitions()) {
-        updateFlags |= Update::Classes;
+        updateFlags |= Update::Zoom;
         asyncUpdate.send();
     } else if (painter->needsAnimation()) {
         updateFlags |= Update::Repaint;

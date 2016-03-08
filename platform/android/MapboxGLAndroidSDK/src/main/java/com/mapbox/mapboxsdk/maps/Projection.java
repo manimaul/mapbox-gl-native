@@ -24,6 +24,20 @@ public class Projection {
     }
 
     /**
+     * <p>
+     * Returns the distance spanned by one pixel at the specified latitude and current zoom level.
+     * </p>
+     * The distance between pixels decreases as the latitude approaches the poles.
+     * This relationship parallels the relationship between longitudinal coordinates at different latitudes.
+     *
+     * @param latitude The latitude for which to return the value.
+     * @return The distance measured in meters.
+     */
+    public double getMetersPerPixelAtLatitude(@FloatRange(from = -180, to = 180) double latitude) {
+        return mMapView.getMetersPerPixelAtLatitude(latitude);
+    }
+
+    /**
      * Returns the geographic location that corresponds to a screen location.
      * The screen location is specified in screen pixels (not display pixels) relative to the
      * top left of the map (not the top left of the whole screen).
@@ -58,7 +72,7 @@ public class Projection {
                 .include(bottomRight)
                 .include(bottomLeft);
 
-        return new VisibleRegion(topLeft,topRight,bottomLeft,bottomRight,builder.build());
+        return new VisibleRegion(topLeft, topRight, bottomLeft, bottomRight, builder.build());
     }
 
     /**
@@ -74,6 +88,16 @@ public class Projection {
     }
 
     /**
+     * Calculates a zoom level based on minimum scale and current scale from MapView
+     *
+     * @param minScale The minimum scale to calculate the zoom level.
+     * @return zoom level that fits the MapView.
+     */
+    public double calculateZoom(float minScale) {
+        return Math.log(mMapView.getScale() * minScale) / Math.log(2);
+    }
+
+    /**
      * Converts a map coordinate to a point in this view's coordinate system.
      *
      * @param location A map coordinate.
@@ -84,20 +108,5 @@ public class Projection {
     @NonNull
     public PointF toScreenLocation(@NonNull LatLng location, @Nullable PointF reuse) {
         return mMapView.toScreenLocation(location, reuse);
-    }
-
-    /**
-     * <p>
-     * Returns the distance spanned by one pixel at the specified latitude and current zoom level.
-     * </p>
-     * The distance between pixels decreases as the latitude approaches the poles.
-     * This relationship parallels the relationship between longitudinal coordinates at different latitudes.
-     *
-     * @param latitude The latitude for which to return the value.
-     * @return The distance measured in meters.
-     */
-    @UiThread
-    public double getMetersPerPixelAtLatitude(@FloatRange(from = -180, to = 180) double latitude) {
-        return mMapView.getMetersPerPixelAtLatitude(latitude);
     }
 }

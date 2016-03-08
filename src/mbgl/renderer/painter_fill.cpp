@@ -65,7 +65,8 @@ void Painter::renderFill(FillBucket& bucket, const FillLayer& layer, const TileI
 
         // Image fill.
         if (pass == RenderPass::Translucent && posA && posB) {
-            float factor = (util::EXTENT / util::tileSize / std::pow(2, state.getIntegerZoom() - id.z)) / id.overscaling;
+            const float factor =
+                (util::EXTENT / util::tileSize / std::pow(2, state.getIntegerZoom() - id.sourceZ));
 
             mat3 patternMatrixA;
             matrix::identity(patternMatrixA);
@@ -99,13 +100,11 @@ void Painter::renderFill(FillBucket& bucket, const FillLayer& layer, const TileI
                 (int)((*posB).size[1] * properties.pattern.value.toScale)
             }};
 
-            int tileSize = 512;
+            float offsetAx = (std::fmod(util::tileSize, imageSizeScaledA[0]) * id.x) / (float)imageSizeScaledA[0];
+            float offsetAy = (std::fmod(util::tileSize, imageSizeScaledA[1]) * id.y) / (float)imageSizeScaledA[1];
 
-            float offsetAx = ((tileSize % imageSizeScaledA[0]) * id.x) / (float)imageSizeScaledA[0];
-            float offsetAy = ((tileSize % imageSizeScaledA[1]) * id.y) / (float)imageSizeScaledA[1];
-
-            float offsetBx = ((tileSize % imageSizeScaledB[0]) * id.x) / (float)imageSizeScaledB[0];
-            float offsetBy = ((tileSize % imageSizeScaledB[1]) * id.y) / (float)imageSizeScaledB[1];
+            float offsetBx = (std::fmod(util::tileSize, imageSizeScaledB[0]) * id.x) / (float)imageSizeScaledB[0];
+            float offsetBy = (std::fmod(util::tileSize, imageSizeScaledB[1]) * id.y) / (float)imageSizeScaledB[1];
 
             patternShader->u_offset_a = std::array<float, 2>{{offsetAx, offsetAy}};
             patternShader->u_offset_b = std::array<float, 2>{{offsetBx, offsetBy}};

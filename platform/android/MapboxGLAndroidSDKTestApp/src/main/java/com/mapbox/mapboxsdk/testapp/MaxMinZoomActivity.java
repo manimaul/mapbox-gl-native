@@ -9,7 +9,7 @@ import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 
-import com.mapbox.mapboxsdk.maps.CameraUpdateFactory;
+import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.constants.Style;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.maps.MapView;
@@ -39,12 +39,12 @@ public class MaxMinZoomActivity extends AppCompatActivity {
 
         mMapView = (MapView) findViewById(R.id.manualZoomMapView);
         mMapView.setAccessToken(ApiAccess.getToken(this));
+        mMapView.setStyle(Style.SATELLITE_STREETS);
         mMapView.onCreate(savedInstanceState);
         mMapView.getMapAsync(new OnMapReadyCallback() {
             @Override
             public void onMapReady(@NonNull final MapboxMap mapboxMap) {
                 mMapboxMap = mapboxMap;
-                mMapboxMap.setStyle(Style.SATELLITE_STREETS);
 
                 UiSettings uiSettings = mapboxMap.getUiSettings();
                 uiSettings.setMinZoom(3);

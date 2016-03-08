@@ -35,7 +35,7 @@ class GlyphStore;
 
 class SymbolFeature {
 public:
-    std::vector<std::vector<Coordinate>> geometry;
+    GeometryCollection geometry;
     std::u32string label;
     std::string sprite;
 };
@@ -44,7 +44,7 @@ struct Anchor;
 
 class SymbolInstance {
     public:
-        explicit SymbolInstance(Anchor& anchor, const std::vector<Coordinate>& line,
+        explicit SymbolInstance(Anchor& anchor, const GeometryCoordinates& line,
                 const Shaping& shapedText, const PositionedIcon& shapedIcon,
                 const SymbolLayoutProperties& layout, const bool inside, const uint32_t index,
                 const float textBoxScale, const float textPadding, const float textAlongLine,
@@ -67,7 +67,7 @@ class SymbolBucket : public Bucket {
     typedef ElementGroup<1> CollisionBoxElementGroup;
 
 public:
-    SymbolBucket(float overscaling, float zoom, const MapMode);
+    SymbolBucket(uint32_t overscaling, float zoom, const MapMode);
     ~SymbolBucket() override;
 
     void upload(gl::GLObjectStore&) override;
@@ -93,7 +93,7 @@ public:
     void placeFeatures(CollisionTile&) override;
 
 private:
-    void addFeature(const std::vector<std::vector<Coordinate>> &lines,
+    void addFeature(const GeometryCollection &lines,
             const Shaping &shapedText, const PositionedIcon &shapedIcon,
             const GlyphPositions &face);
     bool anchorIsTooClose(const std::u32string &text, const float repeatDistance, Anchor &anchor);
@@ -117,7 +117,7 @@ private:
 
     const float overscaling;
     const float zoom;
-    const float tileSize;
+    const uint32_t tileSize;
     const float tilePixelRatio;
     const MapMode mode;
 
