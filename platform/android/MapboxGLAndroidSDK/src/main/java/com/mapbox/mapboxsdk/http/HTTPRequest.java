@@ -4,6 +4,7 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import com.mapbox.mapboxsdk.constants.MapboxConstants;
+import com.mapbox.mapboxsdk.provider.OfflineProviderManager;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -16,12 +17,11 @@ import javax.net.ssl.SSLException;
 
 import okhttp3.Call;
 import okhttp3.Callback;
-import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-class HTTPRequest implements Callback {
+class HTTPRequest extends DataRequest implements Callback {
     private static OkHttpClient mClient = new OkHttpClient();
     private final String LOG_TAG = HTTPRequest.class.getName();
 
@@ -33,16 +33,24 @@ class HTTPRequest implements Callback {
     // abstract class.
     private ReentrantLock mLock = new ReentrantLock();
 
-    private long mNativePtr = 0;
+    private final OfflineProviderManager offlineProviderManager = OfflineProviderManager.getInstance();
 
     private Call mCall;
     private Request mRequest;
 
-    private native void nativeOnFailure(int type, String message);
-    private native void nativeOnResponse(int code, String etag, String modified, String cacheControl, String expires, byte[] body);
+    // Native invocation
+    public DataRequest createRequest(long nativePtr, String resourceUrl, String userAgent,
+                                     String etag, String modified) {
+
+        if (offlineProviderManager.willHandleUrl(resourceUrl)) {
+            return offlineProviderManager.createDataRequest(nativePtr, resourceUrl);
+        } else {
+            return new HTTPRequest(nativePtr, resourceUrl, userAgent, etag, modified);
+        }
+    }
 
     private HTTPRequest(long nativePtr, String resourceUrl, String userAgent, String etag, String modified) {
-        mNativePtr = nativePtr;
+        super(nativePtr);
         Request.Builder builder = new Request.Builder().url(resourceUrl).tag(resourceUrl.toLowerCase(MapboxConstants.MAPBOX_LOCALE)).addHeader("User-Agent", userAgent);
         if (etag.length() > 0) {
             builder = builder.addHeader("If-None-Match", etag);
@@ -54,6 +62,7 @@ class HTTPRequest implements Callback {
         mCall.enqueue(this);
     }
 
+    @Override
     public void cancel() {
         mCall.cancel();
 

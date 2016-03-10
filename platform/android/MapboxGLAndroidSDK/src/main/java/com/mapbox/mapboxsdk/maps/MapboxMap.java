@@ -1,11 +1,9 @@
 package com.mapbox.mapboxsdk.maps;
 
 import android.content.Context;
-
 import android.location.Location;
 import android.os.Bundle;
 import android.os.SystemClock;
-import android.support.annotation.FloatRange;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.UiThread;
@@ -40,6 +38,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * The general class to interact with in the Android Mapbox SDK. It exposes the entry point for all
+ * methods related to the MapView. You cannot instantiate {@link MapboxMap} object directly, rather,
+ * you must obtain one from the getMapAsync() method on a MapFragment or MapView that you have
+ * added to your application.
+ * <p>
+ * Note: Similar to a View object, a GoogleMap should only be read and modified from the main thread.
+ * </p>
+ */
 public class MapboxMap {
 
     private MapView mMapView;
@@ -155,10 +162,25 @@ public class MapboxMap {
      */
     @UiThread
     public final void moveCamera(CameraUpdate update) {
+        moveCamera(update, null);
+    }
+
+    /**
+     * Repositions the camera according to the instructions defined in the update.
+     * The move is instantaneous, and a subsequent getCameraPosition() will reflect the new position.
+     * See CameraUpdateFactory for a set of updates.
+     *
+     * @param update The change that should be applied to the camera.
+     */
+    @UiThread
+    public final void moveCamera(CameraUpdate update, MapboxMap.CancelableCallback callback) {
         mCameraPosition = update.getCameraPosition(this);
         mMapView.jumpTo(mCameraPosition.bearing, mCameraPosition.target, mCameraPosition.tilt, mCameraPosition.zoom);
         if (mOnCameraChangeListener != null) {
             mOnCameraChangeListener.onCameraChange(mCameraPosition);
+        }
+        if (callback != null) {
+            callback.onFinish();
         }
     }
 
@@ -287,27 +309,37 @@ public class MapboxMap {
         });
     }
 
-    // internal time layer conversion
+    /**
+     * Converts milliseconds to nanoseconds
+     *
+     * @param durationMs The time in milliseconds
+     * @return time in nanoseconds
+     */
     private long getDurationNano(long durationMs) {
         return durationMs > 0 ? TimeUnit.NANOSECONDS.convert(durationMs, TimeUnit.MILLISECONDS) : 0;
     }
 
+    /**
+     * Invalidates the current camera position by reconstructing it from mbgl
+     */
     private void invalidateCameraPosition() {
         mInvalidCameraPosition = false;
-        mCameraPosition = new CameraPosition.Builder(true)
-                .bearing((float) mMapView.getBearing())
-                .target(mMapView.getLatLng())
-                .tilt((float) mMapView.getTilt())
-                .zoom((float) mMapView.getZoom())
-                .build();
+        mCameraPosition = mMapView.invalidateCameraPosition();
         if (mOnCameraChangeListener != null) {
             mOnCameraChangeListener.onCameraChange(mCameraPosition);
         }
     }
 
     //
-    // Manual zoom controls
+    //  Reset North
     //
+
+    /**
+     *
+     */
+    public void resetNorth() {
+        mMapView.resetNorth();
+    }
 
     //
     // Debug
@@ -384,7 +416,6 @@ public class MapboxMap {
      */
     @UiThread
     public void setStyleUrl(@NonNull String url) {
-        mStyleUrl = url;
         mMapView.setStyleUrl(url);
     }
 
@@ -418,10 +449,6 @@ public class MapboxMap {
         mMapView.update();
     }
 
-    public void invalidate() {
-        mMapView.invalidate();
-    }
-
     /**
      * <p>
      * Loads a new map style from the specified bundled style.
@@ -452,7 +479,7 @@ public class MapboxMap {
     @UiThread
     @NonNull
     public String getStyleUrl() {
-        return mStyleUrl;
+        return mMapView.getStyleUrl();
     }
 
     //
@@ -507,7 +534,7 @@ public class MapboxMap {
     @UiThread
     @NonNull
     public Marker addMarker(@NonNull MarkerOptions markerOptions) {
-        return addMarker((BaseMarkerOptions)markerOptions);
+        return addMarker((BaseMarkerOptions) markerOptions);
     }
 
     @UiThread
@@ -515,6 +542,7 @@ public class MapboxMap {
     public Marker addMarker(@NonNull BaseMarkerOptions markerOptions) {
         Marker marker = prepareMarker(markerOptions);
         long id = mMapView.addMarker(marker);
+        marker.setMapboxMap(this);
         marker.setId(id);
         mAnnotations.put(id, marker);
         return marker;
@@ -589,10 +617,12 @@ public class MapboxMap {
     @NonNull
     public Polyline addPolyline(@NonNull PolylineOptions polylineOptions) {
         Polyline polyline = polylineOptions.getPolyline();
-        long id = mMapView.addPolyline(polyline);
-        polyline.setMapboxMap(this);
-        polyline.setId(id);
-        mAnnotations.put(id, polyline);
+        if (!polyline.getPoints().isEmpty()) {
+            long id = mMapView.addPolyline(polyline);
+            polyline.setMapboxMap(this);
+            polyline.setId(id);
+            mAnnotations.put(id, polyline);
+        }
         return polyline;
     }
 
@@ -606,9 +636,13 @@ public class MapboxMap {
     @NonNull
     public List<Polyline> addPolylines(@NonNull List<PolylineOptions> polylineOptionsList) {
         int count = polylineOptionsList.size();
+        Polyline polyline;
         List<Polyline> polylines = new ArrayList<>(count);
         for (PolylineOptions options : polylineOptionsList) {
-            polylines.add(options.getPolyline());
+            polyline = options.getPolyline();
+            if (!polyline.getPoints().isEmpty()) {
+                polylines.add(polyline);
+            }
         }
 
         long[] ids = mMapView.addPolylines(polylines);
@@ -640,10 +674,12 @@ public class MapboxMap {
     @NonNull
     public Polygon addPolygon(@NonNull PolygonOptions polygonOptions) {
         Polygon polygon = polygonOptions.getPolygon();
-        long id = mMapView.addPolygon(polygon);
-        polygon.setId(id);
-        polygon.setMapboxMap(this);
-        mAnnotations.put(id, polygon);
+        if (!polygon.getPoints().isEmpty()) {
+            long id = mMapView.addPolygon(polygon);
+            polygon.setId(id);
+            polygon.setMapboxMap(this);
+            mAnnotations.put(id, polygon);
+        }
         return polygon;
     }
 
@@ -657,21 +693,24 @@ public class MapboxMap {
     @NonNull
     public List<Polygon> addPolygons(@NonNull List<PolygonOptions> polygonOptionsList) {
         int count = polygonOptionsList.size();
+
+        Polygon polygon;
         List<Polygon> polygons = new ArrayList<>(count);
         for (PolygonOptions polygonOptions : polygonOptionsList) {
-            polygons.add(polygonOptions.getPolygon());
+            polygon = polygonOptions.getPolygon();
+            if (!polygon.getPoints().isEmpty()) {
+                polygons.add(polygon);
+            }
         }
 
         long[] ids = mMapView.addPolygons(polygons);
         long id = 0;
-        Polygon polygon;
-
         for (int i = 0; i < polygons.size(); i++) {
             polygon = polygons.get(i);
             polygon.setMapboxMap(this);
-            if(ids!=null){
+            if (ids != null) {
                 id = ids[i];
-            }else{
+            } else {
                 // unit test
                 id++;
             }
@@ -779,8 +818,8 @@ public class MapboxMap {
         for (int i = 0; i < count; i++) {
             ids[i] = mAnnotations.keyAt(i);
             annotation = mAnnotations.get(ids[i]);
-            if(annotation instanceof Marker){
-                ((Marker)annotation).hideInfoWindow();
+            if (annotation instanceof Marker) {
+                ((Marker) annotation).hideInfoWindow();
             }
         }
         mMapView.removeAnnotations(ids);
@@ -1047,6 +1086,17 @@ public class MapboxMap {
         mUiSettings.invalidate();
 
         moveCamera(CameraUpdateFactory.newCameraPosition(new CameraPosition.Builder(mCameraPosition).build()));
+    }
+
+    /**
+     *
+     * @return
+     */
+    public int[] getPadding() {
+        return new int[]{mMapView.getContentPaddingLeft(),
+                mMapView.getContentPaddingTop(),
+                mMapView.getContentPaddingRight(),
+                mMapView.getContentPaddingBottom()};
     }
 
     //
@@ -1325,6 +1375,14 @@ public class MapboxMap {
     }
 
     //
+    // Invalidate
+    //
+
+    public void invalidate(){
+        mMapView.update();
+    }
+
+    //
     // Interfaces
     //
 
@@ -1353,7 +1411,7 @@ public class MapboxMap {
     }
 
     /**
-     * Interface definition for a callback to be invoked for when the camera changes position.
+     * Interface definition for a callback to be invoked when the camera changes position.
      */
     public interface OnCameraChangeListener {
         /**
@@ -1367,7 +1425,7 @@ public class MapboxMap {
     }
 
     /**
-     * Interface definition for a callback to be invoked on every frame rendered to the map view.
+     * Interface definition for a callback to be invoked when a frame is rendered to the map view.
      *
      * @see MapboxMap#setOnFpsChangedListener(OnFpsChangedListener)
      */
@@ -1439,7 +1497,7 @@ public class MapboxMap {
     }
 
     /**
-     * Callback interface for when the user long presses on a marker's info window.
+     *  Interface definition for a callback to be invoked when the user long presses on a marker's info window.
      *
      * @see MapboxMap#setOnInfoWindowClickListener(OnInfoWindowClickListener)
      */
@@ -1454,7 +1512,7 @@ public class MapboxMap {
     }
 
     /**
-     * Callback interface for close events on a marker's info window.
+     * Interface definition for a callback to be invoked when a marker's info window is closed.
      *
      * @see MapboxMap#setOnInfoWindowCloseListener(OnInfoWindowCloseListener)
      */
@@ -1532,7 +1590,7 @@ public class MapboxMap {
     }
 
     /**
-     * A callback interface for reporting when a task is complete or cancelled.
+     * Interface definition for a callback to be invoked when a task is complete or cancelled.
      */
     public interface CancelableCallback {
         /**

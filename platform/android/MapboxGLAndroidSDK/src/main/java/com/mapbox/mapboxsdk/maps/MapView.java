@@ -1672,11 +1672,9 @@ public class MapView extends FrameLayout {
         // Called for a long press
         @Override
         public void onLongPress(MotionEvent e) {
-            LatLng point = fromScreenLocation(new PointF(e.getX(), e.getY()));
-            mMapOverlayDispatch.onOverlayLongPress(point);
-
             MapboxMap.OnMapLongClickListener listener = mMapboxMap.getOnMapLongClickListener();
             if (listener != null && !mQuickZoom) {
+                LatLng point = fromScreenLocation(new PointF(e.getX(), e.getY()));
                 listener.onMapLongClick(point);
             }
         }

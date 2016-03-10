@@ -12,6 +12,7 @@ public class OfflineRequest extends DataRequest implements OfflineProviderCallba
 
     private OfflineRequest(long mNativePtr) {
         super(mNativePtr);
+        start();
     }
 
     public static DataRequest create(long nativePtr, OfflineProvider provider, int z, int x, int y) {
@@ -29,23 +30,23 @@ public class OfflineRequest extends DataRequest implements OfflineProviderCallba
         return offlineRequest;
     }
 
-    @Override
-    void start() {
+    private void start() {
         if (provider != null) {
             provider.startFetchForTile(z, x, y, this);
         } else if (response != null) {
-            nativeOnResponse(mNativePtr,
+            nativeOnResponse(
                     200,
                     "OK",
                     ""/*some id tag*/,
                     ""/*Sat, 03 Oct 2015 20:59:43 GMT*/,
                     "no-cache, no-store",
-                    null,
-                    response);
+                    response
+            );
         } else {
-            nativeOnFailure(mNativePtr,
+            nativeOnFailure(
                     404,
-                    "");
+                    ""
+            );
         }
     }
 
@@ -58,18 +59,19 @@ public class OfflineRequest extends DataRequest implements OfflineProviderCallba
     public void onResult(boolean success, byte[] result) {
         if (!mCanceled) {
             if (success) {
-                nativeOnResponse(mNativePtr,
+                nativeOnResponse(
                         200,
                         "OK",
                         ""/*some id tag*/,
                         ""/*Sat, 03 Oct 2015 20:59:43 GMT*/,
                         "no-cache, no-store",
-                        null,
-                        result);
+                        result
+                );
             } else {
-                nativeOnFailure(mNativePtr,
+                nativeOnFailure(
                         404,
-                        "");
+                        ""
+                );
             }
         }
     }
