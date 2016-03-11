@@ -21,7 +21,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-class HTTPRequest extends DataRequest implements Callback {
+public class HTTPRequest implements Callback {
     private static OkHttpClient mClient = new OkHttpClient();
     private final String LOG_TAG = HTTPRequest.class.getName();
 
@@ -33,24 +33,23 @@ class HTTPRequest extends DataRequest implements Callback {
     // abstract class.
     private ReentrantLock mLock = new ReentrantLock();
 
-    private final OfflineProviderManager offlineProviderManager = OfflineProviderManager.getInstance();
+    private long mNativePtr = 0;
+    private final OfflineProviderManager mOfflineProviderManager = OfflineProviderManager.getInstance();
+    private final String mResourceUrl;
 
     private Call mCall;
     private Request mRequest;
 
-    // Native invocation
-    public DataRequest createRequest(long nativePtr, String resourceUrl, String userAgent,
-                                     String etag, String modified) {
-
-        if (offlineProviderManager.willHandleUrl(resourceUrl)) {
-            return offlineProviderManager.createDataRequest(nativePtr, resourceUrl);
-        } else {
-            return new HTTPRequest(nativePtr, resourceUrl, userAgent, etag, modified);
-        }
-    }
+    native void nativeOnFailure(int type, String message);
+    native void nativeOnResponse(int code, String etag, String modified, String cacheControl, String expires, byte[] body);
 
     private HTTPRequest(long nativePtr, String resourceUrl, String userAgent, String etag, String modified) {
-        super(nativePtr);
+        mNativePtr = nativePtr;
+        mResourceUrl = resourceUrl;
+        if (mOfflineProviderManager.willHandleUrl(resourceUrl)) {
+            mOfflineProviderManager.handleRequest(this, resourceUrl);
+            return;
+        }
         Request.Builder builder = new Request.Builder().url(resourceUrl).tag(resourceUrl.toLowerCase(MapboxConstants.MAPBOX_LOCALE)).addHeader("User-Agent", userAgent);
         if (etag.length() > 0) {
             builder = builder.addHeader("If-None-Match", etag);
@@ -62,9 +61,12 @@ class HTTPRequest extends DataRequest implements Callback {
         mCall.enqueue(this);
     }
 
-    @Override
     public void cancel() {
-        mCall.cancel();
+        if (mCall == null) {
+            mOfflineProviderManager.cancelRequest(this);
+        } else {
+            mCall.cancel();
+        }
 
         // TODO: We need a lock here because we can try
         // to cancel at the same time the request is getting
@@ -125,4 +127,30 @@ class HTTPRequest extends DataRequest implements Callback {
         }
         mLock.unlock();
     }
+
+    public String getResourceUrl() {
+        return mResourceUrl;
+    }
+
+    public static final int OFFLINE_RESPONSE_CODE = 200;
+    public static final int OFFLINE_FAILURE_CODE = 404;
+    public static final String OFFLINE_FAILURE_MESSAGE = "";
+    public static final String OFFLINE_RESPONSE_ETAG = "OK";
+    public static final String OFFLINE_RESPONSE_MODIFIED = "";
+    public static final String OFFLINE_RESPONSE_CACHE_CONTROL = "no-cache, no-store";
+    public static final String OFFLINE_RESPONSE_CACHE_EXPIRES = "";
+
+    public void onOfflineResponse(byte[] body) {
+        nativeOnResponse(OFFLINE_RESPONSE_CODE,
+                OFFLINE_RESPONSE_ETAG,
+                OFFLINE_RESPONSE_MODIFIED,
+                OFFLINE_RESPONSE_CACHE_CONTROL,
+                OFFLINE_RESPONSE_CACHE_EXPIRES,
+                body);
+    }
+
+    public void onOfflineFailure() {
+        nativeOnFailure(OFFLINE_FAILURE_CODE, OFFLINE_FAILURE_MESSAGE);
+    }
+
 }

@@ -1,14 +1,16 @@
 package com.mapbox.mapboxsdk.provider;
 
 import android.content.res.Resources;
+import android.util.Log;
 
-import com.mapbox.mapboxsdk.http.DataRequest;
-import com.mapbox.mapboxsdk.http.OfflineRequest;
+import com.mapbox.mapboxsdk.http.HTTPRequest;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
 public class OfflineProviderManager {
+
+    private static final String LOG_TAG = OfflineProviderManager.class.getSimpleName();
 
     public static final String LOCALHOST = "localhost";
     private static OfflineProviderManager sInstance = new OfflineProviderManager();
@@ -66,27 +68,6 @@ public class OfflineProviderManager {
         return false;
     }
 
-    public DataRequest createDataRequest(long nativePtr, String resourceUrl) {
-        DataRequest request = null;
-        int i = resourceUrl.indexOf(LOCALHOST);
-        if (i > 0) {
-            if (mProvider != null) {
-                String[] zxy = resourceUrl.substring(i + LOCALHOST.length() + 1, resourceUrl.length()).split("/");
-                int z, x, y;
-                if (zxy.length == 3) {
-                    z = Integer.parseInt(zxy[0]);
-                    x = Integer.parseInt(zxy[1]);
-                    y = Integer.parseInt(zxy[2]);
-                    request = OfflineRequest.create(nativePtr, mProvider, z, x, y);
-                } else {
-                    request = OfflineRequest.create(nativePtr, mData);
-                }
-            }
-        }
-
-        return request;
-    }
-
     String getUrlHost(String url) {
         if (url != null) {
             int li = url.indexOf("://");
@@ -99,5 +80,39 @@ public class OfflineProviderManager {
             }
         }
         return null;
+    }
+
+    public void handleRequest(final HTTPRequest httpRequest, String resourceUrl) {
+        int i = resourceUrl.indexOf(LOCALHOST);
+        if (i > 0) {
+            if (mProvider != null) {
+                String[] zxy = resourceUrl.substring(i + LOCALHOST.length() + 1, resourceUrl.length()).split("/");
+                int z, x, y;
+                if (zxy.length == 3) {
+                    // Tile request
+                    z = Integer.parseInt(zxy[0]);
+                    x = Integer.parseInt(zxy[1]);
+                    y = Integer.parseInt(zxy[2]);
+
+                    mProvider.startFetchForTile(z, x, y, new OfflineProviderCallback() {
+                        @Override
+                        public void onResult(boolean success, byte[] result) {
+                            if (success) {
+                                httpRequest.onOfflineResponse(result);
+                            } else {
+                                httpRequest.onOfflineFailure();
+                            }
+                        }
+                    });
+                } else {
+                    // Style data json
+                    httpRequest.onOfflineResponse(mData);
+                }
+            }
+        }
+    }
+
+    public void cancelRequest(HTTPRequest httpRequest) {
+        Log.d(LOG_TAG, "Http request cancel no-op: " + httpRequest.getResourceUrl());
     }
 }
