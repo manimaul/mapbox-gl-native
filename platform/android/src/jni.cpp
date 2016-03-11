@@ -47,6 +47,13 @@ jni::jmethodID* latLngConstructorId = nullptr;
 jni::jfieldID* latLngLatitudeId = nullptr;
 jni::jfieldID* latLngLongitudeId = nullptr;
 
+jni::jclass* visibleRegionClass = nullptr;
+jni::jfieldID* visibleRegionFarLeftId = nullptr;
+jni::jfieldID* visibleRegionFarRightId = nullptr;
+jni::jfieldID* visibleRegionNearLeftId = nullptr;
+jni::jfieldID* visibleRegionNearRightId = nullptr;
+jni::jfieldID* visibleRegionLatLngBoundsId = nullptr;
+
 jni::jclass* latLngBoundsClass = nullptr;
 jni::jmethodID* latLngBoundsConstructorId = nullptr;
 jni::jfieldID* latLngBoundsLatNorthId = nullptr;
@@ -1156,7 +1163,7 @@ jni::jobject* nativeLatLngForProjectedMeters(JNIEnv *env, jni::jobject* obj, jlo
     return &jni::NewObject(*env, *latLngClass, *latLngConstructorId, latLng.latitude, latLng.longitude);
 }
 
-jni::jobject* nativePixelForLatLng(JNIEnv *env, jni::jobject* obj, jlong nativeMapViewPtr, jni::jobject* latLng) {
+void nativePixelForLatLng(JNIEnv *env, jni::jobject* obj, jlong nativeMapViewPtr, jni::jobject* latLng, jni::jobject* pointF) {
     mbgl::Log::Debug(mbgl::Event::JNI, "nativePixelForLatLng");
     assert(nativeMapViewPtr != 0);
     NativeMapView *nativeMapView = reinterpret_cast<NativeMapView *>(nativeMapViewPtr);
@@ -1164,8 +1171,71 @@ jni::jobject* nativePixelForLatLng(JNIEnv *env, jni::jobject* obj, jlong nativeM
     jdouble latitude = jni::GetField<jdouble>(*env, latLng, *latLngLatitudeId);
     jdouble longitude = jni::GetField<jdouble>(*env, latLng, *latLngLongitudeId);
 
-    mbgl::ScreenCoordinate pixel = nativeMapView->getMap().pixelForLatLng(mbgl::LatLng(latitude, longitude));
-    return &jni::NewObject(*env, *pointFClass, *pointFConstructorId, static_cast<jfloat>(pixel.x), static_cast<jfloat>(pixel.y));
+    mbgl::vec2<double> pixel = nativeMapView->getMap().pixelForLatLng(mbgl::LatLng(latitude, longitude));
+
+    jni::SetField<jfloat>(*env, pointF, *pointFXId, static_cast<jfloat>(pixel.x));
+    jni::SetField<jfloat>(*env, pointF, *pointFYId, static_cast<jfloat>(pixel.y));
+}
+
+void nativeUpdateMapBounds(JNIEnv *env, jni::jobject* obj, jlong nativeMapViewPtr, jni::jobject* visibleRegion, jni::jobject* wgsCenter) {
+    mbgl::Log::Debug(mbgl::Event::JNI, "nativeUpdateMapBounds");
+    assert(nativeMapViewPtr != 0);
+    NativeMapView *nativeMapView = reinterpret_cast<NativeMapView *>(nativeMapViewPtr);
+
+    jni::jobject* wgsBounds = jni::GetField<jni::jobject*>(*env, visibleRegion, *visibleRegionLatLngBoundsId);
+
+    mbgl::LatLng center = nativeMapView->getMap().getLatLng();
+    double w = static_cast<double>(nativeMapView->getWidth());
+    double h = static_cast<double>(nativeMapView->getHeight());
+
+    jni::SetField<jdouble>(*env, wgsCenter, *latLngLatitudeId, center.latitude);
+    jni::SetField<jdouble>(*env, wgsCenter, *latLngLongitudeId, center.longitude);
+
+    mbgl::LatLngBounds bounds = mbgl::LatLngBounds::empty();
+
+    mbgl::ScreenCoordinate pixel = {0, 0}; //bottom left
+    {
+
+        mbgl::LatLng latLng = nativeMapView->getMap().latLngForPixel(pixel);
+        bounds.extend(latLng);
+        jni::jobject* jLatLng = jni::GetField<jni::jobject*>(*env, visibleRegion, *visibleRegionNearLeftId);
+        jni::SetField<jdouble>(*env, jLatLng, *latLngLatitudeId, latLng.latitude);
+        jni::SetField<jdouble>(*env, jLatLng, *latLngLongitudeId, latLng.longitude);
+    }
+
+
+    pixel.x = w; //bottom right
+    {
+        mbgl::LatLng latLng = nativeMapView->getMap().latLngForPixel(pixel);
+        bounds.extend(latLng);
+        jni::jobject* jLatLng = jni::GetField<jni::jobject*>(*env, visibleRegion, *visibleRegionNearRightId);
+        jni::SetField<jdouble>(*env, jLatLng, *latLngLatitudeId, latLng.latitude);
+        jni::SetField<jdouble>(*env, jLatLng, *latLngLongitudeId, latLng.longitude);
+    }
+
+    pixel.y = h; //top right
+    {
+        mbgl::LatLng latLng = nativeMapView->getMap().latLngForPixel(pixel);
+        bounds.extend(latLng);
+        jni::jobject* jLatLng = jni::GetField<jni::jobject*>(*env, visibleRegion, *visibleRegionFarRightId);
+        jni::SetField<jdouble>(*env, jLatLng, *latLngLatitudeId, latLng.latitude);
+        jni::SetField<jdouble>(*env, jLatLng, *latLngLongitudeId, latLng.longitude);
+    }
+
+    pixel.x = 0; //top left
+    {
+        mbgl::LatLng latLng = nativeMapView->getMap().latLngForPixel(pixel);
+        bounds.extend(latLng);
+        jni::jobject* jLatLng = jni::GetField<jni::jobject*>(*env, visibleRegion, *visibleRegionFarLeftId);
+        jni::SetField<jdouble>(*env, jLatLng, *latLngLatitudeId, latLng.latitude);
+        jni::SetField<jdouble>(*env, jLatLng, *latLngLongitudeId, latLng.longitude);
+    }
+
+
+    jni::SetField<jdouble>(*env, wgsBounds, *latLngBoundsLatNorthId, bounds.north());
+    jni::SetField<jdouble>(*env, wgsBounds, *latLngBoundsLatSouthId, bounds.south());
+    jni::SetField<jdouble>(*env, wgsBounds, *latLngBoundsLonEastId, bounds.east());
+    jni::SetField<jdouble>(*env, wgsBounds, *latLngBoundsLonWestId, bounds.west());
 }
 
 jni::jobject* nativeLatLngForPixel(JNIEnv *env, jni::jobject* obj, jlong nativeMapViewPtr, jni::jobject* pixel) {
@@ -1754,6 +1824,14 @@ extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     latLngBoundsLonEastId = &jni::GetFieldID(env, *latLngBoundsClass, "mLonEast", "D");
     latLngBoundsLonWestId = &jni::GetFieldID(env, *latLngBoundsClass, "mLonWest", "D");
 
+    visibleRegionClass = &jni::FindClass(env, "com/mapbox/mapboxsdk/geometry/VisibleRegion");
+    visibleRegionFarLeftId = &jni::GetFieldID(env, *visibleRegionClass, "farLeft","Lcom/mapbox/mapboxsdk/geometry/LatLng;");
+    visibleRegionFarRightId = &jni::GetFieldID(env, *visibleRegionClass, "farRight","Lcom/mapbox/mapboxsdk/geometry/LatLng;");
+    visibleRegionNearLeftId = &jni::GetFieldID(env, *visibleRegionClass, "nearLeft","Lcom/mapbox/mapboxsdk/geometry/LatLng;");
+    visibleRegionNearRightId = &jni::GetFieldID(env, *visibleRegionClass, "nearRight","Lcom/mapbox/mapboxsdk/geometry/LatLng;");
+    visibleRegionLatLngBoundsId = &jni::GetFieldID(env, *visibleRegionClass, "latLngBounds", "Lcom/mapbox/mapboxsdk/geometry/LatLngBounds;");
+
+
     iconClass = &jni::FindClass(env, "com/mapbox/mapboxsdk/annotations/Icon");
     iconClass = jni::NewGlobalRef(env, iconClass).release();
     iconIdId = &jni::GetFieldID(env, *iconClass, "mId", "Ljava/lang/String;");
@@ -1895,7 +1973,8 @@ extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
         MAKE_NATIVE_METHOD(nativeGetMetersPerPixelAtLatitude, "(JDD)D"),
         MAKE_NATIVE_METHOD(nativeProjectedMetersForLatLng, "(JLcom/mapbox/mapboxsdk/geometry/LatLng;)Lcom/mapbox/mapboxsdk/geometry/ProjectedMeters;"),
         MAKE_NATIVE_METHOD(nativeLatLngForProjectedMeters, "(JLcom/mapbox/mapboxsdk/geometry/ProjectedMeters;)Lcom/mapbox/mapboxsdk/geometry/LatLng;"),
-        MAKE_NATIVE_METHOD(nativePixelForLatLng, "(JLcom/mapbox/mapboxsdk/geometry/LatLng;)Landroid/graphics/PointF;"),
+        MAKE_NATIVE_METHOD(nativePixelForLatLng, "(JLcom/mapbox/mapboxsdk/geometry/LatLng;Landroid/graphics/PointF;)V"),
+        MAKE_NATIVE_METHOD(nativeUpdateMapBounds, "(JLcom/mapbox/mapboxsdk/geometry/VisibleRegion;Lcom/mapbox/mapboxsdk/geometry/LatLng;)V"),
         MAKE_NATIVE_METHOD(nativeLatLngForPixel, "(JLandroid/graphics/PointF;)Lcom/mapbox/mapboxsdk/geometry/LatLng;"),
         MAKE_NATIVE_METHOD(nativeGetTopOffsetPixelsForAnnotationSymbol, "(JLjava/lang/String;)D"),
         MAKE_NATIVE_METHOD(nativeJumpTo, "(JDLcom/mapbox/mapboxsdk/geometry/LatLng;DD)V"),
