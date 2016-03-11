@@ -382,10 +382,6 @@ public class MainActivity extends AppCompatActivity {
                                 startActivity(new Intent(getApplicationContext(), SupportMapFragmentActivity.class));
                                 return true;
 
-                            case R.id.action_offline_map_fragment:
-                                startActivity(new Intent(getApplicationContext(), OfflineMapFragmentActivity.class));
-                                return true;
-
                             case R.id.action_press_for_marker:
                                 startActivity(new Intent(getApplicationContext(), PressForMarkerActivity.class));
                                 return true;

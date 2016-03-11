@@ -51,8 +51,6 @@
         <activity
             android:name=".MapFragmentActivity"
             android:label="@string/activity_map_fragment" />
-        <activity android:name=".OfflineMapFragmentActivity"
-                  android:label="@string/activity_map_fragment" />
         <activity
             android:name=".SupportMapFragmentActivity"
             android:label="@string/activity_map_fragment_suport" />

@@ -804,7 +804,6 @@ public class MapView extends FrameLayout {
         return mStyleUrl;
     }
 
-
     @UiThread
     void setOfflineProvider(OfflineProvider provider) {
         String style = OfflineProviderManager.getInstance().registerProvider(getResources(), provider);
