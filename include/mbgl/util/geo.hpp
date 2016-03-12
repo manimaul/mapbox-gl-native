@@ -25,19 +25,17 @@ public:
     LatLng wrapped() const { return { latitude, longitude, Wrapped }; }
 
     void wrap() {
-        if (longitude < -util::LONGITUDE_MAX) longitude = std::fmod(longitude, util::LONGITUDE_MAX * 2);
-        if (longitude > util::LONGITUDE_MAX) longitude = -util::LONGITUDE_MAX + std::fmod(longitude, util::LONGITUDE_MAX);
+        if (longitude < -util::LONGITUDE_MAX) longitude = util::LONGITUDE_MAX + std::fmod(longitude + util::LONGITUDE_MAX, util::DEGREES_MAX);
+        if (longitude > util::LONGITUDE_MAX) longitude = -util::LONGITUDE_MAX + std::fmod(longitude + util::LONGITUDE_MAX, util::DEGREES_MAX);
     }
 
-    /** If a path crossing the antemeridian would be shorter, extend the final
-      coordinate so that interpolating between the two endpoints will cross it. */
-    void unwrapForShortestPath(const LatLng& start) {
-        if (std::abs(start.longitude) + std::abs(longitude) > util::LONGITUDE_MAX) {
-            if (start.longitude > 0 && longitude < 0) {
-                longitude += util::DEGREES_MAX;
-            } else if (start.longitude < 0 && longitude > 0) {
-                longitude -= util::DEGREES_MAX;
-            }
+    // If we pass through the antimeridian, we update the start coordinate to make sure
+    // the end coordinate is always wrapped.
+    void unwrapForShortestPath(const LatLng& end) {
+        if (end.longitude < -util::LONGITUDE_MAX) {
+            longitude += util::DEGREES_MAX;
+        } else if (end.longitude > util::LONGITUDE_MAX) {
+            longitude -= util::DEGREES_MAX;
         }
     }
 
@@ -201,9 +199,10 @@ public:
         : top(t), left(l), bottom(b), right(r) {}
     
     explicit operator bool() const {
-        return top || left || bottom || right;
+        return !(std::isnan(top) || std::isnan(left) || std::isnan(bottom) || std::isnan(right))
+            && (top || left || bottom || right);
     }
-    
+
     void operator+=(const EdgeInsets& o) {
         top += o.top;
         left += o.left;

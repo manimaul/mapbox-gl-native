@@ -13,7 +13,6 @@ import android.content.IntentFilter;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
-import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.PointF;
@@ -39,7 +38,6 @@ import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.GestureDetector;
-import android.view.Gravity;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -86,7 +84,6 @@ import com.mapbox.mapboxsdk.telemetry.MapboxEvent;
 import com.mapbox.mapboxsdk.telemetry.MapboxEventManager;
 import com.mapbox.mapboxsdk.provider.OfflineProvider;
 import com.mapbox.mapboxsdk.provider.OfflineProviderManager;
-import com.mapbox.mapboxsdk.utils.ApiAccess;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -115,12 +112,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * @see MapView#setAccessToken(String)
  */
 public class MapView extends FrameLayout {
-
-    private static final String TAG = "MapView";
-    private static final float DIMENSION_SEVEN_DP = 7f;
-    private static final float DIMENSION_TEN_DP = 10f;
-    private static final float DIMENSION_SIXTEEN_DP = 16f;
-    private static final float DIMENSION_SEVENTY_SIX_DP = 76f;
 
     private MapboxMap mMapboxMap;
     private List<Icon> mIcons;
@@ -152,31 +143,39 @@ public class MapView extends FrameLayout {
     private int mContentPaddingRight;
     private int mContentPaddingBottom;
 
-    private OnMapReadyCallback mMapReadyCallback;
     private String mStyleUrl;
+
+    private List<OnMapReadyCallback> mOnMapReadyCallbackList;
     private boolean mInitialLoad;
     private boolean mDestroyed;
 
     @UiThread
     public MapView(@NonNull Context context) {
         super(context);
-        initialize(context, null);
+        initialize(context, MapboxMapOptions.createFromAttributes(context, null));
     }
 
     @UiThread
     public MapView(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
-        initialize(context, attrs);
+        initialize(context, MapboxMapOptions.createFromAttributes(context, attrs));
     }
 
     @UiThread
     public MapView(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
-        initialize(context, attrs);
+        initialize(context, MapboxMapOptions.createFromAttributes(context, attrs));
     }
 
-    private void initialize(@NonNull Context context, @Nullable AttributeSet attrs) {
+    @UiThread
+    public MapView(@NonNull Context context, @Nullable MapboxMapOptions options) {
+        super(context);
+        initialize(context, options);
+    }
+
+    private void initialize(@NonNull Context context, @NonNull MapboxMapOptions options) {
         mInitialLoad = true;
+        mOnMapReadyCallbackList = new ArrayList<>();
         mOnMapChangedListener = new CopyOnWriteArrayList<>();
         mMapboxMap = new MapboxMap(this);
         mIcons = new ArrayList<>();
@@ -212,11 +211,6 @@ public class MapView extends FrameLayout {
         mRotateGestureDetector = new RotateGestureDetector(context, new RotateGestureListener());
         mShoveGestureDetector = new ShoveGestureDetector(context, new ShoveGestureListener());
 
-        // Shows the zoom controls
-        if (!context.getPackageManager()
-                .hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN_MULTITOUCH)) {
-            mMapboxMap.getUiSettings().setZoomControlsEnabled(true);
-        }
         mZoomButtonsController = new ZoomButtonsController(this);
         mZoomButtonsController.setZoomSpeed(MapboxConstants.ANIMATION_DURATION);
         mZoomButtonsController.setOnZoomListener(new OnZoomListener());
@@ -242,68 +236,68 @@ public class MapView extends FrameLayout {
 
         mScreenDensity = context.getResources().getDisplayMetrics().density;
 
-        // Load the attributes
-        TypedArray typedArray = context.obtainStyledAttributes(attrs, R.styleable.MapView, 0, 0);
-        try {
-            // Debug mode
-            mMapboxMap.setDebugActive(typedArray.getBoolean(R.styleable.MapView_debug_active, false));
+        setInitialState(options);
 
-            // Move camera
-            CameraPosition cameraPosition = new CameraPosition.Builder(typedArray).build();
-            mMapboxMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+        // Shows the zoom controls
+        if (!context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN_MULTITOUCH)) {
+            mMapboxMap.getUiSettings().setZoomControlsEnabled(true);
+        }
+    }
 
-            // Access token
-            String accessToken = typedArray.getString(R.styleable.MapView_access_token);
-            if (accessToken != null) {
-                setAccessToken(typedArray.getString(R.styleable.MapView_access_token));
-            }
+    private void setInitialState(MapboxMapOptions options) {
+        mMapboxMap.setDebugActive(options.getDebugActive());
 
-            // Style url
-            String styleUrl = typedArray.getString(R.styleable.MapView_style_url);
-            if (styleUrl != null) {
-                mMapboxMap.setStyleUrl(styleUrl);
-            }
+        CameraPosition position = options.getCamera();
+        if (position != null) {
+            mMapboxMap.moveCamera(CameraUpdateFactory.newCameraPosition(position));
+        }
 
-            // Enable gestures
-            UiSettings uiSettings = mMapboxMap.getUiSettings();
-            uiSettings.setZoomGesturesEnabled(typedArray.getBoolean(R.styleable.MapView_zoom_enabled, true));
-            uiSettings.setScrollGesturesEnabled(typedArray.getBoolean(R.styleable.MapView_scroll_enabled, true));
-            uiSettings.setRotateGesturesEnabled(typedArray.getBoolean(R.styleable.MapView_rotate_enabled, true));
-            uiSettings.setTiltGesturesEnabled(typedArray.getBoolean(R.styleable.MapView_tilt_enabled, true));
-            uiSettings.setZoomControlsEnabled(typedArray.getBoolean(R.styleable.MapView_zoom_controls_enabled, false));
+        String accessToken = options.getAccessToken();
+        if (!TextUtils.isEmpty(accessToken)) {
+            mMapboxMap.setAccessToken(accessToken);
+        }
 
-            // Zoom
-            uiSettings.setMaxZoom(typedArray.getFloat(R.styleable.MapView_zoom_max, (float) MapboxConstants.MAXIMUM_ZOOM));
-            uiSettings.setMinZoom(typedArray.getFloat(R.styleable.MapView_zoom_min, (float) MapboxConstants.MINIMUM_ZOOM));
+        String style = options.getStyle();
+        if (!TextUtils.isEmpty(style)) {
+            mMapboxMap.setStyleUrl(style);
+        }
 
-            // Compass
-            uiSettings.setCompassEnabled(typedArray.getBoolean(R.styleable.MapView_compass_enabled, true));
-            uiSettings.setCompassGravity(typedArray.getInt(R.styleable.MapView_compass_gravity, Gravity.TOP | Gravity.END));
-            uiSettings.setCompassMargins((int) (typedArray.getDimension(R.styleable.MapView_compass_margin_left, DIMENSION_TEN_DP) * mScreenDensity)
-                    , ((int) typedArray.getDimension(R.styleable.MapView_compass_margin_top, DIMENSION_TEN_DP * mScreenDensity))
-                    , ((int) typedArray.getDimension(R.styleable.MapView_compass_margin_right, DIMENSION_TEN_DP * mScreenDensity))
-                    , ((int) typedArray.getDimension(R.styleable.MapView_compass_margin_bottom, DIMENSION_TEN_DP * mScreenDensity)));
+        mMapboxMap.setMyLocationEnabled(options.getLocationEnabled());
 
-            // Logo
-            uiSettings.setLogoEnabled(typedArray.getBoolean(R.styleable.MapView_logo_visibility, true));
-            uiSettings.setLogoGravity(typedArray.getInt(R.styleable.MapView_logo_gravity, Gravity.BOTTOM | Gravity.START));
-            uiSettings.setLogoMargins((int) (typedArray.getDimension(R.styleable.MapView_logo_margin_left, DIMENSION_SIXTEEN_DP) * mScreenDensity)
-                    , (int) (typedArray.getDimension(R.styleable.MapView_logo_margin_top, DIMENSION_SIXTEEN_DP) * mScreenDensity)
-                    , (int) (typedArray.getDimension(R.styleable.MapView_logo_margin_right, DIMENSION_SIXTEEN_DP) * mScreenDensity)
-                    , (int) (typedArray.getDimension(R.styleable.MapView_logo_margin_bottom, DIMENSION_SIXTEEN_DP) * mScreenDensity));
+        // Enable gestures
+        UiSettings uiSettings = mMapboxMap.getUiSettings();
+        uiSettings.setZoomGesturesEnabled(options.getZoomGesturesEnabled());
+        uiSettings.setScrollGesturesEnabled(options.getScrollGesturesEnabled());
+        uiSettings.setRotateGesturesEnabled(options.getRotateGesturesEnabled());
+        uiSettings.setTiltGesturesEnabled(options.getTiltGesturesEnabled());
+        uiSettings.setZoomControlsEnabled(options.getZoomControlsEnabled());
 
-            // Attribution
-            uiSettings.setAttributionEnabled(typedArray.getBoolean(R.styleable.MapView_attribution_visibility, true));
-            uiSettings.setAttributionGravity(typedArray.getInt(R.styleable.MapView_attribution_gravity, Gravity.BOTTOM));
-            uiSettings.setAttributionMargins((int) (typedArray.getDimension(R.styleable.MapView_attribution_margin_left, DIMENSION_SEVENTY_SIX_DP) * mScreenDensity)
-                    , (int) (typedArray.getDimension(R.styleable.MapView_attribution_margin_top, DIMENSION_SEVEN_DP) * mScreenDensity)
-                    , (int) (typedArray.getDimension(R.styleable.MapView_attribution_margin_right, DIMENSION_SEVEN_DP) * mScreenDensity)
-                    , (int) (typedArray.getDimension(R.styleable.MapView_attribution_margin_bottom, DIMENSION_SEVEN_DP) * mScreenDensity));
+        // Zoom
+        uiSettings.setMaxZoom(options.getMaxZoom());
+        uiSettings.setMinZoom(options.getMinZoom());
 
-            // User location
-            mMapboxMap.setMyLocationEnabled(typedArray.getBoolean(R.styleable.MapView_my_location_enabled, false));
-        } finally {
-            typedArray.recycle();
+        // Compass
+        uiSettings.setCompassEnabled(options.getCompassEnabled());
+        uiSettings.setCompassGravity(options.getCompassGravity());
+        int[] compassMargins = options.getCompassMargins();
+        if (compassMargins != null) {
+            uiSettings.setCompassMargins(compassMargins[0], compassMargins[1], compassMargins[2], compassMargins[3]);
+        }
+
+        // Logo
+        uiSettings.setLogoEnabled(options.getLogoEnabled());
+        uiSettings.setLogoGravity(options.getLogoGravity());
+        int[] logoMargins = options.getLogoMargins();
+        if (logoMargins != null) {
+            uiSettings.setLogoMargins(logoMargins[0], logoMargins[1], logoMargins[2], logoMargins[3]);
+        }
+
+        // Attribution
+        uiSettings.setAttributionEnabled(options.getAttributionEnabled());
+        uiSettings.setAttributionGravity(options.getAttributionGravity());
+        int[] attributionMargins = options.getAttributionMargins();
+        if (attributionMargins != null) {
+            uiSettings.setAttributionMargins(attributionMargins[0], attributionMargins[1], attributionMargins[2], attributionMargins[3]);
         }
     }
 
@@ -366,7 +360,6 @@ public class MapView extends FrameLayout {
                     , savedInstanceState.getInt(MapboxConstants.STATE_ATTRIBUTION_MARGIN_RIGHT)
                     , savedInstanceState.getInt(MapboxConstants.STATE_ATTRIBUTION_MARGIN_BOTTOM));
 
-
             mMapboxMap.setDebugActive(savedInstanceState.getBoolean(MapboxConstants.STATE_DEBUG_ACTIVE));
             mMapboxMap.setStyleUrl(savedInstanceState.getString(MapboxConstants.STATE_STYLE_URL));
             setAccessToken(savedInstanceState.getString(MapboxConstants.STATE_ACCESS_TOKEN));
@@ -391,7 +384,8 @@ public class MapView extends FrameLayout {
             validateTelemetryServiceConfigured();
 
             // Start Telemetry (authorization determined in initial MapboxEventManager constructor)
-            MapboxEventManager.configureAndStartMapboxEventManager(getContext(), getAccessToken());
+            MapboxEventManager eventManager = MapboxEventManager.getMapboxEventManager();
+            eventManager.initialise(getContext(), getAccessToken());
         }
 
         // Initialize EGL
@@ -408,8 +402,13 @@ public class MapView extends FrameLayout {
                     adjustTopOffsetPixels();
                     if (mInitialLoad) {
                         mInitialLoad = false;
-                        if (mMapReadyCallback != null) {
-                            mMapReadyCallback.onMapReady(mMapboxMap);
+                        if (mOnMapReadyCallbackList.size() > 0) {
+                            Iterator<OnMapReadyCallback> iterator = mOnMapReadyCallbackList.iterator();
+                            while (iterator.hasNext()) {
+                                OnMapReadyCallback callback = iterator.next();
+                                callback.onMapReady(mMapboxMap);
+                                iterator.remove();
+                            }
                         }
                     }
                 }
@@ -441,7 +440,6 @@ public class MapView extends FrameLayout {
         outState.putString(MapboxConstants.STATE_ACCESS_TOKEN, mMapboxMap.getAccessToken());
         outState.putLong(MapboxConstants.STATE_DEFAULT_TRANSITION_DURATION, mNativeMapView.getDefaultTransitionDuration());
         outState.putBoolean(MapboxConstants.STATE_MY_LOCATION_ENABLED, mMapboxMap.isMyLocationEnabled());
-
 
         // TrackingSettings
         TrackingSettings trackingSettings = mMapboxMap.getTrackingSettings();
@@ -834,12 +832,9 @@ public class MapView extends FrameLayout {
      * You must set a valid access token before you call {@link MapView#onCreate(Bundle)}
      * or an exception will be thrown.
      * </p>
-     * You can use {@link ApiAccess#getToken(Context)} to load an access token from your
-     * application's manifest.
      *
      * @param accessToken Your public Mapbox access token.
      * @see MapView#onCreate(Bundle)
-     * @see ApiAccess#getToken(Context)
      */
     @UiThread
     public void setAccessToken(@NonNull String accessToken) {
@@ -877,20 +872,20 @@ public class MapView extends FrameLayout {
 
     // Checks that TelemetryService has been configured by developer
     private void validateTelemetryServiceConfigured() {
-//        try {
-//            // Check Implementing app's AndroidManifest.xml
-//            PackageInfo packageInfo = getContext().getPackageManager().getPackageInfo(getContext().getPackageName(), PackageManager.GET_SERVICES);
-//            if (packageInfo.services != null) {
-//                for (ServiceInfo service : packageInfo.services) {
-//                    if (TextUtils.equals("com.mapbox.mapboxsdk.telemetry.TelemetryService", service.name)) {
-//                        return;
-//                    }
-//                }
-//            }
-//        } catch (Exception e) {
-//            Log.w(TAG, "Error checking for Telemetry Service Config: " + e);
-//        }
-//        throw new TelemetryServiceNotConfiguredException();
+        try {
+            // Check Implementing app's AndroidManifest.xml
+            PackageInfo packageInfo = getContext().getPackageManager().getPackageInfo(getContext().getPackageName(), PackageManager.GET_SERVICES);
+            if (packageInfo.services != null) {
+                for (ServiceInfo service : packageInfo.services) {
+                    if (TextUtils.equals("com.mapbox.mapboxsdk.telemetry.TelemetryService", service.name)) {
+                        return;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.w(MapboxConstants.TAG, "Error checking for Telemetry Service Config: " + e);
+        }
+        throw new TelemetryServiceNotConfiguredException();
     }
 
     //
@@ -1000,12 +995,12 @@ public class MapView extends FrameLayout {
             return;
         }
         if (updatedMarker == null) {
-            Log.w(TAG, "marker was null, doing nothing");
+            Log.w(MapboxConstants.TAG, "marker was null, doing nothing");
             return;
         }
 
         if (updatedMarker.getId() == -1) {
-            Log.w(TAG, "marker has an id of -1, possibly was not added yet, doing nothing");
+            Log.w(MapboxConstants.TAG, "marker has an id of -1, possibly was not added yet, doing nothing");
         }
 
         ensureIconLoaded(updatedMarker);
@@ -1094,7 +1089,7 @@ public class MapView extends FrameLayout {
         }
 
         if (bbox == null) {
-            Log.w(TAG, "bbox was null, so just returning null");
+            Log.w(MapboxConstants.TAG, "bbox was null, so just returning null");
             return null;
         }
 
@@ -1316,11 +1311,13 @@ public class MapView extends FrameLayout {
             mWgsVisibleRegion = new VisibleRegion(topLeft, topRight, bottomLeft, bottomRight, builder.build());
         }
 
+        private Surface mSurface;
+
         // Called when the native surface texture has been created
         // Must do all EGL/GL ES initialization here
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-            mNativeMapView.createSurface(new Surface(surface));
+            mNativeMapView.createSurface(mSurface = new Surface(surface));
             mNativeMapView.resizeFramebuffer(width, height);
         }
 
@@ -1331,6 +1328,7 @@ public class MapView extends FrameLayout {
             if (mNativeMapView != null) {
                 mNativeMapView.destroySurface();
             }
+            mSurface.release();
             return true;
         }
 
@@ -1566,6 +1564,7 @@ public class MapView extends FrameLayout {
                     break;
                 case MotionEvent.ACTION_UP:
                     if (mQuickZoom) {
+                        // insert here?
                         mQuickZoom = false;
                         break;
                     }
@@ -1574,7 +1573,6 @@ public class MapView extends FrameLayout {
                     if (mMapboxMap.getTrackingSettings().isLocationTrackingDisabled()) {
                         // Zoom in on gesture
                         zoom(true, e.getX(), e.getY());
-                        trackGestureEvent(MapboxEvent.GESTURE_QUICK_ZOOM, e.getX(), e.getY());
                     } else {
                         // Zoom in on user location view
                         PointF centerPoint = mUserLocationView.getMarkerScreenPoint();
@@ -1909,7 +1907,7 @@ public class MapView extends FrameLayout {
     }
 
     // This class handles a vertical two-finger shove. (If you place two fingers on screen with
-    // less than a 20 degree angle between them, this will detect movement on the Y-axis.)
+// less than a 20 degree angle between them, this will detect movement on the Y-axis.)
     private class ShoveGestureListener implements ShoveGestureDetector.OnShoveGestureListener {
 
         long mBeginTime = 0;
@@ -1980,7 +1978,7 @@ public class MapView extends FrameLayout {
     }
 
     // This class handles input events from the zoom control buttons
-    // Zoom controls allow single touch only devices to zoom in and out
+// Zoom controls allow single touch only devices to zoom in and out
     private class OnZoomListener implements ZoomButtonsController.OnZoomListener {
 
         // Not used
@@ -2287,9 +2285,9 @@ public class MapView extends FrameLayout {
         }
     }
 
-    //
-    // Connectivity events
-    //
+//
+// Connectivity events
+//
 
     // This class handles connectivity changes
     private class ConnectivityReceiver extends BroadcastReceiver {
@@ -2501,10 +2499,11 @@ public class MapView extends FrameLayout {
      */
     @UiThread
     public void getMapAsync(@NonNull final OnMapReadyCallback callback) {
-        if (mMapReadyCallback == null && !mInitialLoad) {
+        if (!mInitialLoad) {
             callback.onMapReady(mMapboxMap);
+        } else {
+            mOnMapReadyCallbackList.add(callback);
         }
-        mMapReadyCallback = callback;
     }
 
     MapboxMap getMapboxMap() {
