@@ -16,7 +16,6 @@ public class OfflineProviderManager {
     private static OfflineProviderManager sInstance = new OfflineProviderManager();
     private OfflineProvider mProvider = null;
     private byte[] mData;
-    private boolean mAvailable = false;
 
     public static OfflineProviderManager getInstance() {
         return sInstance;
@@ -25,15 +24,7 @@ public class OfflineProviderManager {
     private OfflineProviderManager() {
     }
 
-    public void setAvailable(boolean available) {
-        this.mAvailable = available;
-    }
-
     public String registerProvider(Resources resources, OfflineProvider provider) {
-        if (!mAvailable) {
-            throw new IllegalStateException("Offline providers are not available for this build. " +
-                    "The Mapbox SDK must be compiled with an 'android' http context.");
-        }
 
         String style = AssetReader.readAssetAsString(resources, "offline_style_v8.json");
         try {
