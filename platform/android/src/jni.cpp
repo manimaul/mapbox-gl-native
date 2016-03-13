@@ -1231,11 +1231,21 @@ void nativeUpdateMapBounds(JNIEnv *env, jni::jobject* obj, jlong nativeMapViewPt
         jni::SetField<jdouble>(*env, jLatLng, *latLngLongitudeId, latLng.longitude);
     }
 
+    double west = bounds.west();
+    double east = bounds.east();
+    if (west < -180.0) {
+        west += 180.0;
+        west = 180.0 + west;
+    }
+    if (east > 180.0) {
+        east -= 180.0;
+        east = -180.0 + east;
+    }
 
     jni::SetField<jdouble>(*env, wgsBounds, *latLngBoundsLatNorthId, bounds.north());
     jni::SetField<jdouble>(*env, wgsBounds, *latLngBoundsLatSouthId, bounds.south());
-    jni::SetField<jdouble>(*env, wgsBounds, *latLngBoundsLonEastId, bounds.east());
-    jni::SetField<jdouble>(*env, wgsBounds, *latLngBoundsLonWestId, bounds.west());
+    jni::SetField<jdouble>(*env, wgsBounds, *latLngBoundsLonEastId, east);
+    jni::SetField<jdouble>(*env, wgsBounds, *latLngBoundsLonWestId, west);
 }
 
 jni::jobject* nativeLatLngForPixel(JNIEnv *env, jni::jobject* obj, jlong nativeMapViewPtr, jni::jobject* pixel) {
