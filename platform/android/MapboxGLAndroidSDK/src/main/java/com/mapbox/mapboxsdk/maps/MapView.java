@@ -517,7 +517,7 @@ public class MapView extends FrameLayout {
         getContext().unregisterReceiver(mConnectivityReceiver);
         mConnectivityReceiver = null;
 
-        mUserLocationView.pause();
+        mUserLocationView.onPause();
         mNativeMapView.pause();
     }
 
@@ -532,7 +532,7 @@ public class MapView extends FrameLayout {
 
         mNativeMapView.resume();
         mNativeMapView.update();
-        mUserLocationView.resume();
+        mUserLocationView.onResume();
 
         if (mStyleUrl == null) {
             // user has failed to supply a style url

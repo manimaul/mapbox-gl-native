@@ -22,6 +22,7 @@ import okhttp3.Request;
 import okhttp3.Response;
 
 public class HTTPRequest implements Callback {
+    
     private static OkHttpClient mClient = new OkHttpClient();
     private final String LOG_TAG = HTTPRequest.class.getName();
 
@@ -40,8 +41,9 @@ public class HTTPRequest implements Callback {
     private Call mCall;
     private Request mRequest;
 
-    native void nativeOnFailure(int type, String message);
-    native void nativeOnResponse(int code, String etag, String modified, String cacheControl, String expires, byte[] body);
+    private native void nativeOnFailure(int type, String message);
+
+    private native void nativeOnResponse(int code, String etag, String modified, String cacheControl, String expires, byte[] body);
 
     private HTTPRequest(long nativePtr, String resourceUrl, String userAgent, String etag, String modified) {
         mNativePtr = nativePtr;
