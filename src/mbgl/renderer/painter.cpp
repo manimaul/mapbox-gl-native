@@ -72,7 +72,7 @@ Painter::Painter(MapData& data_, TransformState& state_, gl::GLObjectStore& glOb
 Painter::~Painter() = default;
 
 bool Painter::needsAnimation() const {
-    return frameHistory.needsAnimation(data.getDefaultFadeDuration());
+    return frameHistory.needsAnimation(util::DEFAULT_FADE_DURATION);
 }
 
 void Painter::prepareTile(const Tile& tile) {
@@ -155,7 +155,7 @@ void Painter::render(const Style& style, const FrameData& frame_, SpriteAtlas& a
         drawClippingMasks(generator.getStencils());
     }
 
-    frameHistory.record(data.getAnimationTime(), state.getZoom());
+    frameHistory.record(frame.timePoint, state.getZoom());
 
     // Actually render the layers
     if (debug::renderTree) { Log::Info(Event::Render, "{"); indent++; }

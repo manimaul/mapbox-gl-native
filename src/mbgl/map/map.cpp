@@ -8,6 +8,7 @@
 #include <mbgl/annotation/point_annotation.hpp>
 #include <mbgl/annotation/shape_annotation.hpp>
 #include <mbgl/style/style_layer.hpp>
+#include <mbgl/style/property_transition.hpp>
 #include <mbgl/layer/custom_layer.hpp>
 
 #include <mbgl/util/projection.hpp>
@@ -55,7 +56,7 @@ void Map::resume() {
 
 void Map::renderStill(StillImageCallback callback) {
     context->invoke(&MapContext::renderStill, transform->getState(),
-                    FrameData{ view.getFramebufferSize() }, callback);
+                    FrameData { view.getFramebufferSize(), Clock::now() }, callback);
 }
 
 void Map::renderSync() {
@@ -67,7 +68,7 @@ void Map::renderSync() {
 
     const Update flags = transform->updateTransitions(Clock::now());
     const bool fullyLoaded = context->invokeSync<bool>(
-            &MapContext::renderSync, transform->getState(), FrameData { view.getFramebufferSize() });
+            &MapContext::renderSync, transform->getState(), FrameData { view.getFramebufferSize(), Clock::now() });
 
     view.notifyMapChange(fullyLoaded ?
         MapChangeDidFinishRenderingFrameFullyRendered :
@@ -92,9 +93,7 @@ void Map::renderSync() {
 }
 
 void Map::update(Update flags) {
-    if (flags & Update::Dimensions) {
-        transform->resize(view.getSize());
-    }
+    if (flags & Update::Dimensions) transform->resize(view.getSize());
     context->invoke(&MapContext::triggerUpdate, transform->getState(), flags);
 }
 
@@ -150,18 +149,18 @@ bool Map::isPanning() const {
 
 void Map::jumpTo(const CameraOptions& camera) {
     transform->jumpTo(camera);
-    update(camera.zoom ? Update::Zoom : Update::Repaint);
+    update(camera.zoom ? Update::RecalculateStyle : Update::Repaint);
 }
 
 void Map::easeTo(const CameraOptions& camera, const AnimationOptions& animation) {
     transform->easeTo(camera, animation);
-    update(camera.zoom ? Update::Zoom : Update::Repaint);
+    update(camera.zoom ? Update::RecalculateStyle : Update::Repaint);
 }
     
     
 void Map::flyTo(const CameraOptions& camera, const AnimationOptions& animation) {
     transform->flyTo(camera, animation);
-    update(Update::Zoom);
+    update(Update::RecalculateStyle);
 }
 
 #pragma mark - Position
@@ -197,7 +196,7 @@ void Map::resetPosition(optional<EdgeInsets> padding) {
     camera.padding = padding;
     camera.zoom = 0;
     transform->jumpTo(camera);
-    update(Update::Zoom);
+    update(Update::RecalculateStyle);
 }
 
 
@@ -205,12 +204,12 @@ void Map::resetPosition(optional<EdgeInsets> padding) {
 
 void Map::scaleBy(double ds, optional<ScreenCoordinate> anchor, const Duration& duration) {
     transform->scaleBy(ds, anchor, duration);
-    update(Update::Zoom);
+    update(Update::RecalculateStyle);
 }
 
 void Map::setScale(double scale, optional<ScreenCoordinate> anchor, const Duration& duration) {
     transform->setScale(scale, anchor, duration);
-    update(Update::Zoom);
+    update(Update::RecalculateStyle);
 }
 
 double Map::getScale() const {
@@ -223,7 +222,7 @@ void Map::setZoom(double zoom, const Duration& duration) {
 
 void Map::setZoom(double zoom, optional<EdgeInsets> padding, const Duration& duration) {
     transform->setZoom(zoom, padding, duration);
-    update(Update::Zoom);
+    update(Update::RecalculateStyle);
 }
 
 double Map::getZoom() const {
@@ -236,7 +235,7 @@ void Map::setLatLngZoom(const LatLng& latLng, double zoom, const Duration& durat
 
 void Map::setLatLngZoom(const LatLng& latLng, double zoom, optional<EdgeInsets> padding, const Duration& duration) {
     transform->setLatLngZoom(latLng, zoom, padding, duration);
-    update(Update::Zoom);
+    update(Update::RecalculateStyle);
 }
 
 CameraOptions Map::cameraForLatLngBounds(const LatLngBounds& bounds, optional<EdgeInsets> padding) {
@@ -521,56 +520,24 @@ bool Map::isFullyLoaded() const {
     return context->invokeSync<bool>(&MapContext::isLoaded);
 }
 
-void Map::addClass(const std::string& klass) {
-    if (data->addClass(klass)) {
-        update(Update::Classes);
-    }
+void Map::addClass(const std::string& className, const PropertyTransition& properties) {
+    context->invoke(&MapContext::addClass, className, properties);
 }
 
-void Map::removeClass(const std::string& klass) {
-    if (data->removeClass(klass)) {
-        update(Update::Classes);
-    }
+void Map::removeClass(const std::string& className, const PropertyTransition& properties) {
+    context->invoke(&MapContext::removeClass, className, properties);
 }
 
-void Map::setClasses(const std::vector<std::string>& classes) {
-    data->setClasses(classes);
-    update(Update::Classes);
+void Map::setClasses(const std::vector<std::string>& classNames, const PropertyTransition& properties) {
+    context->invoke(&MapContext::setClasses, classNames, properties);
 }
 
-bool Map::hasClass(const std::string& klass) const {
-    return data->hasClass(klass);
+bool Map::hasClass(const std::string& className) const {
+    return context->invokeSync<bool>(&MapContext::hasClass, className);
 }
 
 std::vector<std::string> Map::getClasses() const {
-    return data->getClasses();
-}
-
-void Map::setDefaultFadeDuration(const Duration& duration) {
-    data->setDefaultFadeDuration(duration);
-    update(Update::Classes);
-}
-
-Duration Map::getDefaultFadeDuration() const {
-    return data->getDefaultFadeDuration();
-}
-
-void Map::setDefaultTransitionDuration(const Duration& duration) {
-    data->setDefaultTransitionDuration(duration);
-    update(Update::DefaultTransition);
-}
-
-Duration Map::getDefaultTransitionDuration() const {
-    return data->getDefaultTransitionDuration();
-}
-
-void Map::setDefaultTransitionDelay(const Duration& delay) {
-    data->setDefaultTransitionDelay(delay);
-    update(Update::DefaultTransition);
-}
-
-Duration Map::getDefaultTransitionDelay() const {
-    return data->getDefaultTransitionDelay();
+    return context->invokeSync<std::vector<std::string>>(&MapContext::getClasses);
 }
 
 void Map::setSourceTileCacheSize(size_t size) {

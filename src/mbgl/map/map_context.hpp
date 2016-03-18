@@ -21,11 +21,13 @@ class MapData;
 class Painter;
 class SpriteImage;
 class FileRequest;
+class PropertyTransition;
 
 namespace gl { class TexturePool; }
 
 struct FrameData {
     std::array<uint16_t, 2> framebufferSize;
+    TimePoint timePoint;
 };
 
 class MapContext : public Style::Observer {
@@ -55,11 +57,17 @@ public:
     void removeAnnotationIcon(const std::string&);
     double getTopOffsetPixelsForAnnotationIcon(const std::string&);
     void updateAnnotations();
-    
+
     // Style API
     void addLayer(std::unique_ptr<StyleLayer>,
                   const optional<std::string> before);
     void removeLayer(const std::string& id);
+
+    void addClass(const std::string&, const PropertyTransition&);
+    void removeClass(const std::string&, const PropertyTransition&);
+    bool hasClass(const std::string&) const;
+    void setClasses(const std::vector<std::string>&, const PropertyTransition&);
+    std::vector<std::string> getClasses() const;
 
     void setSourceTileCacheSize(size_t size);
     void onLowMemory();
@@ -73,6 +81,9 @@ private:
 
     // Update the state indicated by the accumulated Update flags, then render.
     void update();
+
+    // Helper function for triggering asynchronous updates.
+    void updateAsync(Update);
 
     // Loads the actual JSON object an creates a new Style object.
     void loadStyleJSON(const std::string& json, const std::string& base);
