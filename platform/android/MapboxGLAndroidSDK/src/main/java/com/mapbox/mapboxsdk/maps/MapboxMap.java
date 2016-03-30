@@ -30,6 +30,7 @@ import com.mapbox.mapboxsdk.constants.MyLocationTracking;
 import com.mapbox.mapboxsdk.constants.Style;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.layers.CustomLayer;
+import com.mapbox.mapboxsdk.provider.OfflineProvider;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -491,6 +492,36 @@ public class MapboxMap {
     @UiThread
     public void setStyleUrl(@NonNull String url) {
         mMapView.setStyleUrl(url);
+    }
+
+    @UiThread
+    public void setOfflineProvider(OfflineProvider provider) {
+        mMapView.setOfflineProvider(provider);
+    }
+
+    @UiThread
+    public void addOverlay(Overlay overlay) {
+        mMapView.addOverlay(overlay);
+    }
+
+    @UiThread
+    public void removeOverlay(Overlay overlay) {
+        mMapView.removeOverlay(overlay);
+    }
+
+    @UiThread
+    public int getWidth() {
+        return mMapView.getWidth();
+    }
+
+    @UiThread
+    public int getHeight() {
+        return mMapView.getHeight();
+    }
+
+    @UiThread
+    public void update() {
+        mMapView.update();
     }
 
     /**
