@@ -1,7 +1,5 @@
 package com.mapbox.mapboxsdk.provider;
 
-/**
- * Created by williamkamp on 3/30/16.
- */
-public class OfflineProviderCallback {
+public interface OfflineProviderCallback {
+    void onResult(boolean success, byte[] result);
 }

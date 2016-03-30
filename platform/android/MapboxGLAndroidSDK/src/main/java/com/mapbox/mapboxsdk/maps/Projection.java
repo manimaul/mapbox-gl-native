@@ -3,6 +3,8 @@ package com.mapbox.mapboxsdk.maps;
 import android.graphics.PointF;
 import android.support.annotation.FloatRange;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.support.annotation.UiThread;
 
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.geometry.LatLngBounds;
@@ -93,5 +95,18 @@ public class Projection {
      */
     public double calculateZoom(float minScale) {
         return Math.log(mMapView.getScale() * minScale) / Math.log(2);
+    }
+
+    /**
+     * Converts a map coordinate to a point in this view's coordinate system.
+     *
+     * @param location A map coordinate.
+     * @param reuse    supply a point to be reused : null to have one created
+     * @return The converted point in this view's coordinate system.
+     */
+    @UiThread
+    @NonNull
+    public PointF toScreenLocation(@NonNull LatLng location, @Nullable PointF reuse) {
+        return mMapView.toScreenLocation(location, reuse);
     }
 }

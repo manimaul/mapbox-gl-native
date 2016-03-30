@@ -13,6 +13,7 @@ import com.mapbox.mapboxsdk.annotations.Polyline;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.geometry.LatLngBounds;
 import com.mapbox.mapboxsdk.geometry.ProjectedMeters;
+import com.mapbox.mapboxsdk.geometry.VisibleRegion;
 import com.mapbox.mapboxsdk.layers.CustomLayer;
 
 import java.util.List;
@@ -460,8 +461,8 @@ final class NativeMapView {
         return nativeLatLngForProjectedMeters(mNativeMapViewPtr, projectedMeters);
     }
 
-    public PointF pixelForLatLng(LatLng latLng) {
-        return nativePixelForLatLng(mNativeMapViewPtr, latLng);
+    public void pixelForLatLng(LatLng latLng, PointF point) {
+        nativePixelForLatLng(mNativeMapViewPtr, latLng, point);
     }
 
     public LatLng latLngForPixel(PointF pixel) {
@@ -482,6 +483,10 @@ final class NativeMapView {
 
     public void flyTo(double angle, LatLng center, long duration, double pitch, double zoom) {
         nativeFlyTo(mNativeMapViewPtr, angle, center, duration, pitch, zoom);
+    }
+
+    public void updateMapBounds(VisibleRegion wgsBounds, LatLng wgsCenter) {
+        nativeUpdateMapBounds(mNativeMapViewPtr, wgsBounds, wgsCenter);
     }
 
     public void addCustomLayer(CustomLayer customLayer, String before) {
@@ -674,7 +679,7 @@ final class NativeMapView {
 
     private native LatLng nativeLatLngForProjectedMeters(long nativeMapViewPtr, ProjectedMeters projectedMeters);
 
-    private native PointF nativePixelForLatLng(long nativeMapViewPtr, LatLng latLng);
+    private native void nativePixelForLatLng(long nativeMapViewPtr, LatLng latLng, PointF point);
 
     private native LatLng nativeLatLngForPixel(long nativeMapViewPtr, PointF pixel);
 
@@ -685,6 +690,8 @@ final class NativeMapView {
     private native void nativeEaseTo(long nativeMapViewPtr, double angle, LatLng center, long duration, double pitch, double zoom);
 
     private native void nativeFlyTo(long nativeMapViewPtr, double angle, LatLng center, long duration, double pitch, double zoom);
+
+    private native void nativeUpdateMapBounds(long nativeMapViewPtr, VisibleRegion wgsBounds, LatLng wgsCenter);
 
     private native void nativeAddCustomLayer(long nativeMapViewPtr, CustomLayer customLayer, String before);
 

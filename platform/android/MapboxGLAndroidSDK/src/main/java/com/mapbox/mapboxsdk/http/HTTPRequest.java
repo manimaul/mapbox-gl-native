@@ -4,6 +4,7 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import com.mapbox.mapboxsdk.constants.MapboxConstants;
+import com.mapbox.mapboxsdk.provider.OfflineProviderManager;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -20,7 +21,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-class HTTPRequest implements Callback {
+public class HTTPRequest implements Callback {
     
     private static OkHttpClient mClient = new OkHttpClient();
     private final String LOG_TAG = HTTPRequest.class.getName();
@@ -34,6 +35,8 @@ class HTTPRequest implements Callback {
     private ReentrantLock mLock = new ReentrantLock();
 
     private long mNativePtr = 0;
+    private final OfflineProviderManager mOfflineProviderManager = OfflineProviderManager.getInstance();
+    private final String mResourceUrl;
 
     private Call mCall;
     private Request mRequest;
@@ -44,7 +47,11 @@ class HTTPRequest implements Callback {
 
     private HTTPRequest(long nativePtr, String resourceUrl, String userAgent, String etag, String modified) {
         mNativePtr = nativePtr;
-
+        mResourceUrl = resourceUrl;
+        if (mOfflineProviderManager.willHandleUrl(resourceUrl)) {
+            mOfflineProviderManager.handleRequest(this, resourceUrl);
+            return;
+        }
         try {
             Request.Builder builder = new Request.Builder().url(resourceUrl).tag(resourceUrl.toLowerCase(MapboxConstants.MAPBOX_LOCALE)).addHeader("User-Agent", userAgent);
             if (etag.length() > 0) {
@@ -61,7 +68,11 @@ class HTTPRequest implements Callback {
     }
 
     public void cancel() {
-        mCall.cancel();
+        if (mCall == null) {
+            mOfflineProviderManager.cancelRequest(this);
+        } else {
+            mCall.cancel();
+        }
 
         // TODO: We need a lock here because we can try
         // to cancel at the same time the request is getting
@@ -126,4 +137,30 @@ class HTTPRequest implements Callback {
         }
         mLock.unlock();
     }
+
+    public String getResourceUrl() {
+        return mResourceUrl;
+    }
+
+    public static final int OFFLINE_RESPONSE_CODE = 200;
+    public static final int OFFLINE_FAILURE_CODE = 404;
+    public static final String OFFLINE_FAILURE_MESSAGE = "";
+    public static final String OFFLINE_RESPONSE_ETAG = "OK";
+    public static final String OFFLINE_RESPONSE_MODIFIED = "";
+    public static final String OFFLINE_RESPONSE_CACHE_CONTROL = "no-cache, no-store";
+    public static final String OFFLINE_RESPONSE_CACHE_EXPIRES = "";
+
+    public void onOfflineResponse(byte[] body) {
+        nativeOnResponse(OFFLINE_RESPONSE_CODE,
+                OFFLINE_RESPONSE_ETAG,
+                OFFLINE_RESPONSE_MODIFIED,
+                OFFLINE_RESPONSE_CACHE_CONTROL,
+                OFFLINE_RESPONSE_CACHE_EXPIRES,
+                body);
+    }
+
+    public void onOfflineFailure() {
+        nativeOnFailure(OFFLINE_FAILURE_CODE, OFFLINE_FAILURE_MESSAGE);
+    }
+
 }

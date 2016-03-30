@@ -77,11 +77,14 @@ import com.mapbox.mapboxsdk.exceptions.InvalidAccessTokenException;
 import com.mapbox.mapboxsdk.exceptions.TelemetryServiceNotConfiguredException;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.geometry.LatLngBounds;
+import com.mapbox.mapboxsdk.geometry.VisibleRegion;
 import com.mapbox.mapboxsdk.layers.CustomLayer;
 import com.mapbox.mapboxsdk.maps.widgets.CompassView;
 import com.mapbox.mapboxsdk.maps.widgets.UserLocationView;
 import com.mapbox.mapboxsdk.telemetry.MapboxEvent;
 import com.mapbox.mapboxsdk.telemetry.MapboxEventManager;
+import com.mapbox.mapboxsdk.provider.OfflineProvider;
+import com.mapbox.mapboxsdk.provider.OfflineProviderManager;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -119,6 +122,7 @@ public class MapView extends FrameLayout {
     private ImageView mLogoView;
     private ImageView mAttributionsView;
     private UserLocationView mUserLocationView;
+    private MapOverlayDispatch mMapOverlayDispatch;
 
     private CopyOnWriteArrayList<OnMapChangedListener> mOnMapChangedListener;
     private ZoomButtonsController mZoomButtonsController;
@@ -214,6 +218,10 @@ public class MapView extends FrameLayout {
 
         // Connectivity
         onConnectivityChanged(isConnected());
+
+        // Overlays
+        mMapOverlayDispatch = (MapOverlayDispatch) view.findViewById(R.id.overlayDispatch);
+        mMapOverlayDispatch.setMapBoxMap(mMapboxMap);
 
         mUserLocationView = (UserLocationView) view.findViewById(R.id.userLocationView);
         mUserLocationView.setMapboxMap(mMapboxMap);
@@ -797,6 +805,24 @@ public class MapView extends FrameLayout {
         return mStyleUrl;
     }
 
+    @UiThread
+    void setOfflineProvider(OfflineProvider provider) {
+        String style = OfflineProviderManager.getInstance().registerProvider(getResources(), provider);
+        if (style != null) {
+            mNativeMapView.setStyleJson(style);
+        }
+    }
+
+    @UiThread
+    void addOverlay(Overlay overlay) {
+        mMapOverlayDispatch.addOverlay(overlay);
+    }
+
+    @UiThread
+    void removeOverlay(Overlay overlay) {
+        mMapOverlayDispatch.removeOverlay(overlay);
+    }
+
     //
     // Access token
     //
@@ -849,20 +875,20 @@ public class MapView extends FrameLayout {
 
     // Checks that TelemetryService has been configured by developer
     private void validateTelemetryServiceConfigured() {
-        try {
-            // Check Implementing app's AndroidManifest.xml
-            PackageInfo packageInfo = getContext().getPackageManager().getPackageInfo(getContext().getPackageName(), PackageManager.GET_SERVICES);
-            if (packageInfo.services != null) {
-                for (ServiceInfo service : packageInfo.services) {
-                    if (TextUtils.equals("com.mapbox.mapboxsdk.telemetry.TelemetryService", service.name)) {
-                        return;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            Log.w(MapboxConstants.TAG, "Error checking for Telemetry Service Config: " + e);
-        }
-        throw new TelemetryServiceNotConfiguredException();
+//        try {
+//            // Check Implementing app's AndroidManifest.xml
+//            PackageInfo packageInfo = getContext().getPackageManager().getPackageInfo(getContext().getPackageName(), PackageManager.GET_SERVICES);
+//            if (packageInfo.services != null) {
+//                for (ServiceInfo service : packageInfo.services) {
+//                    if (TextUtils.equals("com.mapbox.mapboxsdk.telemetry.TelemetryService", service.name)) {
+//                        return;
+//                    }
+//                }
+//            }
+//        } catch (Exception e) {
+//            Log.w(MapboxConstants.TAG, "Error checking for Telemetry Service Config: " + e);
+//        }
+//        throw new TelemetryServiceNotConfiguredException();
     }
 
     //
@@ -883,12 +909,32 @@ public class MapView extends FrameLayout {
         if (mDestroyed) {
             return new PointF();
         }
-        PointF point = mNativeMapView.pixelForLatLng(location);
+        return toScreenLocation(location, null);
+    }
 
-        float x = point.x * mScreenDensity;
-        float y = point.y * mScreenDensity;
+    /**
+     * Converts a map coordinate to a point in this view's coordinate system.
+     *
+     * @param location A map coordinate.
+     * @param reuse    supply a point to be reused : null to have one created
+     * @return The converted point in this view's coordinate system.
+     */
+    @UiThread
+    @NonNull
+    PointF toScreenLocation(@NonNull LatLng location, @Nullable PointF reuse) {
+        reuse = reuse == null ? new PointF() : reuse;
+        if (location == null) {
+            reuse.x = 0F;
+            reuse.y = 0F;
+            return reuse;
+        }
 
-        return new PointF(x, y);
+        mNativeMapView.pixelForLatLng(location, reuse);
+
+        reuse.x *= mScreenDensity;
+        reuse.y *= mScreenDensity;
+
+        return reuse;
     }
 
     //
@@ -1233,6 +1279,7 @@ public class MapView extends FrameLayout {
             return;
         }
 
+        mMapOverlayDispatch.onSizeChanged(width, height);
         if (!isInEditMode()) {
             mNativeMapView.resizeView((int) (width / mScreenDensity), (int) (height / mScreenDensity));
         }
@@ -1248,6 +1295,23 @@ public class MapView extends FrameLayout {
 
     // This class handles TextureView callbacks
     private class SurfaceTextureListener implements TextureView.SurfaceTextureListener {
+
+        private final LatLng mWgsCenter = new LatLng();
+        private final VisibleRegion mWgsVisibleRegion;
+        {
+            LatLngBounds.Builder builder = new LatLngBounds.Builder();
+
+            LatLng topLeft = new LatLng();
+            LatLng topRight = new LatLng();
+            LatLng bottomRight = new LatLng();
+            LatLng bottomLeft = new LatLng();
+
+            builder.include(topLeft)
+                    .include(topRight)
+                    .include(bottomRight)
+                    .include(bottomLeft);
+            mWgsVisibleRegion = new VisibleRegion(topLeft, topRight, bottomLeft, bottomRight, builder.build());
+        }
 
         private Surface mSurface;
 
@@ -1288,6 +1352,9 @@ public class MapView extends FrameLayout {
             if(mDestroyed){
                 return;
             }
+
+            mNativeMapView.updateMapBounds(mWgsVisibleRegion, mWgsCenter);
+            mMapOverlayDispatch.update(mWgsVisibleRegion, mWgsCenter, (float) getDirection(), (float) getZoom());
 
             mCompassView.update(getDirection());
             mUserLocationView.update();
@@ -1409,6 +1476,8 @@ public class MapView extends FrameLayout {
     // Called when user touches the screen, all positions are absolute
     @Override
     public boolean onTouchEvent(@NonNull MotionEvent event) {
+        mMapOverlayDispatch.onOverlayTouchEvent(event);
+
         // Check and ignore non touch or left clicks
         if (mDestroyed) {
             return super.onTouchEvent(event);
@@ -1542,6 +1611,7 @@ public class MapView extends FrameLayout {
         public boolean onSingleTapConfirmed(MotionEvent e) {
             // Open / Close InfoWindow
             PointF tapPoint = new PointF(e.getX(), e.getY());
+            mMapOverlayDispatch.onOverlaySingleTapConfirmed(fromScreenLocation(tapPoint));
 
             List<Marker> selectedMarkers = mMapboxMap.getSelectedMarkers();
 

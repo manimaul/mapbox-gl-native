@@ -1,7 +1,9 @@
 package com.mapbox.mapboxsdk.provider;
 
-/**
- * Created by williamkamp on 3/30/16.
- */
-public class OfflineProvider {
+public interface OfflineProvider {
+     void startFetchForTile(int z, int x, int y, OfflineProviderCallback callback);
+     int minZoom();
+     int maxZoom();
+     int pixelsPerSide();
+     String name();
 }

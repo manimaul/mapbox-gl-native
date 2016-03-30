@@ -34,9 +34,9 @@ public class LatLng implements ILatLng, Parcelable {
         }
     };
 
-    private double latitude;
-    private double longitude;
-    private double altitude = 0.0;
+    double latitude;
+    double longitude;
+    double altitude = 0.0;
 
     /**
      * Construct a new latitude, longitude point at (0, 0)
@@ -103,6 +103,11 @@ public class LatLng implements ILatLng, Parcelable {
 
     public void setLongitude(double longitude) {
         this.longitude = longitude;
+    }
+
+    public void set(LatLng other) {
+        latitude = other.latitude;
+        longitude = other.longitude;
     }
 
     @Override
