@@ -54,6 +54,9 @@ public:
     mbgl::EdgeInsets getInsets() { return insets;}
     void setInsets(mbgl::EdgeInsets insets_);
 
+    int getWidth();
+    int getHeight();
+
 private:
     EGLConfig chooseConfig(const EGLConfig configs[], EGLint numConfigs);
 
