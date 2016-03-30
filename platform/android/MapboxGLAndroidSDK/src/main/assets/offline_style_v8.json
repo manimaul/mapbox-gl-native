@@ -1,0 +1,26 @@
+{
+  "version": 8,
+  "name": "Offline",
+  "sources": {
+    "mapbox": {
+      "type": "raster",
+      "url": "http://localhost/offline_data_v8.json",
+      "tileSize": 256
+    }
+  },
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "rgb(255,255,255)"
+      }
+    },
+    {
+      "id": "offline",
+      "type": "raster",
+      "source": "mapbox",
+      "source-layer": "mapbox_offline_full"
+    }
+  ]
+}
