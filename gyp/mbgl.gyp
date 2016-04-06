@@ -4,10 +4,60 @@
     'shaders.gypi',
     'version.gypi',
     'certificates.gypi',
-    'standalone.gypi',
     'core.gypi',
     'none.gypi',
   ],
+
+  'targets': [
+    { 'target_name': 'loop',
+      'product_name': 'mbgl-loop',
+      'type': 'static_library',
+      'standalone_static_library': 1,
+
+      'include_dirs': [
+        '../include',
+        '../src',
+      ],
+
+      'conditions': [
+        ['loop_lib == "darwin"', {
+          'sources': [
+            '../platform/darwin/src/async_task.cpp',
+            '../platform/darwin/src/run_loop.cpp',
+            '../platform/darwin/src/timer.cpp',
+          ],
+        }],
+
+        ['loop_lib == "android"', {
+          'sources': [
+            '../platform/android/src/async_task.cpp',
+            '../platform/android/src/run_loop.cpp',
+            '../platform/android/src/timer.cpp',
+          ],
+        }],
+
+        ['loop_lib == "uv"', {
+          'sources': [
+            '../platform/default/async_task.cpp',
+            '../platform/default/run_loop.cpp',
+            '../platform/default/timer.cpp',
+          ],
+
+          'cflags_cc': [
+            '<@(libuv_cflags)',
+          ],
+
+          'link_settings': {
+            'libraries': [
+              '<@(libuv_static_libs)',
+              '<@(libuv_ldflags)',
+            ],
+          },
+        }]
+      ],
+    },
+  ],
+
   'conditions': [
     ['headless_lib == "cgl" and host == "osx"', { 'includes': [ 'headless-cgl.gypi' ] } ],
     ['headless_lib == "eagl" and host == "ios"', { 'includes': [ 'headless-eagl.gypi' ] } ],
@@ -21,7 +71,5 @@
     ['http_lib == "android" and host == "android"', { 'includes': [ 'http-android.gypi' ] } ],
     ['asset_lib == "fs"', { 'includes': [ 'asset-fs.gypi' ] } ],
     ['asset_lib == "zip"', { 'includes': [ 'asset-zip.gypi' ] } ],
-
-    ['install_prefix != ""', { 'includes': ['install.gypi' ] } ],
   ],
 }

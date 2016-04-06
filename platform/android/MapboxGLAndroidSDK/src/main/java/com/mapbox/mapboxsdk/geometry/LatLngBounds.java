@@ -169,7 +169,7 @@ public class LatLngBounds implements Parcelable {
      * @param latLng the point which may be contained
      * @return true, if the point is contained within the box.
      */
-    public boolean including(final ILatLng latLng) {
+    public boolean contains(final ILatLng latLng) {
         final double latitude = latLng.getLatitude();
         final double longitude = latLng.getLongitude();
         return ((latitude < this.mLatNorth)
@@ -240,11 +240,6 @@ public class LatLngBounds implements Parcelable {
     public boolean contains(LatLng latLng) {
         return latLng.latitude <= mLatNorth && latLng.latitude >= mLatSouth &&
                 latLng.longitude <= mLonEast && latLng.longitude >= mLonWest;
-    }
-
-    public boolean contains(ILatLng latLng) {
-        return latLng.getLatitude() <= mLatNorth && latLng.getLatitude() >= mLatSouth &&
-                latLng.getLongitude() <= mLonEast && latLng.getLongitude() >= mLonWest;
     }
 
     public static final Parcelable.Creator<LatLngBounds> CREATOR =

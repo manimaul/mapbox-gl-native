@@ -13,6 +13,7 @@ import android.content.IntentFilter;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.PointF;
@@ -22,6 +23,7 @@ import android.location.Location;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.CallSuper;
 import android.support.annotation.FloatRange;
@@ -273,8 +275,8 @@ public class MapView extends FrameLayout {
         uiSettings.setZoomControlsEnabled(options.getZoomControlsEnabled());
 
         // Zoom
-        uiSettings.setMaxZoom(options.getMaxZoom());
-        uiSettings.setMinZoom(options.getMinZoom());
+        mMapboxMap.setMaxZoom(options.getMaxZoom());
+        mMapboxMap.setMinZoom(options.getMinZoom());
 
         // Compass
         uiSettings.setCompassEnabled(options.getCompassEnabled());
@@ -282,6 +284,9 @@ public class MapView extends FrameLayout {
         int[] compassMargins = options.getCompassMargins();
         if (compassMargins != null) {
             uiSettings.setCompassMargins(compassMargins[0], compassMargins[1], compassMargins[2], compassMargins[3]);
+        } else {
+            int tenDp = (int) getResources().getDimension(R.dimen.ten_dp);
+            uiSettings.setCompassMargins(tenDp, tenDp, tenDp, tenDp);
         }
 
         // Logo
@@ -290,6 +295,9 @@ public class MapView extends FrameLayout {
         int[] logoMargins = options.getLogoMargins();
         if (logoMargins != null) {
             uiSettings.setLogoMargins(logoMargins[0], logoMargins[1], logoMargins[2], logoMargins[3]);
+        } else {
+            int sixteenDp = (int) getResources().getDimension(R.dimen.sixteen_dp);
+            uiSettings.setLogoMargins(sixteenDp, sixteenDp, sixteenDp, sixteenDp);
         }
 
         // Attribution
@@ -298,6 +306,11 @@ public class MapView extends FrameLayout {
         int[] attributionMargins = options.getAttributionMargins();
         if (attributionMargins != null) {
             uiSettings.setAttributionMargins(attributionMargins[0], attributionMargins[1], attributionMargins[2], attributionMargins[3]);
+        } else {
+            Resources resources = getResources();
+            int sevenDp = (int) resources.getDimension(R.dimen.seven_dp);
+            int seventySixDp = (int) resources.getDimension(R.dimen.seventy_six_dp);
+            uiSettings.setAttributionMargins(seventySixDp, sevenDp, sevenDp, sevenDp);
         }
     }
 
@@ -394,19 +407,17 @@ public class MapView extends FrameLayout {
         addOnMapChangedListener(new OnMapChangedListener() {
             @Override
             public void onMapChanged(@MapChange int change) {
-                if (change == DID_FINISH_LOADING_MAP) {
+                if (change == DID_FINISH_RENDERING_MAP_FULLY_RENDERED && mInitialLoad) {
+                    mInitialLoad = false;
                     reloadIcons();
                     reloadMarkers();
                     adjustTopOffsetPixels();
-                    if (mInitialLoad) {
-                        mInitialLoad = false;
-                        if (mOnMapReadyCallbackList.size() > 0) {
-                            Iterator<OnMapReadyCallback> iterator = mOnMapReadyCallbackList.iterator();
-                            while (iterator.hasNext()) {
-                                OnMapReadyCallback callback = iterator.next();
-                                callback.onMapReady(mMapboxMap);
-                                iterator.remove();
-                            }
+                    if (mOnMapReadyCallbackList.size() > 0) {
+                        Iterator<OnMapReadyCallback> iterator = mOnMapReadyCallbackList.iterator();
+                        while (iterator.hasNext()) {
+                            OnMapReadyCallback callback = iterator.next();
+                            callback.onMapReady(mMapboxMap);
+                            iterator.remove();
                         }
                     }
                 }
@@ -487,22 +498,6 @@ public class MapView extends FrameLayout {
         mNativeMapView.destroySurface();
         mNativeMapView.destroy();
         mNativeMapView = null;
-    }
-
-    /**
-     * You must call this method from the parent's {@link Activity#onStart()} or {@link Fragment#onStart()}.
-     */
-    @UiThread
-    public void onStart() {
-        mUserLocationView.onStart();
-    }
-
-    /**
-     * You must call this method from the parent's {@link Activity#onStop()} or {@link Fragment#onStop()}
-     */
-    @UiThread
-    public void onStop() {
-        mUserLocationView.onStop();
     }
 
     /**
@@ -589,6 +584,10 @@ public class MapView extends FrameLayout {
     //
 
     double getDirection() {
+        if (mDestroyed) {
+            return 0;
+        }
+
         double direction = -mNativeMapView.getBearing();
 
         while (direction > 360) {
@@ -699,6 +698,9 @@ public class MapView extends FrameLayout {
         } else {
             mNativeMapView.scaleBy(0.5, x / mScreenDensity, y / mScreenDensity, MapboxConstants.ANIMATION_DURATION);
         }
+
+        // work around to invalidate camera position
+        postDelayed(new ZoomInvalidator(mMapboxMap), MapboxConstants.ANIMATION_DURATION);
     }
 
     //
@@ -1273,7 +1275,6 @@ public class MapView extends FrameLayout {
             return;
         }
 
-        mMapOverlayDispatch.onSizeChanged(width, height);
         if (!isInEditMode()) {
             mNativeMapView.resizeView((int) (width / mScreenDensity), (int) (height / mScreenDensity));
         }
@@ -1332,6 +1333,10 @@ public class MapView extends FrameLayout {
         // Must handle window resizing here.
         @Override
         public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
+            if (mDestroyed) {
+                return;
+            }
+
             mNativeMapView.resizeFramebuffer(width, height);
         }
 
@@ -1339,8 +1344,13 @@ public class MapView extends FrameLayout {
         // Must sync with UI here
         @Override
         public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+            if (mDestroyed) {
+                return;
+            }
+            
             mNativeMapView.updateMapBounds(mWgsVisibleRegion, mWgsCenter);
             mMapOverlayDispatch.update(mWgsVisibleRegion, mWgsCenter, (float) getDirection(), (float) getZoom());
+
             mCompassView.update(getDirection());
             mUserLocationView.update();
             for (InfoWindow infoWindow : mMapboxMap.getInfoWindows()) {
@@ -1486,7 +1496,8 @@ public class MapView extends FrameLayout {
 
             case MotionEvent.ACTION_POINTER_DOWN:
                 // Second pointer down
-                mTwoTap = event.getPointerCount() == 2;
+                mTwoTap = event.getPointerCount() == 2
+                        && mMapboxMap.getUiSettings().isZoomGesturesEnabled();
                 if (mTwoTap) {
                     // Confirmed 2nd Finger Down
                     trackGestureEvent(MapboxEvent.GESTURE_TWO_FINGER_SINGLETAP, event.getX(), event.getY());
@@ -2510,9 +2521,20 @@ public class MapView extends FrameLayout {
         mMapboxMap = mapboxMap;
     }
 
-    //
-    // View utility methods
-    //
+    @UiThread
+    void snapshot(@NonNull final MapboxMap.SnapshotReadyCallback callback, @Nullable final Bitmap bitmap) {
+        final TextureView textureView = (TextureView) findViewById(R.id.textureView);
+        final boolean canUseBitmap = bitmap != null && textureView.getWidth() == bitmap.getWidth() && textureView.getHeight() == bitmap.getHeight();
+        if (canUseBitmap) {
+            callback.onSnapshotReady(textureView.getBitmap(bitmap));
+        } else {
+            callback.onSnapshotReady(textureView.getBitmap());
+        }
+    }
+
+//
+// View utility methods
+//
 
     private void setWidgetGravity(@NonNull final View view, int gravity) {
         LayoutParams layoutParams = (LayoutParams) view.getLayoutParams();
@@ -2530,280 +2552,295 @@ public class MapView extends FrameLayout {
         view.setLayoutParams(layoutParams);
     }
 
-    private static class AttributionOnClickListener implements View.OnClickListener, DialogInterface.OnClickListener {
+private static class AttributionOnClickListener implements View.OnClickListener, DialogInterface.OnClickListener {
 
-        private static final int ATTRIBUTION_INDEX_IMPROVE_THIS_MAP = 2;
-        private static final int ATTRIBUTION_INDEX_TELEMETRY_SETTINGS = 3;
-        private MapView mMapView;
+    private static final int ATTRIBUTION_INDEX_IMPROVE_THIS_MAP = 2;
+    private static final int ATTRIBUTION_INDEX_TELEMETRY_SETTINGS = 3;
+    private MapView mMapView;
 
-        public AttributionOnClickListener(MapView mapView) {
-            super();
-            mMapView = mapView;
-        }
+    public AttributionOnClickListener(MapView mapView) {
+        super();
+        mMapView = mapView;
+    }
 
-        // Called when someone presses the attribution icon
-        @Override
-        public void onClick(View v) {
-            Context context = v.getContext();
-            String[] items = context.getResources().getStringArray(R.array.attribution_names);
+    // Called when someone presses the attribution icon
+    @Override
+    public void onClick(View v) {
+        Context context = v.getContext();
+        String[] items = context.getResources().getStringArray(R.array.attribution_names);
+        AlertDialog.Builder builder = new AlertDialog.Builder(context, R.style.AttributionAlertDialogStyle);
+        builder.setTitle(R.string.attributionsDialogTitle);
+        builder.setAdapter(new ArrayAdapter<>(context, R.layout.attribution_list_item, items), this);
+        builder.show();
+    }
+
+    // Called when someone selects an attribution, 'Improve this map' adds location data to the url
+    @Override
+    public void onClick(DialogInterface dialog, int which) {
+        final Context context = ((Dialog) dialog).getContext();
+        if (which == ATTRIBUTION_INDEX_TELEMETRY_SETTINGS) {
+
+            int array = R.array.attribution_telemetry_options;
+            if (MapboxEventManager.getMapboxEventManager().isTelemetryEnabled()) {
+                array = R.array.attribution_telemetry_options_already_participating;
+            }
+            String[] items = context.getResources().getStringArray(array);
             AlertDialog.Builder builder = new AlertDialog.Builder(context, R.style.AttributionAlertDialogStyle);
-            builder.setTitle(R.string.attributionsDialogTitle);
-            builder.setAdapter(new ArrayAdapter<>(context, R.layout.attribution_list_item, items), this);
-            builder.show();
-        }
+            builder.setTitle(R.string.attributionTelemetryTitle);
+            LayoutInflater factory = LayoutInflater.from(context);
+            View content = factory.inflate(R.layout.attribution_telemetry_view, null);
 
-        // Called when someone selects an attribution, 'Improve this map' adds location data to the url
-        @Override
-        public void onClick(DialogInterface dialog, int which) {
-            final Context context = ((Dialog) dialog).getContext();
-            if (which == ATTRIBUTION_INDEX_TELEMETRY_SETTINGS) {
+            ListView lv = (ListView) content.findViewById(R.id.telemetryOptionsList);
+            lv.setAdapter(new ArrayAdapter<String>(context, R.layout.attribution_list_item, items));
+            lv.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
 
-                int array = R.array.attribution_telemetry_options;
-                if (MapboxEventManager.getMapboxEventManager().isTelemetryEnabled()) {
-                    array = R.array.attribution_telemetry_options_already_participating;
-                }
-                String[] items = context.getResources().getStringArray(array);
-                AlertDialog.Builder builder = new AlertDialog.Builder(context, R.style.AttributionAlertDialogStyle);
-                builder.setTitle(R.string.attributionTelemetryTitle);
-                LayoutInflater factory = LayoutInflater.from(context);
-                View content = factory.inflate(R.layout.attribution_telemetry_view, null);
-
-                ListView lv = (ListView) content.findViewById(R.id.telemetryOptionsList);
-                lv.setAdapter(new ArrayAdapter<String>(context, R.layout.attribution_list_item, items));
-                lv.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
-
-                builder.setView(content);
-                final AlertDialog telemDialog = builder.show();
-                lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                    @Override
-                    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                        switch (position) {
-                            case 0:
-                                String url = context.getResources().getStringArray(R.array.attribution_links)[3];
-                                Intent intent = new Intent(Intent.ACTION_VIEW);
-                                intent.setData(Uri.parse(url));
-                                context.startActivity(intent);
-                                telemDialog.cancel();
-                                return;
-                            case 1:
-                                MapboxEventManager.getMapboxEventManager().setTelemetryEnabled(false);
-                                telemDialog.cancel();
-                                return;
-                            case 2:
-                                MapboxEventManager.getMapboxEventManager().setTelemetryEnabled(true);
-                                telemDialog.cancel();
-                                return;
-                        }
+            builder.setView(content);
+            final AlertDialog telemDialog = builder.show();
+            lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                    switch (position) {
+                        case 0:
+                            String url = context.getResources().getStringArray(R.array.attribution_links)[3];
+                            Intent intent = new Intent(Intent.ACTION_VIEW);
+                            intent.setData(Uri.parse(url));
+                            context.startActivity(intent);
+                            telemDialog.cancel();
+                            return;
+                        case 1:
+                            MapboxEventManager.getMapboxEventManager().setTelemetryEnabled(false);
+                            telemDialog.cancel();
+                            return;
+                        case 2:
+                            MapboxEventManager.getMapboxEventManager().setTelemetryEnabled(true);
+                            telemDialog.cancel();
+                            return;
                     }
-                });
-                return;
-            }
-            String url = context.getResources().getStringArray(R.array.attribution_links)[which];
-            if (which == ATTRIBUTION_INDEX_IMPROVE_THIS_MAP) {
-                LatLng latLng = mMapView.getMapboxMap().getCameraPosition().target;
-                url = String.format(url, latLng.getLongitude(), latLng.getLatitude(), (int) mMapView.getZoom());
-            }
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setData(Uri.parse(url));
-            context.startActivity(intent);
+                }
+            });
+            return;
         }
+        String url = context.getResources().getStringArray(R.array.attribution_links)[which];
+        if (which == ATTRIBUTION_INDEX_IMPROVE_THIS_MAP) {
+            LatLng latLng = mMapView.getMapboxMap().getCameraPosition().target;
+            url = String.format(url, latLng.getLongitude(), latLng.getLatitude(), (int) mMapView.getZoom());
+        }
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setData(Uri.parse(url));
+        context.startActivity(intent);
+    }
+}
+
+private static class ZoomInvalidator implements Runnable {
+
+    private MapboxMap mapboxMap;
+
+    public ZoomInvalidator(MapboxMap mapboxMap) {
+        this.mapboxMap = mapboxMap;
     }
 
-    /**
-     * Definition of a map change event.
-     *
-     * @see MapView.OnMapChangedListener#onMapChanged(int)
-     */
-    @IntDef({REGION_WILL_CHANGE,
-            REGION_WILL_CHANGE_ANIMATED,
-            REGION_IS_CHANGING,
-            REGION_DID_CHANGE,
-            REGION_DID_CHANGE_ANIMATED,
-            WILL_START_LOADING_MAP,
-            DID_FINISH_LOADING_MAP,
-            DID_FAIL_LOADING_MAP,
-            WILL_START_RENDERING_FRAME,
-            DID_FINISH_RENDERING_FRAME,
-            DID_FINISH_RENDERING_FRAME_FULLY_RENDERED,
-            WILL_START_RENDERING_MAP,
-            DID_FINISH_RENDERING_MAP,
-            DID_FINISH_RENDERING_MAP_FULLY_RENDERED
-    })
-    @Retention(RetentionPolicy.SOURCE)
-    public @interface MapChange {
+    @Override
+    public void run() {
+        // invalidate camera position
+        mapboxMap.getCameraPosition();
     }
+}
 
-    /**
-     * <p>
-     * This {@link MapChange} is triggered whenever the currently displayed map region is about to changing
-     * without an animation.
-     * </p>
-     * <p>
-     * This event is followed by a series of {@link MapView#REGION_IS_CHANGING} and ends
-     * with {@link MapView#REGION_DID_CHANGE}.
-     * </p>
-     *
-     * @see MapView.OnMapChangedListener
-     */
-    public static final int REGION_WILL_CHANGE = 0;
+/**
+ * Definition of a map change event.
+ *
+ * @see MapView.OnMapChangedListener#onMapChanged(int)
+ */
+@IntDef({REGION_WILL_CHANGE,
+        REGION_WILL_CHANGE_ANIMATED,
+        REGION_IS_CHANGING,
+        REGION_DID_CHANGE,
+        REGION_DID_CHANGE_ANIMATED,
+        WILL_START_LOADING_MAP,
+        DID_FINISH_LOADING_MAP,
+        DID_FAIL_LOADING_MAP,
+        WILL_START_RENDERING_FRAME,
+        DID_FINISH_RENDERING_FRAME,
+        DID_FINISH_RENDERING_FRAME_FULLY_RENDERED,
+        WILL_START_RENDERING_MAP,
+        DID_FINISH_RENDERING_MAP,
+        DID_FINISH_RENDERING_MAP_FULLY_RENDERED
+})
+@Retention(RetentionPolicy.SOURCE)
+public @interface MapChange {
+}
 
-    /**
-     * <p>
-     * This {@link MapChange} is triggered whenever the currently displayed map region is about to changing
-     * with an animation.
-     * </p>
-     * <p>
-     * This event is followed by a series of {@link MapView#REGION_IS_CHANGING} and ends
-     * with {@link MapView#REGION_DID_CHANGE_ANIMATED}.
-     * </p>
-     *
-     * @see MapView.OnMapChangedListener
-     */
-    public static final int REGION_WILL_CHANGE_ANIMATED = 1;
+/**
+ * <p>
+ * This {@link MapChange} is triggered whenever the currently displayed map region is about to changing
+ * without an animation.
+ * </p>
+ * <p>
+ * This event is followed by a series of {@link MapView#REGION_IS_CHANGING} and ends
+ * with {@link MapView#REGION_DID_CHANGE}.
+ * </p>
+ *
+ * @see MapView.OnMapChangedListener
+ */
+public static final int REGION_WILL_CHANGE = 0;
 
-    /**
-     * <p>
-     * This {@link MapChange} is triggered whenever the currently displayed map region is changing.
-     * </p>
-     *
-     * @see MapView.OnMapChangedListener
-     */
-    public static final int REGION_IS_CHANGING = 2;
+/**
+ * <p>
+ * This {@link MapChange} is triggered whenever the currently displayed map region is about to changing
+ * with an animation.
+ * </p>
+ * <p>
+ * This event is followed by a series of {@link MapView#REGION_IS_CHANGING} and ends
+ * with {@link MapView#REGION_DID_CHANGE_ANIMATED}.
+ * </p>
+ *
+ * @see MapView.OnMapChangedListener
+ */
+public static final int REGION_WILL_CHANGE_ANIMATED = 1;
 
-    /**
-     * <p>
-     * This {@link MapChange} is triggered whenever the currently displayed map region finished changing
-     * without an animation.
-     * </p>
-     *
-     * @see MapView.OnMapChangedListener
-     */
-    public static final int REGION_DID_CHANGE = 3;
+/**
+ * <p>
+ * This {@link MapChange} is triggered whenever the currently displayed map region is changing.
+ * </p>
+ *
+ * @see MapView.OnMapChangedListener
+ */
+public static final int REGION_IS_CHANGING = 2;
 
-    /**
-     * <p>
-     * This {@link MapChange} is triggered whenever the currently displayed map region finished changing
-     * with an animation.
-     * </p>
-     *
-     * @see MapView.OnMapChangedListener
-     */
-    public static final int REGION_DID_CHANGE_ANIMATED = 4;
+/**
+ * <p>
+ * This {@link MapChange} is triggered whenever the currently displayed map region finished changing
+ * without an animation.
+ * </p>
+ *
+ * @see MapView.OnMapChangedListener
+ */
+public static final int REGION_DID_CHANGE = 3;
 
-    /**
-     * <p>
-     * This {@link MapChange} is triggered when the map is about to start loading a new map style.
-     * </p>
-     * <p>
-     * This event is followed by {@link MapView#DID_FINISH_LOADING_MAP} or
-     * {@link MapView#DID_FAIL_LOADING_MAP}.
-     * </p>
-     *
-     * @see MapView.OnMapChangedListener
-     */
-    public static final int WILL_START_LOADING_MAP = 5;
+/**
+ * <p>
+ * This {@link MapChange} is triggered whenever the currently displayed map region finished changing
+ * with an animation.
+ * </p>
+ *
+ * @see MapView.OnMapChangedListener
+ */
+public static final int REGION_DID_CHANGE_ANIMATED = 4;
 
-    /**
-     * <p>
-     * This {@link MapChange} is triggered when the map has successfully loaded a new map style.
-     * </p>
-     *
-     * @see MapView.OnMapChangedListener
-     */
-    public static final int DID_FINISH_LOADING_MAP = 6;
+/**
+ * <p>
+ * This {@link MapChange} is triggered when the map is about to start loading a new map style.
+ * </p>
+ * <p>
+ * This event is followed by {@link MapView#DID_FINISH_LOADING_MAP} or
+ * {@link MapView#DID_FAIL_LOADING_MAP}.
+ * </p>
+ *
+ * @see MapView.OnMapChangedListener
+ */
+public static final int WILL_START_LOADING_MAP = 5;
 
-    /**
-     * <p>
-     * This {@link MapChange} is currently not implemented.
-     * </p>
-     * <p>
-     * This event is triggered when the map has failed to load a new map style.
-     * </p>
-     *
-     * @see MapView.OnMapChangedListener
-     */
-    public static final int DID_FAIL_LOADING_MAP = 7;
+/**
+ * <p>
+ * This {@link MapChange} is triggered when the map has successfully loaded a new map style.
+ * </p>
+ *
+ * @see MapView.OnMapChangedListener
+ */
+public static final int DID_FINISH_LOADING_MAP = 6;
 
-    /**
-     * <p>
-     * This {@link MapChange} is currently not implemented.
-     * </p>
-     *
-     * @see MapView.OnMapChangedListener
-     */
-    public static final int WILL_START_RENDERING_FRAME = 8;
+/**
+ * <p>
+ * This {@link MapChange} is currently not implemented.
+ * </p>
+ * <p>
+ * This event is triggered when the map has failed to load a new map style.
+ * </p>
+ *
+ * @see MapView.OnMapChangedListener
+ */
+public static final int DID_FAIL_LOADING_MAP = 7;
 
-    /**
-     * <p>
-     * This {@link MapChange} is currently not implemented.
-     * </p>
-     *
-     * @see MapView.OnMapChangedListener
-     */
-    public static final int DID_FINISH_RENDERING_FRAME = 9;
+/**
+ * <p>
+ * This {@link MapChange} is currently not implemented.
+ * </p>
+ *
+ * @see MapView.OnMapChangedListener
+ */
+public static final int WILL_START_RENDERING_FRAME = 8;
 
-    /**
-     * <p>
-     * This {@link MapChange} is currently not implemented.
-     * </p>
-     *
-     * @see MapView.OnMapChangedListener
-     */
-    public static final int DID_FINISH_RENDERING_FRAME_FULLY_RENDERED = 10;
+/**
+ * <p>
+ * This {@link MapChange} is currently not implemented.
+ * </p>
+ *
+ * @see MapView.OnMapChangedListener
+ */
+public static final int DID_FINISH_RENDERING_FRAME = 9;
 
-    /**
-     * <p>
-     * This {@link MapChange} is currently not implemented.
-     * </p>
-     *
-     * @see MapView.OnMapChangedListener
-     */
-    public static final int WILL_START_RENDERING_MAP = 11;
+/**
+ * <p>
+ * This {@link MapChange} is currently not implemented.
+ * </p>
+ *
+ * @see MapView.OnMapChangedListener
+ */
+public static final int DID_FINISH_RENDERING_FRAME_FULLY_RENDERED = 10;
 
-    /**
-     * <p>
-     * This {@link MapChange} is currently not implemented.
-     * </p>
-     *
-     * @see MapView.OnMapChangedListener
-     */
-    public static final int DID_FINISH_RENDERING_MAP = 12;
+/**
+ * <p>
+ * This {@link MapChange} is currently not implemented.
+ * </p>
+ *
+ * @see MapView.OnMapChangedListener
+ */
+public static final int WILL_START_RENDERING_MAP = 11;
 
-    /**
-     * <p>
-     * This {@link MapChange} is currently not implemented.
-     * </p>
-     *
-     * @see MapView.OnMapChangedListener
-     */
-    public static final int DID_FINISH_RENDERING_MAP_FULLY_RENDERED = 13;
+/**
+ * <p>
+ * This {@link MapChange} is currently not implemented.
+ * </p>
+ *
+ * @see MapView.OnMapChangedListener
+ */
+public static final int DID_FINISH_RENDERING_MAP = 12;
 
+/**
+ * <p>
+ * This {@link MapChange} is currently not implemented.
+ * </p>
+ *
+ * @see MapView.OnMapChangedListener
+ */
+public static final int DID_FINISH_RENDERING_MAP_FULLY_RENDERED = 13;
+
+/**
+ * Interface definition for a callback to be invoked when the displayed map view changes.
+ *
+ * @see MapView#addOnMapChangedListener(OnMapChangedListener)
+ * @see MapView.MapChange
+ */
+public interface OnMapChangedListener {
     /**
-     * Interface definition for a callback to be invoked when the displayed map view changes.
+     * Called when the displayed map view changes.
      *
-     * @see MapView#addOnMapChangedListener(OnMapChangedListener)
-     * @see MapView.MapChange
+     * @param change Type of map change event, one of {@link #REGION_WILL_CHANGE},
+     *               {@link #REGION_WILL_CHANGE_ANIMATED},
+     *               {@link #REGION_IS_CHANGING},
+     *               {@link #REGION_DID_CHANGE},
+     *               {@link #REGION_DID_CHANGE_ANIMATED},
+     *               {@link #WILL_START_LOADING_MAP},
+     *               {@link #DID_FAIL_LOADING_MAP},
+     *               {@link #DID_FINISH_LOADING_MAP},
+     *               {@link #WILL_START_RENDERING_FRAME},
+     *               {@link #DID_FINISH_RENDERING_FRAME},
+     *               {@link #DID_FINISH_RENDERING_FRAME_FULLY_RENDERED},
+     *               {@link #WILL_START_RENDERING_MAP},
+     *               {@link #DID_FINISH_RENDERING_MAP},
+     *               {@link #DID_FINISH_RENDERING_MAP_FULLY_RENDERED}.
      */
-    public interface OnMapChangedListener {
-        /**
-         * Called when the displayed map view changes.
-         *
-         * @param change Type of map change event, one of {@link #REGION_WILL_CHANGE},
-         *               {@link #REGION_WILL_CHANGE_ANIMATED},
-         *               {@link #REGION_IS_CHANGING},
-         *               {@link #REGION_DID_CHANGE},
-         *               {@link #REGION_DID_CHANGE_ANIMATED},
-         *               {@link #WILL_START_LOADING_MAP},
-         *               {@link #DID_FAIL_LOADING_MAP},
-         *               {@link #DID_FINISH_LOADING_MAP},
-         *               {@link #WILL_START_RENDERING_FRAME},
-         *               {@link #DID_FINISH_RENDERING_FRAME},
-         *               {@link #DID_FINISH_RENDERING_FRAME_FULLY_RENDERED},
-         *               {@link #WILL_START_RENDERING_MAP},
-         *               {@link #DID_FINISH_RENDERING_MAP},
-         *               {@link #DID_FINISH_RENDERING_MAP_FULLY_RENDERED}.
-         */
-        void onMapChanged(@MapChange int change);
-    }
+    void onMapChanged(@MapChange int change);
+}
 
 }
