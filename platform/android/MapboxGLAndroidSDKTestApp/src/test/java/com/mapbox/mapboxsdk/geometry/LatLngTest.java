@@ -2,19 +2,17 @@ package com.mapbox.mapboxsdk.geometry;
 
 import android.location.Location;
 import android.os.Parcel;
-
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.utils.MockParcel;
-
 import org.junit.Test;
-
 import java.util.Objects;
-
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -151,7 +149,7 @@ public class LatLngTest {
         LatLng latLng = new LatLng(latitude, longitude, altitude);
         assertEquals("string should match",
                 latLng.toString(),
-                "LatLng [longitude=3.4, latitude=1.2, altitude=5.6]");
+                "LatLng [latitude=1.2, longitude=3.4, altitude=5.6]");
     }
 
     @Test
@@ -178,22 +176,22 @@ public class LatLngTest {
 
     @Test
     public void testParcelable() {
-        LatLng latLng = new LatLng(1, 2, 3);
-        Parcel parcel = MockParcel.obtain();
-        latLng.writeToParcel(parcel, 0);
+        LatLng object = new LatLng(1, 2, 3);
+        Parcel parcel = MockParcel.obtain(object);
+        object.writeToParcel(parcel, 0);
         parcel.setDataPosition(0);
-        LatLng parceledLatLng = LatLng.CREATOR.createFromParcel(parcel);
-        assertEquals("parcel should match initial object", latLng, parceledLatLng);
+        LatLng parceable = LatLng.CREATOR.createFromParcel(parcel);
+        assertEquals("parcel should match initial object", object, parceable);
     }
 
     @Test
     public void testParcelableArray() {
-        LatLng[] latLngs = new LatLng[]{new LatLng(1, 2, 3), new LatLng(1, 2)};
-        Parcel parcel = MockParcel.obtain();
-        parcel.writeParcelableArray(latLngs, 0);
+        LatLng[] objects = new LatLng[]{new LatLng(1, 2, 3), new LatLng(1, 2)};
+        Parcel parcel = MockParcel.obtain(objects);
+        parcel.writeParcelableArray(objects, 0);
         parcel.setDataPosition(0);
-        LatLng[] parceledLatLngs = (LatLng[]) parcel.readParcelableArray(LatLng.class.getClassLoader());
-        assertArrayEquals("parcel should match initial object", latLngs, parceledLatLngs);
+        LatLng[] parcelableArray = (LatLng[]) parcel.readParcelableArray(LatLng.class.getClassLoader());
+        assertArrayEquals("parcel should match initial object", objects, parcelableArray);
     }
 
     @Test
@@ -202,4 +200,19 @@ public class LatLngTest {
         assertEquals("contents should be 0", 0, latLng.describeContents(), DELTA);
     }
 
+    @Test
+    public void testWrapped() {
+        LatLng latLng = new LatLng(45.0, -185.0);
+        LatLng wrapped = latLng.wrap();
+        assertNotSame(latLng, wrapped);
+        assertEquals("longitude wrapped value", wrapped.getLongitude(), 175.0, DELTA);
+    }
+
+    @Test
+    public void testUnnecessaryWrapped() {
+        LatLng latLng = new LatLng(45.0, 50.0);
+        LatLng wrapped = latLng.wrap();
+        assertNotSame(latLng, wrapped);
+        assertEquals("longitude wrapped value", wrapped.getLongitude(), 50.0, DELTA);
+    }
 }

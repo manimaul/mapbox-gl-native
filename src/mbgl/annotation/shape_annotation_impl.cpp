@@ -108,12 +108,13 @@ void ShapeAnnotationImpl::updateTile(const TileID& tileID, AnnotationTile& tile)
 
         mapbox::geojsonvt::Options options;
         options.maxZoom = maxZoom;
-        options.buffer = 128u;
+        options.buffer = 255u;
+        options.extent = util::EXTENT;
         options.tolerance = baseTolerance;
         shapeTiler = std::make_unique<mapbox::geojsonvt::GeoJSONVT>(features, options);
     }
 
-    const auto& shapeTile = shapeTiler->getTile(tileID.z, tileID.x, tileID.y);
+    const auto& shapeTile = shapeTiler->getTile(tileID.sourceZ, tileID.x, tileID.y);
     if (!shapeTile)
         return;
 

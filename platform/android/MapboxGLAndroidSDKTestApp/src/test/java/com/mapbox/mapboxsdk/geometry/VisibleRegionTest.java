@@ -1,7 +1,12 @@
 package com.mapbox.mapboxsdk.geometry;
 
+import android.os.Parcel;
+
+import com.mapbox.mapboxsdk.utils.MockParcel;
+
 import org.junit.Test;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
@@ -73,12 +78,57 @@ public class VisibleRegionTest {
     public void testToString() {
         VisibleRegion region = new VisibleRegion(FAR_LEFT, FAR_RIGHT, NEAR_LEFT, NEAR_RIGHT, BOUNDS);
         assertEquals("string should match",
-                "[farLeft [LatLng [longitude=-12.0, latitude=52.0, altitude=0.0]], " +
-                        "farRight [LatLng [longitude=26.0, latitude=52.0, altitude=0.0]], " +
-                        "nearLeft [LatLng [longitude=-12.0, latitude=34.0, altitude=0.0]], " +
-                        "nearRight [LatLng [longitude=26.0, latitude=34.0, altitude=0.0]], " +
+                "[farLeft [LatLng [latitude=52.0, longitude=-12.0, altitude=0.0]], " +
+                        "farRight [LatLng [latitude=52.0, longitude=26.0, altitude=0.0]], " +
+                        "nearLeft [LatLng [latitude=34.0, longitude=-12.0, altitude=0.0]], " +
+                        "nearRight [LatLng [latitude=34.0, longitude=26.0, altitude=0.0]], " +
                         "latLngBounds [N:52.0; E:26.0; S:34.0; W:-12.0]]"
                 , region.toString());
+    }
+
+    @Test
+    public void testParcelable() {
+        VisibleRegion object = new VisibleRegion(new LatLng(-1, -1),
+                new LatLng(-1, 1),
+                new LatLng(1, 1),
+                new LatLng(1, -1),
+                new LatLngBounds.Builder().include(new LatLng(1,1)).include(new LatLng(-1,-1)).build());
+
+        Parcel parcel = MockParcel.obtain(object);
+        VisibleRegion parceable = VisibleRegion.CREATOR.createFromParcel(parcel);
+        assertEquals("parcel should match initial object", object, parceable);
+    }
+
+    @Test
+    public void testParcelableArray() {
+        VisibleRegion object1 = new VisibleRegion(new LatLng(-1, -1),
+                new LatLng(-1, 1),
+                new LatLng(1, 1),
+                new LatLng(1, -1),
+                new LatLngBounds.Builder().include(new LatLng(1,1)).include(new LatLng(-1, -1)).build());
+
+        VisibleRegion object2 = new VisibleRegion(new LatLng(-1, -1),
+                new LatLng(-1, 1),
+                new LatLng(1, 1),
+                new LatLng(1, -1),
+                new LatLngBounds.Builder().include(new LatLng(1,1)).include(new LatLng(-1, -1)).build());
+
+        VisibleRegion[] objects = new VisibleRegion[]{object1,object2};
+        Parcel parcel = MockParcel.obtain(objects);
+        parcel.writeParcelableArray(objects, 0);
+        parcel.setDataPosition(0);
+        VisibleRegion[] parcelableArray = (VisibleRegion[]) parcel.readParcelableArray(VisibleRegion.class.getClassLoader());
+        assertArrayEquals("parcel should match initial object", objects, parcelableArray);
+    }
+
+    @Test
+    public void testDescribeContents() {
+        VisibleRegion object = new VisibleRegion(new LatLng(-1, -1),
+                new LatLng(-1, 1),
+                new LatLng(1, 1),
+                new LatLng(1, -1),
+                new LatLngBounds.Builder().include(new LatLng(1,1)).include(new LatLng(-1, -1)).build());
+        assertEquals("contents should be 0", 0, object.describeContents());
     }
 
 }
