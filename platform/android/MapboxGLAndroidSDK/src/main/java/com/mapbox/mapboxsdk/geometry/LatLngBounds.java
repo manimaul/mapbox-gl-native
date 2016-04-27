@@ -14,16 +14,23 @@ import java.util.List;
  */
 public class LatLngBounds implements Parcelable {
 
-    private final double mLatNorth;
-    private final double mLatSouth;
-    private final double mLonEast;
-    private final double mLonWest;
+    private double mLatNorth;
+    private double mLatSouth;
+    private double mLonEast;
+    private double mLonWest;
 
     public LatLngBounds(LatLng latLngOne, LatLng latLngTwo) {
         mLatNorth = Math.max(latLngOne.latitude, latLngTwo.latitude);
         mLatSouth = Math.min(latLngOne.latitude, latLngTwo.latitude);
         mLonEast = Math.max(latLngOne.longitude, latLngTwo.longitude);
         mLonWest = Math.min(latLngOne.longitude, latLngTwo.longitude);
+    }
+
+    public void set(LatLngBounds other) {
+        mLatNorth = other.mLatNorth;
+        mLatSouth = other.mLatSouth;
+        mLonEast = other.mLonEast;
+        mLonWest = other.mLonWest;
     }
 
     /**

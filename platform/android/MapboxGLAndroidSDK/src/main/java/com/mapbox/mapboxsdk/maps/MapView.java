@@ -1354,7 +1354,9 @@ public class MapView extends FrameLayout {
             }
 
             mNativeMapView.updateMapBounds(mWgsVisibleRegion, mWgsCenter);
-            mMapOverlayDispatch.update(mWgsVisibleRegion, mWgsCenter, (float) getDirection(), (float) getZoom());
+            if (mWgsCenter.isValid()) {
+                mMapOverlayDispatch.update(mWgsVisibleRegion, mWgsCenter, (float) getDirection(), (float) getZoom());
+            }
 
             mCompassView.update(getDirection());
             mUserLocationView.update();

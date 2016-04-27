@@ -116,6 +116,12 @@ public final class CameraPosition implements Parcelable {
         return result;
     }
 
+    public boolean isValid() {
+        return (target == null || target.isValid()) &&
+                !Double.isNaN(zoom) &&
+                !Double.isNaN(bearing);
+    }
+
     /**
      * Builder for composing {@link CameraPosition} objects.
      */

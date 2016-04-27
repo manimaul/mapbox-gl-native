@@ -62,6 +62,14 @@ public class VisibleRegion implements Parcelable {
         this.latLngBounds = latLngBounds;
     }
 
+    public void set(VisibleRegion other) {
+        this.farLeft.set(other.farLeft);
+        this.farRight.set(other.farRight);
+        this.nearLeft.set(other.nearLeft);
+        this.nearRight.set(other.nearRight);
+        this.latLngBounds.set(other.latLngBounds);
+    }
+
     /**
      * Compares this VisibleRegion to another object.
      * If the other object is actually a pointer to this object,

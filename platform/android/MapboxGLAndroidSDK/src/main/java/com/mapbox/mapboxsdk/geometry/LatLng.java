@@ -34,6 +34,11 @@ public class LatLng implements ILatLng, Parcelable {
         }
     };
 
+    private static final double MAX_LAT = 90;
+    private static final double MIN_LAT = -90;
+    private static final double MAX_LNG = 180;
+    private static final double MIN_LNG = -180;
+
     double latitude;
     double longitude;
     double altitude = 0.0;
@@ -207,5 +212,12 @@ public class LatLng implements ILatLng, Parcelable {
         final double tt = Math.acos(t1 + t2 + t3);
 
         return GeoConstants.RADIUS_EARTH_METERS * tt;
+    }
+
+    public boolean isValid() {
+        return latitude <= MAX_LAT &&
+                latitude >= MIN_LAT &&
+                longitude <= MAX_LNG &&
+                longitude >= MIN_LNG;
     }
 }
