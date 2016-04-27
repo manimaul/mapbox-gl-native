@@ -10,9 +10,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.content.pm.ServiceInfo;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -74,17 +72,16 @@ import com.mapbox.mapboxsdk.constants.MyLocationTracking;
 import com.mapbox.mapboxsdk.constants.Style;
 import com.mapbox.mapboxsdk.exceptions.IconBitmapChangedException;
 import com.mapbox.mapboxsdk.exceptions.InvalidAccessTokenException;
-import com.mapbox.mapboxsdk.exceptions.TelemetryServiceNotConfiguredException;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.geometry.LatLngBounds;
 import com.mapbox.mapboxsdk.geometry.VisibleRegion;
 import com.mapbox.mapboxsdk.layers.CustomLayer;
 import com.mapbox.mapboxsdk.maps.widgets.CompassView;
 import com.mapbox.mapboxsdk.maps.widgets.UserLocationView;
-import com.mapbox.mapboxsdk.telemetry.MapboxEvent;
-import com.mapbox.mapboxsdk.telemetry.MapboxEventManager;
 import com.mapbox.mapboxsdk.provider.OfflineProvider;
 import com.mapbox.mapboxsdk.provider.OfflineProviderManager;
+import com.mapbox.mapboxsdk.telemetry.MapboxEvent;
+import com.mapbox.mapboxsdk.telemetry.MapboxEventManager;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -768,6 +765,7 @@ public class MapView extends FrameLayout {
         if (mDestroyed) {
             return;
         }
+        OfflineProviderManager.getInstance().unRegisterProvider();
         mStyleUrl = url;
         mNativeMapView.setStyleUrl(url);
     }
@@ -807,7 +805,7 @@ public class MapView extends FrameLayout {
 
     @UiThread
     void setOfflineProvider(OfflineProvider provider) {
-        String style = OfflineProviderManager.getInstance().registerProvider(getResources(), provider);
+        String style = OfflineProviderManager.getInstance().registerProvider(provider);
         if (style != null) {
             mNativeMapView.setStyleJson(style);
         }

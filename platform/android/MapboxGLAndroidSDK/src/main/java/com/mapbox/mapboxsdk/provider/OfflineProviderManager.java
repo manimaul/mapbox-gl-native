@@ -1,21 +1,23 @@
 package com.mapbox.mapboxsdk.provider;
 
-import android.content.res.Resources;
+import android.support.annotation.VisibleForTesting;
 import android.util.Log;
 
+import com.google.gson.Gson;
 import com.mapbox.mapboxsdk.http.HTTPRequest;
 
-import org.json.JSONException;
-import org.json.JSONObject;
+import java.util.UUID;
 
 public class OfflineProviderManager {
 
     private static final String LOG_TAG = OfflineProviderManager.class.getSimpleName();
 
     public static final String LOCALHOST = "localhost";
+    @VisibleForTesting String mHost = LOCALHOST;
+    private static final Gson sGson = new Gson();
     private static OfflineProviderManager sInstance = new OfflineProviderManager();
-    private OfflineProvider mProvider = null;
     private byte[] mData;
+    @VisibleForTesting OfflineProvider mProvider = null;
 
     public static OfflineProviderManager getInstance() {
         return sInstance;
@@ -24,34 +26,143 @@ public class OfflineProviderManager {
     private OfflineProviderManager() {
     }
 
-    public String registerProvider(Resources resources, OfflineProvider provider) {
+    public String registerProvider(OfflineProvider provider) {
+        String id = "offline_" + provider.name();
+        mProvider = provider;
+        OfflineStyle offlineStyle = createOfflineStyle(id);
+        OfflineData offlineData = createOfflineData(id);
+        mData = sGson.toJson(offlineData).getBytes();
+        return sGson.toJson(offlineStyle);
+    }
 
-        String style = AssetReader.readAssetAsString(resources, "offline_style_v8.json");
-        try {
-            JSONObject jsonStyle = new JSONObject(style);
-            jsonStyle.put("name", provider.name());
-            style = jsonStyle.toString();
-        } catch (JSONException ignored) {
+    private OfflineData createOfflineData(String id) {
+        /*
+        {
+          "attribution": "",
+          "autoscale": true,
+          "bounds": [
+            -180,
+            -85,
+            180,
+            85
+          ],
+          "center": [
+            0,
+            0,
+            3
+          ],
+          "created": 1358310600000,
+          "description": "",
+          "id": "offline",
+          "mapbox_logo": false,
+          "maxzoom": 19,
+          "minzoom": 0,
+          "name": "Offline",
+          "private": false,
+          "scheme": "xyz",
+          "tilejson": "2.0.0",
+          "tiles": [
+            "http://localhost/{z}/{x}/{y}"
+          ],
+          "webpage": ""
         }
+         */
+        String uid = UUID.randomUUID().toString();
+        mHost = LOCALHOST + "_" + uid;
+        OfflineData offlineData = new OfflineData();
+        offlineData.setAttribution("http://mxmariner.com/");
+        offlineData.setAutoscale(true);
+        offlineData.getBounds().add(-180);
+        offlineData.getBounds().add(-85);
+        offlineData.getBounds().add(180);
+        offlineData.getBounds().add(85);
+        offlineData.getCenter().add(0);
+        offlineData.getCenter().add(0);
+        offlineData.getCenter().add(3);
+        offlineData.setCreated(0);
+        offlineData.setDescription("");
+        offlineData.setId(id);
+        offlineData.setMapboxLogo(false);
+        offlineData.setMaxzoom(21);
+        offlineData.setMinzoom(0);
+        offlineData.setName(mProvider.name());
+        offlineData.setPrivate(true);
+        offlineData.setScheme("xyz");
+        offlineData.setTilejson("2.0.0");
+        offlineData.getTiles().add("http://localhost/{z}/{x}/{y}");
+        offlineData.setWebpage("");
+        return offlineData;
+    }
 
-        mData = AssetReader.readAssetByteArray(resources, "offline_data_v8.json");
-        if (style == null && mData != null) {
-            mProvider = null;
-        } else {
-            mProvider = provider;
+    private OfflineStyle createOfflineStyle(String id) {
+        /*
+        {
+          "version": 8,
+          "name": "Offline",
+          "sources": {
+            "mapbox": {
+              "type": "raster",
+              "url": "http://localhost/offline_data_v8.json",
+              "tileSize": 256
+            }
+          },
+          "layers": [
+            {
+              "id": "background",
+              "type": "background",
+              "paint": {
+                "background-color": "rgb(255,255,255)"
+              }
+            },
+            {
+              "id": "offline",
+              "type": "raster",
+              "source": "mapbox",
+              "source-layer": "mapbox_offline_full"
+            }
+          ]
         }
+         */
+        OfflineStyle offlineStyle = new OfflineStyle();
+        offlineStyle.setVersion(8);
+        offlineStyle.setName(mProvider.name());
 
-        return style;
+        Sources sources = new Sources();
+        Mapbox mapbox = new Mapbox();
+        mapbox.setType("raster");
+        mapbox.setUrl("http://localhost/offline_data_v8.json");
+        mapbox.setTileSize(256);
+        sources.setMapbox(mapbox);
+        offlineStyle.setSources(sources);
+
+        Layer bgLayer = new Layer();
+        bgLayer.setId("background");
+        bgLayer.setType("background");
+        Paint paint = new Paint();
+        paint.setBackgroundColor("rgb(255,255,255)");
+        bgLayer.setPaint(paint);
+        offlineStyle.getLayers().add(bgLayer);
+
+
+        Layer fgLayer = new Layer();
+        fgLayer.setId(id);
+        fgLayer.setType("raster");
+        fgLayer.setSource("mapbox");
+        fgLayer.setSourceLayer("mapbox_offline_full");
+        offlineStyle.getLayers().add(fgLayer);
+        return offlineStyle;
     }
 
     public void unRegisterProvider() {
         mProvider = null;
+        mData = null;
+        mHost = LOCALHOST;
     }
 
     public boolean willHandleUrl(String resourceUrl) {
         if (mProvider != null) {
             String host = getUrlHost(resourceUrl);
-            if (LOCALHOST.equals(host)) {
+            if (mHost.equals(host)) {
                 return true;
             }
         }
@@ -74,10 +185,11 @@ public class OfflineProviderManager {
     }
 
     public void handleRequest(final HTTPRequest httpRequest, String resourceUrl) {
-        int i = resourceUrl.indexOf(LOCALHOST);
+
+        int i = resourceUrl.indexOf(mHost);
         if (i > 0) {
             if (mProvider != null) {
-                String[] zxy = resourceUrl.substring(i + LOCALHOST.length() + 1, resourceUrl.length()).split("/");
+                String[] zxy = resourceUrl.substring(i + mHost.length() + 1, resourceUrl.length()).split("/");
                 int z, x, y;
                 if (zxy.length == 3) {
                     // Tile request
