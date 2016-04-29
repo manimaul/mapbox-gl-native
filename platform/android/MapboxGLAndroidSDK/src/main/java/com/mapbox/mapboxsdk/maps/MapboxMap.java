@@ -510,11 +510,6 @@ public class MapboxMap {
     }
 
     @UiThread
-    public void setOfflineProvider(OfflineProvider provider) {
-        mMapView.setOfflineProvider(provider);
-    }
-
-    @UiThread
     public void addOverlay(Overlay overlay) {
         mMapView.addOverlay(overlay);
     }

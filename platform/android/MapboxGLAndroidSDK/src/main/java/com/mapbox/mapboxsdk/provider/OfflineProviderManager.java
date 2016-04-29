@@ -18,6 +18,7 @@ public class OfflineProviderManager {
     private static OfflineProviderManager sInstance = new OfflineProviderManager();
     private byte[] mData;
     @VisibleForTesting OfflineProvider mProvider = null;
+    private String mStyleDataUrl;
 
     public static OfflineProviderManager getInstance() {
         return sInstance;
@@ -28,6 +29,9 @@ public class OfflineProviderManager {
 
     public String registerProvider(OfflineProvider provider) {
         String id = "offline_" + provider.name();
+        String uid = UUID.randomUUID().toString();
+        mHost = LOCALHOST + "_" + uid;
+        Log.d(LOG_TAG, "Configuring host: " + mHost);
         mProvider = provider;
         OfflineStyle offlineStyle = createOfflineStyle(id);
         OfflineData offlineData = createOfflineData(id);
@@ -67,8 +71,7 @@ public class OfflineProviderManager {
           "webpage": ""
         }
          */
-        String uid = UUID.randomUUID().toString();
-        mHost = LOCALHOST + "_" + uid;
+
         OfflineData offlineData = new OfflineData();
         offlineData.setAttribution("http://mxmariner.com/");
         offlineData.setAutoscale(true);
@@ -89,7 +92,8 @@ public class OfflineProviderManager {
         offlineData.setPrivate(true);
         offlineData.setScheme("xyz");
         offlineData.setTilejson("2.0.0");
-        offlineData.getTiles().add("http://localhost/{z}/{x}/{y}");
+        String tileUrl = String.format("http://%s/{z}/{x}/{y}", mHost);
+        offlineData.getTiles().add(tileUrl);
         offlineData.setWebpage("");
         return offlineData;
     }
@@ -130,7 +134,8 @@ public class OfflineProviderManager {
         Sources sources = new Sources();
         Mapbox mapbox = new Mapbox();
         mapbox.setType("raster");
-        mapbox.setUrl("http://localhost/offline_data_v8.json");
+        mStyleDataUrl = String.format("http://%s/offline_data_v8.json", mHost);
+        mapbox.setUrl(mStyleDataUrl);
         mapbox.setTileSize(256);
         sources.setMapbox(mapbox);
         offlineStyle.setSources(sources);
@@ -153,6 +158,27 @@ public class OfflineProviderManager {
         return offlineStyle;
     }
 
+    String getUrlHost(String url) {
+        if (url != null) {
+            int li = url.indexOf("://");
+            if (li > -1) {
+                li += 3; // length of ://
+                int ri = url.indexOf("/", li);
+                if (ri > -1) {
+                    return url.substring(li, ri);
+                }
+            }
+        }
+        return null;
+    }
+
+    public String getStyleDataUrl() {
+        if (mStyleDataUrl == null) {
+            return "http://" + LOCALHOST + "/";
+        }
+        return mStyleDataUrl;
+    }
+
     public void unRegisterProvider() {
         mProvider = null;
         mData = null;
@@ -168,20 +194,6 @@ public class OfflineProviderManager {
         }
 
         return false;
-    }
-
-    String getUrlHost(String url) {
-        if (url != null) {
-            int li = url.indexOf("://");
-            if (li > -1) {
-                li += 3; // length of ://
-                int ri = url.indexOf("/", li);
-                if (ri > -1) {
-                    return url.substring(li, ri);
-                }
-            }
-        }
-        return null;
     }
 
     public void handleRequest(final HTTPRequest httpRequest, String resourceUrl) {

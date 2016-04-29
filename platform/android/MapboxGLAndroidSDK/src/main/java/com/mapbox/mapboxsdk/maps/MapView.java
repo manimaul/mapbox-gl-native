@@ -527,10 +527,10 @@ public class MapView extends FrameLayout {
         mNativeMapView.update();
         mUserLocationView.onResume();
 
-        if (mStyleUrl == null) {
-            // user has failed to supply a style url
-            setStyleUrl(Style.MAPBOX_STREETS);
-        }
+//        if (mStyleUrl == null) {
+//            // user has failed to supply a style url
+//            setStyleUrl(Style.MAPBOX_STREETS);
+//        }
     }
 
     /**
@@ -804,9 +804,11 @@ public class MapView extends FrameLayout {
     }
 
     @UiThread
-    void setOfflineProvider(OfflineProvider provider) {
-        String style = OfflineProviderManager.getInstance().registerProvider(provider);
+    public void setOfflineProvider(OfflineProvider provider) {
+        OfflineProviderManager offlineProviderManager = OfflineProviderManager.getInstance();
+        String style = offlineProviderManager.registerProvider(provider);
         if (style != null) {
+            mStyleUrl = offlineProviderManager.getStyleDataUrl();
             mNativeMapView.setStyleJson(style);
         }
     }
