@@ -1,4 +1,5 @@
 #include <mbgl/sprite/sprite_store.hpp>
+#include <mbgl/sprite/sprite_store_observer.hpp>
 #include <mbgl/sprite/sprite_parser.hpp>
 #include <mbgl/platform/log.hpp>
 #include <mbgl/storage/file_source.hpp>
@@ -11,15 +12,17 @@
 
 namespace mbgl {
 
+static SpriteStoreObserver nullObserver;
+
 struct SpriteStore::Loader {
     std::shared_ptr<const std::string> image;
     std::shared_ptr<const std::string> json;
-    std::unique_ptr<FileRequest> jsonRequest;
-    std::unique_ptr<FileRequest> spriteRequest;
+    std::unique_ptr<AsyncRequest> jsonRequest;
+    std::unique_ptr<AsyncRequest> spriteRequest;
 };
 
 SpriteStore::SpriteStore(float pixelRatio_)
-    : pixelRatio(pixelRatio_ > 1 ? 2 : 1) {
+    : pixelRatio(pixelRatio_ > 1 ? 2 : 1), observer(&nullObserver) {
 }
 
 SpriteStore::~SpriteStore() = default;
@@ -80,7 +83,7 @@ void SpriteStore::emitSpriteLoadedIfComplete() {
     }
 }
 
-void SpriteStore::setObserver(Observer* observer_) {
+void SpriteStore::setObserver(SpriteStoreObserver* observer_) {
     observer = observer_;
 }
 

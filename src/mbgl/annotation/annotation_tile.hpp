@@ -1,13 +1,27 @@
-#ifndef MBGL_ANNOTATION_TILE
-#define MBGL_ANNOTATION_TILE
+#pragma once
 
 #include <mbgl/tile/geometry_tile.hpp>
-#include <mbgl/map/tile_id.hpp>
-
-#include <map>
-#include <unordered_map>
+#include <mbgl/tile/geometry_tile_data.hpp>
 
 namespace mbgl {
+
+class AnnotationManager;
+
+namespace style {
+class UpdateParameters;
+} // namespace style
+
+class AnnotationTile : public GeometryTile {
+public:
+    AnnotationTile(const OverscaledTileID&,
+                   const style::UpdateParameters&);
+    ~AnnotationTile() override;
+
+    void setNecessity(Necessity) final;
+
+private:
+    AnnotationManager& annotationManager;
+};
 
 class AnnotationTileFeature : public GeometryTileFeature {
 public:
@@ -25,37 +39,23 @@ public:
 
 class AnnotationTileLayer : public GeometryTileLayer {
 public:
+    AnnotationTileLayer(std::string);
+
     std::size_t featureCount() const override { return features.size(); }
     util::ptr<const GeometryTileFeature> getFeature(std::size_t i) const override { return features[i]; }
+    std::string getName() const override { return name; };
 
     std::vector<util::ptr<const AnnotationTileFeature>> features;
+
+private:
+    std::string name;
 };
 
-class AnnotationTile : public GeometryTile {
+class AnnotationTileData : public GeometryTileData {
 public:
     util::ptr<GeometryTileLayer> getLayer(const std::string&) const override;
 
-    std::map<std::string, util::ptr<AnnotationTileLayer>> layers;
-};
-
-class MapData;
-
-class AnnotationTileMonitor : public GeometryTileMonitor {
-public:
-    // TODO: should just take AnnotationManager&, but we need to eliminate util::exclusive<AnnotationManager> from MapData first.
-    AnnotationTileMonitor(const TileID&, MapData&);
-    ~AnnotationTileMonitor();
-
-    void update(std::unique_ptr<GeometryTile>);
-    std::unique_ptr<FileRequest> monitorTile(const GeometryTileMonitor::Callback&) override;
-
-    TileID tileID;
-
-private:
-    MapData& data;
-    GeometryTileMonitor::Callback callback;
+    std::unordered_map<std::string, util::ptr<AnnotationTileLayer>> layers;
 };
 
 } // namespace mbgl
-
-#endif

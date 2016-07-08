@@ -1,6 +1,6 @@
 #include <mbgl/storage/offline.hpp>
 #include <mbgl/util/tile_cover.hpp>
-#include <mbgl/source/source_info.hpp>
+#include <mbgl/util/tileset.hpp>
 
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
@@ -11,9 +11,9 @@
 namespace mbgl {
 
 OfflineTilePyramidRegionDefinition::OfflineTilePyramidRegionDefinition(
-    const std::string& styleURL_, const LatLngBounds& bounds_, double minZoom_, double maxZoom_, float pixelRatio_)
-    : styleURL(styleURL_),
-      bounds(bounds_),
+    std::string styleURL_, LatLngBounds bounds_, double minZoom_, double maxZoom_, float pixelRatio_)
+    : styleURL(std::move(styleURL_)),
+      bounds(std::move(bounds_)),
       minZoom(minZoom_),
       maxZoom(maxZoom_),
       pixelRatio(pixelRatio_) {
@@ -23,20 +23,20 @@ OfflineTilePyramidRegionDefinition::OfflineTilePyramidRegionDefinition(
     }
 }
 
-std::vector<TileID> OfflineTilePyramidRegionDefinition::tileCover(SourceType type, uint16_t tileSize, const SourceInfo& info) const {
-    double minZ = std::max<double>(coveringZoomLevel(minZoom, type, tileSize), info.minZoom);
-    double maxZ = std::min<double>(coveringZoomLevel(maxZoom, type, tileSize), info.maxZoom);
+std::vector<CanonicalTileID> OfflineTilePyramidRegionDefinition::tileCover(SourceType type, uint16_t tileSize, const Range<uint8_t>& zoomRange) const {
+    double minZ = std::max<double>(util::coveringZoomLevel(minZoom, type, tileSize), zoomRange.min);
+    double maxZ = std::min<double>(util::coveringZoomLevel(maxZoom, type, tileSize), zoomRange.max);
 
     assert(minZ >= 0);
     assert(maxZ >= 0);
     assert(minZ < std::numeric_limits<uint8_t>::max());
     assert(maxZ < std::numeric_limits<uint8_t>::max());
 
-    std::vector<TileID> result;
+    std::vector<CanonicalTileID> result;
 
     for (uint8_t z = minZ; z <= maxZ; z++) {
-        for (const auto& tile : mbgl::tileCover(bounds, z, z)) {
-            result.push_back(tile.normalized());
+        for (const auto& tile : util::tileCover(bounds, z)) {
+            result.emplace_back(tile.canonical);
         }
     }
 
@@ -97,11 +97,11 @@ std::string encodeOfflineRegionDefinition(const OfflineRegionDefinition& region)
 }
 
 OfflineRegion::OfflineRegion(int64_t id_,
-                             const OfflineRegionDefinition& definition_,
-                             const OfflineRegionMetadata& metadata_)
+                             OfflineRegionDefinition definition_,
+                             OfflineRegionMetadata metadata_)
     : id(id_),
-      definition(definition_),
-      metadata(metadata_) {
+      definition(std::move(definition_)),
+      metadata(std::move(metadata_)) {
 }
 
 OfflineRegion::OfflineRegion(OfflineRegion&&) = default;

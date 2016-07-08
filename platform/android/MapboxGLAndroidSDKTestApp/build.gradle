@@ -3,18 +3,18 @@ apply plugin: 'com.android.application'
 apply plugin: 'checkstyle'
 
 task accessToken {
-    def tokenFile = new File("MapboxGLAndroidSDKTestApp/src/main/res/values/developer-config.xml")
-    if (!tokenFile.exists()) {
-        String tokenFileContents = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
-                "<resources>\n" +
-                "    <string name=\"mapbox_access_token\">" + "$System.env.MAPBOX_ACCESS_TOKEN" + "</string>\n" +
-                "</resources>"
-
-        if (tokenFileContents == null) {
-            throw new InvalidUserDataException("You must set the MAPBOX_ACCESS_TOKEN environment variable.")
-        }
-        tokenFile.write(tokenFileContents)
-    }
+//    def tokenFile = new File("MapboxGLAndroidSDKTestApp/src/main/res/values/developer-config.xml")
+//    if (!tokenFile.exists()) {
+//        String tokenFileContents = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+//                "<resources>\n" +
+//                "    <string name=\"mapbox_access_token\">" + "$System.env.MAPBOX_ACCESS_TOKEN" + "</string>\n" +
+//                "</resources>"
+//
+//        if (tokenFileContents == null) {
+//            throw new InvalidUserDataException("You must set the MAPBOX_ACCESS_TOKEN environment variable.")
+//        }
+//        tokenFile.write(tokenFileContents)
+//    }
 }
 
 gradle.projectsEvaluated {
@@ -22,19 +22,19 @@ gradle.projectsEvaluated {
 }
 
 ext {
-    supportLibVersion = '23.1.1'
+    supportLibVersion = '23.4.0'
 }
 
 android {
     compileSdkVersion 23
-    buildToolsVersion "23.0.2"
+    buildToolsVersion "23.0.3"
 
     defaultConfig {
         applicationId "com.mapbox.mapboxsdk.testapp"
         minSdkVersion 15
         targetSdkVersion 23
-        versionCode 8
-        versionName "4.0.0"
+        versionCode 9
+        versionName "4.1.0"
 
         // Specify AndroidJUnitRunner as the default test instrumentation runner
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
@@ -63,7 +63,7 @@ android {
     }
 
     buildTypes {
-        debug{
+        debug {
             // run code coverage reports
             testCoverageEnabled = true
         }
@@ -84,19 +84,15 @@ dependencies {
     compile "com.android.support:support-v4:${supportLibVersion}"
     compile "com.android.support:appcompat-v7:${supportLibVersion}"
     compile "com.android.support:design:${supportLibVersion}"
+    compile "com.android.support:recyclerview-v7:${supportLibVersion}"
 
     // Leak Canary
     debugCompile 'com.squareup.leakcanary:leakcanary-android:1.4-beta1'
     releaseCompile 'com.squareup.leakcanary:leakcanary-android-no-op:1.4-beta1'
 
-    // Directions SDK
-    compile ('com.mapbox.mapboxsdk:mapbox-android-directions:1.0.0@aar'){
-        transitive=true
-    }
-
-    // Geocoder SDK
-    compile ('com.mapbox.mapboxsdk:mapbox-android-geocoder:1.0.0@aar'){
-        transitive=true
+    // Mapbox Android Services
+    compile('com.mapbox.mapboxsdk:mapbox-android-services:1.1.0@aar') {
+        transitive = true
     }
 
     // Testing dependencies
@@ -106,6 +102,7 @@ dependencies {
     androidTestCompile 'com.android.support.test:runner:0.4.1'
     androidTestCompile 'com.android.support.test:rules:0.4.1'
     androidTestCompile 'com.android.support.test.espresso:espresso-core:2.2.1'
+    androidTestCompile 'com.jayway.android.robotium:robotium-solo:5.5.4'
 }
 
 checkstyle {

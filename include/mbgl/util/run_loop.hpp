@@ -1,6 +1,6 @@
-#ifndef MBGL_UTIL_RUN_LOOP
-#define MBGL_UTIL_RUN_LOOP
+#pragma once
 
+#include <mbgl/util/atomic.hpp>
 #include <mbgl/util/noncopyable.hpp>
 #include <mbgl/util/util.hpp>
 #include <mbgl/util/work_task.hpp>
@@ -10,7 +10,6 @@
 #include <utility>
 #include <queue>
 #include <mutex>
-#include <atomic>
 
 namespace mbgl {
 namespace util {
@@ -58,9 +57,9 @@ public:
 
     // Post the cancellable work fn(args...) to this RunLoop.
     template <class Fn, class... Args>
-    std::unique_ptr<WorkRequest>
+    std::unique_ptr<AsyncRequest>
     invokeCancellable(Fn&& fn, Args&&... args) {
-        auto flag = std::make_shared<std::atomic<bool>>();
+        auto flag = std::make_shared<util::Atomic<bool>>();
         *flag = false;
 
         auto tuple = std::make_tuple(std::move(args)...);
@@ -76,9 +75,9 @@ public:
 
     // Invoke fn(args...) on this RunLoop, then invoke callback(results...) on the current RunLoop.
     template <class Fn, class Cb, class... Args>
-    std::unique_ptr<WorkRequest>
+    std::unique_ptr<AsyncRequest>
     invokeWithCallback(Fn&& fn, Cb&& callback, Args&&... args) {
-        auto flag = std::make_shared<std::atomic<bool>>();
+        auto flag = std::make_shared<util::Atomic<bool>>();
         *flag = false;
 
         // Create a lambda L1 that invokes another lambda L2 on the current RunLoop R, that calls
@@ -107,13 +106,15 @@ public:
         return std::make_unique<WorkRequest>(task);
     }
 
+    class Impl;
+
 private:
     MBGL_STORE_THREAD(tid)
 
     template <class F, class P>
     class Invoker : public WorkTask {
     public:
-        Invoker(F&& f, P&& p, std::shared_ptr<std::atomic<bool>> canceled_ = nullptr)
+        Invoker(F&& f, P&& p, std::shared_ptr<util::Atomic<bool>> canceled_ = nullptr)
           : canceled(std::move(canceled_)),
             func(std::move(f)),
             params(std::move(p)) {
@@ -147,7 +148,7 @@ private:
         }
 
         std::recursive_mutex mutex;
-        std::shared_ptr<std::atomic<bool>> canceled;
+        std::shared_ptr<util::Atomic<bool>> canceled;
 
         F func;
         P params;
@@ -175,11 +176,8 @@ private:
     Queue queue;
     std::mutex mutex;
 
-    class Impl;
     std::unique_ptr<Impl> impl;
 };
 
 } // namespace util
 } // namespace mbgl
-
-#endif

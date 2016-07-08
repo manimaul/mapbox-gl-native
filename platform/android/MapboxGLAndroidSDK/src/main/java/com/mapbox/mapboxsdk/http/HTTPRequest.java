@@ -17,12 +17,13 @@ import javax.net.ssl.SSLException;
 
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
 public class HTTPRequest implements Callback {
-    
+
     private static OkHttpClient mClient = new OkHttpClient();
     private final String LOG_TAG = HTTPRequest.class.getName();
 
@@ -53,6 +54,17 @@ public class HTTPRequest implements Callback {
             return;
         }
         try {
+            HttpUrl httpUrl = HttpUrl.parse(resourceUrl);
+            final String host = httpUrl.host().toLowerCase(MapboxConstants.MAPBOX_LOCALE);
+            if (host.equals("mapbox.com") || host.endsWith(".mapbox.com")) {
+                if (httpUrl.querySize() == 0) {
+                    resourceUrl = resourceUrl + "?";
+                } else {
+                    resourceUrl = resourceUrl + "&";
+                }
+                resourceUrl = resourceUrl + "events=true";
+            }
+
             Request.Builder builder = new Request.Builder().url(resourceUrl).tag(resourceUrl.toLowerCase(MapboxConstants.MAPBOX_LOCALE)).addHeader("User-Agent", userAgent);
             if (etag.length() > 0) {
                 builder = builder.addHeader("If-None-Match", etag);

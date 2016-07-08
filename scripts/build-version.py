@@ -43,9 +43,14 @@ else:
     tag = DEFAULT_TAG
     rev = DEFAULT_REV
 
+tag = tag + [0, 0, 0]
+tag = tag[0:3]
+
+print "Tag: {0}".format(tag)
+print "Rev: {0}".format(rev)
+
 header = """// NOTE: DO NOT CHANGE THIS FILE. IT IS AUTOMATICALLY GENERATED.
-#ifndef MBGL_UTIL_VERSION
-#define MBGL_UTIL_VERSION
+#pragma once
 
 #define MBGL_VERSION 0x{major:02x}{minor:02x}{patch:02x}
 #define MBGL_VERSION_STRING "{major}.{minor}.{patch}"
@@ -62,10 +67,8 @@ extern const char *revision;
 extern const char *string;
 extern const unsigned int number;
 
-}}
-}}
-
-#endif
+}} // namespace version
+}} // namespace mbgl
 """.format(
     major = tag[0],
     minor = tag[1],

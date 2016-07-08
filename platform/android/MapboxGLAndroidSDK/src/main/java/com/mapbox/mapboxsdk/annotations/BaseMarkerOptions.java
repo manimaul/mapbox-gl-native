@@ -6,7 +6,7 @@ import com.mapbox.mapboxsdk.geometry.LatLng;
 
 /**
  * Abstract builder class for composing custom Marker objects.
- * <p/>
+ *
  * Extending this class requires implementing Parceable interface.
  *
  * @param <U> Type of the marker to be composed
@@ -37,6 +37,22 @@ public abstract class BaseMarkerOptions<U extends Marker, T extends BaseMarkerOp
     public T icon(Icon icon) {
         this.icon = icon;
         return getThis();
+    }
+
+    public T setIcon(Icon icon) {
+        return icon(icon);
+    }
+
+    public T setPosition(LatLng position) {
+        return position(position);
+    }
+
+    public T setSnippet(String snippet) {
+        return snippet(snippet);
+    }
+
+    public T setTitle(String title) {
+        return title(title);
     }
 
     public abstract T getThis();

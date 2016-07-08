@@ -1,5 +1,4 @@
-#ifndef MBGL_OFFLINE_DATABASE
-#define MBGL_OFFLINE_DATABASE
+#pragma once
 
 #include <mbgl/storage/resource.hpp>
 #include <mbgl/storage/offline.hpp>
@@ -16,8 +15,8 @@ namespace mapbox {
 namespace sqlite {
 class Database;
 class Statement;
-}
-}
+} // namespace sqlite
+} // namespace mapbox
 
 namespace mbgl {
 
@@ -28,8 +27,7 @@ class OfflineDatabase : private util::noncopyable {
 public:
     // Limits affect ambient caching (put) only; resources required by offline
     // regions are exempt.
-    OfflineDatabase(const std::string& path,
-                    uint64_t maximumCacheSize = util::DEFAULT_MAX_CACHE_SIZE);
+    OfflineDatabase(std::string path, uint64_t maximumCacheSize = util::DEFAULT_MAX_CACHE_SIZE);
     ~OfflineDatabase();
 
     optional<Response> get(const Resource&);
@@ -92,6 +90,9 @@ private:
     // Return value is true iff the resource was previously unused by any other regions.
     bool markUsed(int64_t regionID, const Resource&);
 
+    std::pair<int64_t, int64_t> getCompletedResourceCountAndSize(int64_t regionID);
+    std::pair<int64_t, int64_t> getCompletedTileCountAndSize(int64_t regionID);
+
     const std::string path;
     std::unique_ptr<::mapbox::sqlite::Database> db;
     std::unordered_map<const char *, std::unique_ptr<::mapbox::sqlite::Statement>> statements;
@@ -108,5 +109,3 @@ private:
 };
 
 } // namespace mbgl
-
-#endif

@@ -1,92 +1,79 @@
-#ifndef MBGL_MAP_GEOMETRY_TILE
-#define MBGL_MAP_GEOMETRY_TILE
+#pragma once
 
-#include <mapbox/variant.hpp>
+#include <mbgl/tile/tile.hpp>
+#include <mbgl/tile/tile_worker.hpp>
+#include <mbgl/text/placement_config.hpp>
+#include <mbgl/util/atomic.hpp>
+#include <mbgl/util/feature.hpp>
 
-#include <mbgl/style/value.hpp>
-#include <mbgl/util/chrono.hpp>
-#include <mbgl/util/ptr.hpp>
-#include <mbgl/util/vec.hpp>
-#include <mbgl/util/noncopyable.hpp>
-#include <mbgl/util/optional.hpp>
-
-#include <cstdint>
-#include <string>
+#include <memory>
+#include <unordered_map>
 #include <vector>
-#include <functional>
 
 namespace mbgl {
 
-enum class FeatureType : uint8_t {
-    Unknown = 0,
-    Point = 1,
-    LineString = 2,
-    Polygon = 3
-};
+class AsyncRequest;
+class GeometryTileData;
+class FeatureIndex;
 
-// Normalized vector tile coordinates.
-// Each geometry coordinate represents a point in a bidimensional space,
-// varying from -V...0...+V, where V is the maximum extent applicable.
-using GeometryCoordinate  = vec2<int16_t>;
-using GeometryCoordinates = std::vector<GeometryCoordinate>;
-using GeometryCollection  = std::vector<GeometryCoordinates>;
+namespace style {
+class Style;
+class Layer;
+} // namespace style
 
-class GeometryTileFeature : private util::noncopyable {
+class GeometryTile : public Tile {
 public:
-    static const uint32_t defaultExtent = 4096;
+    GeometryTile(const OverscaledTileID&,
+                 std::string sourceID,
+                 style::Style&,
+                 const MapMode);
 
-    virtual ~GeometryTileFeature() = default;
-    virtual FeatureType getType() const = 0;
-    virtual optional<Value> getValue(const std::string& key) const = 0;
-    virtual GeometryCollection getGeometries() const = 0;
-    virtual uint32_t getExtent() const { return defaultExtent; }
-};
+    ~GeometryTile() override;
 
-class GeometryTileLayer : private util::noncopyable {
-public:
-    virtual ~GeometryTileLayer() = default;
-    virtual std::size_t featureCount() const = 0;
-    virtual util::ptr<const GeometryTileFeature> getFeature(std::size_t) const = 0;
-};
+    void setError(std::exception_ptr err);
+    void setData(std::unique_ptr<GeometryTileData>);
 
-class GeometryTile : private util::noncopyable {
-public:
-    virtual ~GeometryTile() = default;
-    virtual util::ptr<GeometryTileLayer> getLayer(const std::string&) const = 0;
-};
+    Bucket* getBucket(const style::Layer&) override;
 
-class FileRequest;
+    bool parsePending() override;
 
-class GeometryTileMonitor : private util::noncopyable {
-public:
-    virtual ~GeometryTileMonitor() = default;
+    void redoPlacement(PlacementConfig) override;
 
-    using Callback = std::function<void (std::exception_ptr,
-                                         std::unique_ptr<GeometryTile>,
-                                         optional<SystemTimePoint> modified,
-                                         optional<SystemTimePoint> expires)>;
-    /*
-     * Monitor the tile held by this object for changes. When the tile is loaded for the first time,
-     * or updates, the callback is executed. If an error occurs, the first parameter will be set.
-     * Otherwise it will be null. If there is no data for the requested tile, the second parameter
-     * will be null.
-     *
-     * To cease monitoring, release the returned Request.
-     */
-    virtual std::unique_ptr<FileRequest> monitorTile(const Callback&) = 0;
-};
+    void queryRenderedFeatures(
+            std::unordered_map<std::string, std::vector<Feature>>& result,
+            const GeometryCoordinates& queryGeometry,
+            const TransformState&,
+            const optional<std::vector<std::string>>& layerIDs) override;
 
-class GeometryTileFeatureExtractor {
-public:
-    GeometryTileFeatureExtractor(const GeometryTileFeature& feature_)
-        : feature(feature_) {}
-
-    optional<Value> getValue(const std::string& key) const;
+    void cancel() override;
 
 private:
-    const GeometryTileFeature& feature;
+    std::vector<std::unique_ptr<style::Layer>> cloneStyleLayers() const;
+    void redoPlacement();
+
+    const std::string sourceID;
+    style::Style& style;
+    Worker& worker;
+    TileWorker tileWorker;
+
+    std::unique_ptr<AsyncRequest> workRequest;
+
+    // Contains all the Bucket objects for the tile. Buckets are render
+    // objects and they get added by tile parsing operations.
+    std::unordered_map<std::string, std::unique_ptr<Bucket>> buckets;
+
+    std::unique_ptr<FeatureIndex> featureIndex;
+    std::unique_ptr<const GeometryTileData> data;
+
+    // Stores the placement configuration of the text that is currently placed on the screen.
+    PlacementConfig placedConfig;
+
+    // Stores the placement configuration of how the text should be placed. This isn't necessarily
+    // the one that is being displayed.
+    PlacementConfig targetConfig;
+
+    // Used to signal the worker that it should abandon parsing this tile as soon as possible.
+    util::Atomic<bool> obsolete { false };
 };
 
 } // namespace mbgl
-
-#endif

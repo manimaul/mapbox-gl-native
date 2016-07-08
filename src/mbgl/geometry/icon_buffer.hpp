@@ -1,5 +1,4 @@
-#ifndef MBGL_GEOMETRY_ICON_BUFFER
-#define MBGL_GEOMETRY_ICON_BUFFER
+#pragma once
 
 #include <mbgl/geometry/buffer.hpp>
 
@@ -11,10 +10,8 @@ namespace mbgl {
     16
     > {
     public:
-        size_t add(int16_t x, int16_t y, float ox, float oy, int16_t tx, int16_t ty, float minzoom, float maxzoom, float labelminzoom);
+        size_t add(int16_t x, int16_t y, float ox, float oy, int16_t tx, int16_t ty, float minzoom, float maxzoom, float labelminzoom, uint8_t labelangle);
 
     };
 
 } // namespace mbgl
-
-#endif

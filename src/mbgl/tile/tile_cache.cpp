@@ -1,5 +1,5 @@
 #include <mbgl/tile/tile_cache.hpp>
-#include <mbgl/tile/tile_data.hpp>
+#include <mbgl/tile/tile.hpp>
 
 #include <cassert>
 
@@ -15,45 +15,46 @@ void TileCache::setSize(size_t size_) {
     }
 
     assert(orderedKeys.size() <= size);
-
-    tiles.reserve(size);
 }
 
-void TileCache::add(uint64_t key, std::shared_ptr<TileData> data) {
+void TileCache::add(const OverscaledTileID& key, std::unique_ptr<Tile> tile) {
+    if (!tile->isRenderable() || !size) {
+        return;
+    }
 
-    // insert new or query existing data
-    if (tiles.emplace(key, data).second) {
-        // remove existing data key
+    // insert new or query existing tile
+    if (tiles.emplace(key, std::move(tile)).second) {
+        // remove existing tile key
         orderedKeys.remove(key);
     }
 
-    // (re-)insert data key as newest
+    // (re-)insert tile key as newest
     orderedKeys.push_back(key);
 
-    // purge oldest key/data if necessary
+    // purge oldest key/tile if necessary
     if (orderedKeys.size() > size) {
         get(orderedKeys.front());
     }
 
     assert(orderedKeys.size() <= size);
-};
+}
 
-std::shared_ptr<TileData> TileCache::get(uint64_t key) {
+std::unique_ptr<Tile> TileCache::get(const OverscaledTileID& key) {
 
-    std::shared_ptr<TileData> data;
+    std::unique_ptr<Tile> tile;
 
     auto it = tiles.find(key);
     if (it != tiles.end()) {
-        data = it->second;
+        tile = std::move(it->second);
         tiles.erase(it);
         orderedKeys.remove(key);
-        assert(data->isReady());
+        assert(tile->isRenderable());
     }
 
-    return data;
-};
+    return tile;
+}
 
-bool TileCache::has(uint64_t key) {
+bool TileCache::has(const OverscaledTileID& key) {
     return tiles.find(key) != tiles.end();
 }
 

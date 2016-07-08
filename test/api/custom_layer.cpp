@@ -1,14 +1,16 @@
-#include "../fixtures/util.hpp"
+#include <mbgl/test/util.hpp>
+#include <mbgl/test/stub_file_source.hpp>
 
 #include <mbgl/map/map.hpp>
 #include <mbgl/platform/default/headless_display.hpp>
 #include <mbgl/platform/default/headless_view.hpp>
-#include <mbgl/storage/online_file_source.hpp>
-#include <mbgl/layer/custom_layer.hpp>
+#include <mbgl/style/layers/custom_layer.hpp>
 #include <mbgl/util/io.hpp>
 #include <mbgl/util/mat4.hpp>
+#include <mbgl/util/run_loop.hpp>
 
 using namespace mbgl;
+using namespace mbgl::style;
 
 static const GLchar * vertexShaderSource = "attribute vec2 a_pos; void main() { gl_Position = vec4(a_pos, 0, 1); }";
 static const GLchar * fragmentShaderSource = "void main() { gl_FragColor = vec4(0, 1, 0, 1); }";
@@ -54,7 +56,7 @@ public:
         MBGL_CHECK_ERROR(glUseProgram(program));
         MBGL_CHECK_ERROR(glBindBuffer(GL_ARRAY_BUFFER, buffer));
         MBGL_CHECK_ERROR(glEnableVertexAttribArray(a_pos));
-        MBGL_CHECK_ERROR(glVertexAttribPointer(a_pos, 2, GL_FLOAT, GL_FALSE, 0, NULL));
+        MBGL_CHECK_ERROR(glVertexAttribPointer(a_pos, 2, GL_FLOAT, GL_FALSE, 0, nullptr));
         MBGL_CHECK_ERROR(glDisable(GL_STENCIL_TEST));
         MBGL_CHECK_ERROR(glDisable(GL_DEPTH_TEST));
         MBGL_CHECK_ERROR(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
@@ -68,13 +70,15 @@ public:
 };
 
 TEST(CustomLayer, Basic) {
+    util::RunLoop loop;
+
     auto display = std::make_shared<mbgl::HeadlessDisplay>();
     HeadlessView view(display, 1);
-    OnlineFileSource fileSource;
+    StubFileSource fileSource;
 
     Map map(view, fileSource, MapMode::Still);
-    map.setStyleJSON(util::read_file("test/fixtures/api/empty.json"), "");
-    map.addCustomLayer(
+    map.setStyleJSON(util::read_file("test/fixtures/api/empty.json"));
+    map.addLayer(std::make_unique<CustomLayer>(
         "custom",
         [] (void* context) {
             reinterpret_cast<TestLayer*>(context)->initialize();
@@ -84,7 +88,7 @@ TEST(CustomLayer, Basic) {
         },
         [] (void* context) {
             delete reinterpret_cast<TestLayer*>(context);
-        }, new TestLayer());
+        }, new TestLayer()));
 
     test::checkImage("test/fixtures/custom_layer/basic", test::render(map));
 }

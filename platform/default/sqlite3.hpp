@@ -22,8 +22,8 @@ enum OpenFlag : int {
 };
 
 struct Exception : std::runtime_error {
-    inline Exception(int err, const char *msg) : std::runtime_error(msg), code(err) {}
-    inline Exception(int err, const std::string& msg) : std::runtime_error(msg), code(err) {}
+    Exception(int err, const char *msg) : std::runtime_error(msg), code(err) {}
+    Exception(int err, const std::string& msg) : std::runtime_error(msg), code(err) {}
     const int code = 0;
 };
 
@@ -86,6 +86,30 @@ public:
 
 private:
     sqlite3_stmt *stmt = nullptr;
+};
+
+class Transaction {
+private:
+    Transaction(const Transaction&) = delete;
+    Transaction(Transaction&&) = delete;
+    Transaction& operator=(const Transaction&) = delete;
+
+public:
+    enum Mode {
+        Deferred,
+        Immediate,
+        Exclusive
+    };
+
+    Transaction(Database&, Mode = Deferred);
+    ~Transaction();
+
+    void commit();
+    void rollback();
+
+private:
+    Database& db;
+    bool needRollback = true;
 };
 
 }

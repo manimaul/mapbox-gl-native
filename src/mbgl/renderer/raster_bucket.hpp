@@ -1,30 +1,27 @@
-#ifndef MBGL_RENDERER_RASTERBUCKET
-#define MBGL_RENDERER_RASTERBUCKET
+#pragma once
 
 #include <mbgl/renderer/bucket.hpp>
 #include <mbgl/util/raster.hpp>
+#include <mbgl/gl/gl_config.hpp>
 
 namespace mbgl {
 
 class RasterShader;
-class StaticVertexBuffer;
+class StaticRasterVertexBuffer;
 class VertexArrayObject;
 
 class RasterBucket : public Bucket {
 public:
-    RasterBucket(gl::TexturePool&);
-
-    void upload(gl::GLObjectStore&) override;
-    void render(Painter&, const StyleLayer&, const TileID&, const mat4&) override;
+    void upload(gl::ObjectStore&, gl::Config&) override;
+    void render(Painter&, const style::Layer&, const UnwrappedTileID&, const mat4&) override;
     bool hasData() const override;
+    bool needsClipping() const override;
 
     void setImage(PremultipliedImage);
 
-    void drawRaster(RasterShader&, StaticVertexBuffer&, VertexArrayObject&, gl::GLObjectStore&);
+    void drawRaster(RasterShader&, StaticRasterVertexBuffer&, VertexArrayObject&, gl::Config&, gl::ObjectStore&);
 
     Raster raster;
 };
 
 } // namespace mbgl
-
-#endif

@@ -1,82 +1,88 @@
 #include <mbgl/renderer/painter.hpp>
 #include <mbgl/renderer/symbol_bucket.hpp>
-#include <mbgl/layer/symbol_layer.hpp>
+#include <mbgl/style/layers/symbol_layer.hpp>
+#include <mbgl/style/layers/symbol_layer_impl.hpp>
 #include <mbgl/geometry/glyph_atlas.hpp>
 #include <mbgl/sprite/sprite_atlas.hpp>
 #include <mbgl/shader/sdf_shader.hpp>
 #include <mbgl/shader/icon_shader.hpp>
-#include <mbgl/shader/box_shader.hpp>
-#include <mbgl/map/tile_id.hpp>
-#include <mbgl/map/map_data.hpp>
+#include <mbgl/shader/collision_box_shader.hpp>
 #include <mbgl/util/math.hpp>
 
 #include <cmath>
 
-using namespace mbgl;
+namespace mbgl {
 
-template <typename BucketProperties, typename StyleProperties>
+using namespace style;
+
 void Painter::renderSDF(SymbolBucket &bucket,
-                        const TileID &id,
+                        const UnwrappedTileID &tileID,
                         const mat4 &matrix,
-                        const BucketProperties& bucketProperties,
-                        const StyleProperties& styleProperties,
                         float sdfFontSize,
                         std::array<float, 2> texsize,
                         SDFShader& sdfShader,
-                        void (SymbolBucket::*drawSDF)(SDFShader&, gl::GLObjectStore&))
+                        void (SymbolBucket::*drawSDF)(SDFShader&, gl::ObjectStore&, bool),
+
+                        // Layout
+                        AlignmentType rotationAlignment,
+                        AlignmentType pitchAlignment,
+                        float layoutSize,
+
+                        // Paint
+                        float opacity,
+                        Color color,
+                        Color haloColor,
+                        float haloWidth,
+                        float haloBlur,
+                        std::array<float, 2> translate,
+                        TranslateAnchorType translateAnchor,
+                        float paintSize)
 {
-    mat4 vtxMatrix = translatedMatrix(matrix, styleProperties.translate, id, styleProperties.translateAnchor);
-
-    bool skewed = (bucketProperties.rotationAlignment == RotationAlignmentType::Map);
-    mat4 exMatrix;
-    float s;
-    float gammaScale;
-
-    if (skewed) {
-        matrix::identity(exMatrix);
-        s = util::EXTENT / util::tileSize / std::pow(2, state.getZoom() - id.sourceZ);
-        gammaScale = 1.0f / std::cos(state.getPitch());
-    } else {
-        exMatrix = extrudeMatrix;
-        s = state.getAltitude();
-        gammaScale = 1.0f;
-        matrix::rotate_z(exMatrix, exMatrix, state.getNorthOrientationAngle());
-    }
-    matrix::scale(exMatrix, exMatrix, s, s, 1);
+    mat4 vtxMatrix = translatedMatrix(matrix, translate, tileID, translateAnchor);
 
     // If layerStyle.size > bucket.info.fontSize then labels may collide
-    float fontSize = styleProperties.size;
+    float fontSize = paintSize;
     float fontScale = fontSize / sdfFontSize;
-    matrix::scale(exMatrix, exMatrix, fontScale, fontScale, 1.0f);
+
+    bool rotateWithMap = rotationAlignment == AlignmentType::Map;
+    bool pitchWithMap = pitchAlignment == AlignmentType::Map;
+
+    std::array<float, 2> extrudeScale;
+    float gammaScale;
+
+    if (pitchWithMap) {
+        gammaScale = 1.0 / std::cos(state.getPitch());
+        extrudeScale.fill(tileID.pixelsToTileUnits(1, state.getZoom()) * fontScale);
+    } else {
+        gammaScale = 1.0;
+        extrudeScale = {{
+            pixelsToGLUnits[0] * fontScale * state.getAltitude(),
+            pixelsToGLUnits[1] * fontScale * state.getAltitude()
+        }};
+    }
 
     config.program = sdfShader.getID();
     sdfShader.u_matrix = vtxMatrix;
-    sdfShader.u_exmatrix = exMatrix;
+    sdfShader.u_extrude_scale = extrudeScale;
     sdfShader.u_texsize = texsize;
-    sdfShader.u_skewed = skewed;
+    sdfShader.u_rotate_with_map = rotateWithMap;
+    sdfShader.u_pitch_with_map = pitchWithMap;
     sdfShader.u_texture = 0;
+    sdfShader.u_pitch = state.getPitch() * util::DEG2RAD;
+    sdfShader.u_bearing = -1.0f * state.getAngle();
+    sdfShader.u_aspect_ratio = (state.getWidth() * 1.0f) / (state.getHeight() * 1.0f);
 
     // adjust min/max zooms for variable font sies
-    float zoomAdjust = std::log(fontSize / bucketProperties.size) / std::log(2);
+    float zoomAdjust = std::log(fontSize / layoutSize) / std::log(2);
 
     sdfShader.u_zoom = (state.getZoom() - zoomAdjust) * 10; // current zoom level
 
-    if (data.mode == MapMode::Continuous) {
-        FadeProperties f = frameHistory.getFadeProperties(data.getAnimationTime(), data.getDefaultFadeDuration());
-        sdfShader.u_fadedist = f.fadedist * 10;
-        sdfShader.u_minfadezoom = std::floor(f.minfadezoom * 10);
-        sdfShader.u_maxfadezoom = std::floor(f.maxfadezoom * 10);
-        sdfShader.u_fadezoom = (state.getZoom() + f.bump) * 10;
-    } else { // MapMode::Still
-        sdfShader.u_fadedist = 0;
-        sdfShader.u_minfadezoom = state.getZoom() * 10;
-        sdfShader.u_maxfadezoom = state.getZoom() * 10;
-        sdfShader.u_fadezoom = state.getZoom() * 10;
-    }
+    frameHistory.bind(store, config, 1);
+    sdfShader.u_fadetexture = 1;
 
     // The default gamma value has to be adjust for the current pixelratio so that we're not
     // drawing blurry font on retina screens.
-    const float gamma = 0.105 * sdfFontSize / fontSize / data.pixelRatio;
+    const float gamma = 0.105 * sdfFontSize / fontSize / frame.pixelRatio;
 
     const float sdfPx = 8.0f;
     const float blurOffset = 1.19f;
@@ -84,62 +90,45 @@ void Painter::renderSDF(SymbolBucket &bucket,
 
     // We're drawing in the translucent pass which is bottom-to-top, so we need
     // to draw the halo first.
-    if (styleProperties.haloColor.value[3] > 0.0f && styleProperties.haloWidth > 0.0f) {
-        sdfShader.u_gamma = (styleProperties.haloBlur * blurOffset / fontScale / sdfPx + gamma) * gammaScale;
-
-        if (styleProperties.opacity < 1.0f) {
-            Color color = styleProperties.haloColor;
-            color[0] *= styleProperties.opacity;
-            color[1] *= styleProperties.opacity;
-            color[2] *= styleProperties.opacity;
-            color[3] *= styleProperties.opacity;
-            sdfShader.u_color = color;
-        } else {
-            sdfShader.u_color = styleProperties.haloColor;
-        }
-
-        sdfShader.u_buffer = (haloOffset - styleProperties.haloWidth / fontScale) / sdfPx;
+    if (haloColor.a > 0.0f && haloWidth > 0.0f) {
+        sdfShader.u_gamma = (haloBlur * blurOffset / fontScale / sdfPx + gamma) * gammaScale;
+        sdfShader.u_color = haloColor;
+        sdfShader.u_opacity = opacity;
+        sdfShader.u_buffer = (haloOffset - haloWidth / fontScale) / sdfPx;
 
         setDepthSublayer(0);
-        (bucket.*drawSDF)(sdfShader, glObjectStore);
+        (bucket.*drawSDF)(sdfShader, store, isOverdraw());
     }
 
     // Then, we draw the text/icon over the halo
-    if (styleProperties.color.value[3] > 0.0f) {
+    if (color.a > 0.0f) {
         sdfShader.u_gamma = gamma * gammaScale;
-
-        if (styleProperties.opacity < 1.0f) {
-            Color color = styleProperties.color;
-            color[0] *= styleProperties.opacity;
-            color[1] *= styleProperties.opacity;
-            color[2] *= styleProperties.opacity;
-            color[3] *= styleProperties.opacity;
-            sdfShader.u_color = color;
-        } else {
-            sdfShader.u_color = styleProperties.color;
-        }
-
+        sdfShader.u_color = color;
+        sdfShader.u_opacity = opacity;
         sdfShader.u_buffer = (256.0f - 64.0f) / 256.0f;
 
         setDepthSublayer(1);
-        (bucket.*drawSDF)(sdfShader, glObjectStore);
+        (bucket.*drawSDF)(sdfShader, store, isOverdraw());
     }
 }
 
-void Painter::renderSymbol(SymbolBucket& bucket, const SymbolLayer& layer, const TileID& id, const mat4& matrix) {
+void Painter::renderSymbol(SymbolBucket& bucket,
+                           const SymbolLayer& layer,
+                           const UnwrappedTileID& tileID,
+                           const mat4& matrix) {
     // Abort early.
     if (pass == RenderPass::Opaque) {
         return;
     }
 
-    const auto& properties = layer.paint;
+    const auto& paint = layer.impl->paint;
     const auto& layout = bucket.layout;
 
     config.depthMask = GL_FALSE;
 
     // TODO remove the `true ||` when #1673 is implemented
-    const bool drawAcrossEdges = (data.mode == MapMode::Continuous) && (true || !(layout.text.allowOverlap || layout.icon.allowOverlap ||
-          layout.text.ignorePlacement || layout.icon.ignorePlacement));
+    const bool drawAcrossEdges = (frame.mapMode == MapMode::Continuous) && (true || !(layout.textAllowOverlap || layout.iconAllowOverlap ||
+          layout.textIgnorePlacement || layout.iconIgnorePlacement));
 
     // Disable the stencil test so that labels aren't clipped to tile boundaries.
     //
@@ -154,7 +143,7 @@ void Painter::renderSymbol(SymbolBucket& bucket, const SymbolLayer& layer, const
     }
 
     if (bucket.hasIconData()) {
-        if (layout.icon.rotationAlignment == RotationAlignmentType::Map) {
+        if (layout.iconRotationAlignment == AlignmentType::Map) {
             config.depthFunc.reset();
             config.depthTest = GL_TRUE;
         } else {
@@ -164,111 +153,125 @@ void Painter::renderSymbol(SymbolBucket& bucket, const SymbolLayer& layer, const
         bool sdf = bucket.sdfIcons;
 
         const float angleOffset =
-            layout.icon.rotationAlignment == RotationAlignmentType::Map
+            layout.iconRotationAlignment == AlignmentType::Map
                 ? state.getAngle()
                 : 0;
 
-        const float fontSize = properties.icon.size;
+        const float fontSize = layer.impl->iconSize;
         const float fontScale = fontSize / 1.0f;
 
-        SpriteAtlas* activeSpriteAtlas = layer.spriteAtlas;
-        const bool iconScaled = fontScale != 1 || data.pixelRatio != activeSpriteAtlas->getPixelRatio() || bucket.iconsNeedLinear;
-        const bool iconTransformed = layout.icon.rotationAlignment == RotationAlignmentType::Map || angleOffset != 0 || state.getPitch() != 0;
-        activeSpriteAtlas->bind(sdf || state.isChanging() || iconScaled || iconTransformed, glObjectStore);
+        SpriteAtlas* activeSpriteAtlas = layer.impl->spriteAtlas;
+        const bool iconScaled = fontScale != 1 || frame.pixelRatio != activeSpriteAtlas->getPixelRatio() || bucket.iconsNeedLinear;
+        const bool iconTransformed = layout.iconRotationAlignment == AlignmentType::Map || angleOffset != 0 || state.getPitch() != 0;
+        activeSpriteAtlas->bind(sdf || state.isChanging() || iconScaled || iconTransformed, store, config, 0);
 
         if (sdf) {
             renderSDF(bucket,
-                      id,
+                      tileID,
                       matrix,
-                      layout.icon,
-                      properties.icon,
                       1.0f,
                       {{ float(activeSpriteAtlas->getWidth()) / 4.0f, float(activeSpriteAtlas->getHeight()) / 4.0f }},
-                      *sdfIconShader,
-                      &SymbolBucket::drawIcons);
+                      isOverdraw() ? *overdrawShader.sdfIcon : *shader.sdfIcon,
+                      &SymbolBucket::drawIcons,
+                      layout.iconRotationAlignment,
+                      // icon-pitch-alignment is not yet implemented
+                      // and we simply inherit the rotation alignment
+                      layout.iconRotationAlignment,
+                      layout.iconSize,
+                      paint.iconOpacity,
+                      paint.iconColor,
+                      paint.iconHaloColor,
+                      paint.iconHaloWidth,
+                      paint.iconHaloBlur,
+                      paint.iconTranslate,
+                      paint.iconTranslateAnchor,
+                      layer.impl->iconSize);
         } else {
-            mat4 vtxMatrix = translatedMatrix(matrix, properties.icon.translate, id, properties.icon.translateAnchor);
+            mat4 vtxMatrix =
+                translatedMatrix(matrix, paint.iconTranslate, tileID, paint.iconTranslateAnchor);
 
-            bool skewed = layout.icon.rotationAlignment == RotationAlignmentType::Map;
-            mat4 exMatrix;
-            float s;
+            std::array<float, 2> extrudeScale;
 
-            if (skewed) {
-                matrix::identity(exMatrix);
-                s = util::EXTENT / util::tileSize / std::pow(2, state.getZoom() - id.sourceZ);
+            const bool alignedWithMap = layout.iconRotationAlignment == AlignmentType::Map;
+            if (alignedWithMap) {
+                extrudeScale.fill(tileID.pixelsToTileUnits(1, state.getZoom()) * fontScale);
             } else {
-                exMatrix = extrudeMatrix;
-                matrix::rotate_z(exMatrix, exMatrix, state.getNorthOrientationAngle());
-                s = state.getAltitude();
+                extrudeScale = {{
+                    pixelsToGLUnits[0] * fontScale * state.getAltitude(),
+                    pixelsToGLUnits[1] * fontScale * state.getAltitude()
+                }};
             }
-            matrix::scale(exMatrix, exMatrix, s, s, 1);
 
-            matrix::scale(exMatrix, exMatrix, fontScale, fontScale, 1.0f);
+            const bool overdraw = isOverdraw();
+            auto& iconShader = overdraw ? *overdrawShader.icon : *shader.icon;
 
-            // calculate how much longer the real world distance is at the top of the screen
-            // than at the middle of the screen.
-            float topedgelength = std::sqrt(std::pow(state.getHeight(), 2) / 4.0f * (1.0f + std::pow(state.getAltitude(), 2)));
-            float x = state.getHeight() / 2.0f * std::tan(state.getPitch());
-            float extra = (topedgelength + x) / topedgelength - 1;
-
-            config.program = iconShader->getID();
-            iconShader->u_matrix = vtxMatrix;
-            iconShader->u_exmatrix = exMatrix;
-            iconShader->u_texsize = {{ float(activeSpriteAtlas->getWidth()) / 4.0f, float(activeSpriteAtlas->getHeight()) / 4.0f }};
-            iconShader->u_skewed = skewed;
-            iconShader->u_extra = extra;
-            iconShader->u_texture = 0;
+            config.program = iconShader.getID();
+            iconShader.u_matrix = vtxMatrix;
+            iconShader.u_extrude_scale = extrudeScale;
+            iconShader.u_texsize = {{ float(activeSpriteAtlas->getWidth()) / 4.0f, float(activeSpriteAtlas->getHeight()) / 4.0f }};
+            iconShader.u_rotate_with_map = alignedWithMap;
+            iconShader.u_texture = 0;
 
             // adjust min/max zooms for variable font sies
-            float zoomAdjust = std::log(fontSize / layout.icon.size) / std::log(2);
+            float zoomAdjust = std::log(fontSize / layout.iconSize) / std::log(2);
+            iconShader.u_zoom = (state.getZoom() - zoomAdjust) * 10; // current zoom level
+            iconShader.u_opacity = paint.iconOpacity;
 
-            iconShader->u_zoom = (state.getZoom() - zoomAdjust) * 10; // current zoom level
-            iconShader->u_fadedist = 0 * 10;
-            iconShader->u_minfadezoom = state.getZoom() * 10;
-            iconShader->u_maxfadezoom = state.getZoom() * 10;
-            iconShader->u_fadezoom = state.getZoom() * 10;
-            iconShader->u_opacity = properties.icon.opacity;
+            frameHistory.bind(store, config, 1);
+            iconShader.u_fadetexture = 1;
 
             setDepthSublayer(0);
-            bucket.drawIcons(*iconShader, glObjectStore);
+            bucket.drawIcons(iconShader, store, overdraw);
         }
     }
 
     if (bucket.hasTextData()) {
-        if (layout.text.rotationAlignment == RotationAlignmentType::Map) {
+        if (layout.textRotationAlignment == AlignmentType::Map) {
             config.depthFunc.reset();
             config.depthTest = GL_TRUE;
         } else {
             config.depthTest = GL_FALSE;
         }
 
-        glyphAtlas->bind(glObjectStore);
+        glyphAtlas->bind(store, config, 0);
 
         renderSDF(bucket,
-                  id,
+                  tileID,
                   matrix,
-                  layout.text,
-                  properties.text,
                   24.0f,
                   {{ float(glyphAtlas->width) / 4, float(glyphAtlas->height) / 4 }},
-                  *sdfGlyphShader,
-                  &SymbolBucket::drawGlyphs);
+                  isOverdraw() ? *overdrawShader.sdfGlyph : *shader.sdfGlyph,
+                  &SymbolBucket::drawGlyphs,
+                  layout.textRotationAlignment,
+                  layout.textPitchAlignment,
+                  layout.textSize,
+                  paint.textOpacity,
+                  paint.textColor,
+                  paint.textHaloColor,
+                  paint.textHaloWidth,
+                  paint.textHaloBlur,
+                  paint.textTranslate,
+                  paint.textTranslateAnchor,
+                  layer.impl->textSize);
     }
 
     if (bucket.hasCollisionBoxData()) {
         config.stencilOp.reset();
         config.stencilTest = GL_TRUE;
 
-        config.program = collisionBoxShader->getID();
-        collisionBoxShader->u_matrix = matrix;
-        collisionBoxShader->u_scale = std::pow(2, state.getZoom() - id.z);
-        collisionBoxShader->u_zoom = state.getZoom() * 10;
-        collisionBoxShader->u_maxzoom = (id.z + 1) * 10;
+        auto& collisionBoxShader = *shader.collisionBox;
+        config.program = collisionBoxShader.getID();
+        collisionBoxShader.u_matrix = matrix;
+        // TODO: This was the overscaled z instead of the canonical z.
+        collisionBoxShader.u_scale = std::pow(2, state.getZoom() - tileID.canonical.z);
+        collisionBoxShader.u_zoom = state.getZoom() * 10;
+        collisionBoxShader.u_maxzoom = (tileID.canonical.z + 1) * 10;
         config.lineWidth = 1.0f;
 
         setDepthSublayer(0);
-        bucket.drawCollisionBoxes(*collisionBoxShader, glObjectStore);
+        bucket.drawCollisionBoxes(collisionBoxShader, store);
 
     }
-
 }
+
+} // namespace mbgl

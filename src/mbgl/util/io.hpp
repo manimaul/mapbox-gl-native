@@ -1,5 +1,4 @@
-#ifndef MBGL_UTIL_IO
-#define MBGL_UTIL_IO
+#pragma once
 
 #include <string>
 #include <stdexcept>
@@ -8,7 +7,7 @@ namespace mbgl {
 namespace util {
 
 struct IOException : std::runtime_error {
-    inline IOException(int err, const char* msg) : std::runtime_error(msg), code(err) {
+    IOException(int err, const char* msg) : std::runtime_error(msg), code(err) {
     }
     const int code = 0;
 };
@@ -20,5 +19,3 @@ void deleteFile(const std::string& filename);
 
 } // namespace util
 } // namespace mbgl
-
-#endif

@@ -55,16 +55,8 @@ int main(int argc, char *argv[]) {
     using namespace mbgl;
 
     util::RunLoop loop;
-
-    static DefaultFileSource fileSource(output, ".");
-    static std::unique_ptr<OfflineRegion> region;
-
-    std::signal(SIGINT, [] (int) {
-        if (region) {
-            std::cout << "Stopping download... ";
-            fileSource.setOfflineRegionDownloadState(*region, OfflineRegionDownloadState::Inactive);
-        }
-    });
+    DefaultFileSource fileSource(output, ".");
+    std::unique_ptr<OfflineRegion> region;
 
     fileSource.setAccessToken(token);
 
@@ -78,7 +70,7 @@ int main(int argc, char *argv[]) {
             : region(region_),
               fileSource(fileSource_),
               loop(loop_),
-              start(SystemClock::now()) {
+              start(util::now()) {
         }
 
         void statusChanged(OfflineRegionStatus status) override {
@@ -90,7 +82,7 @@ int main(int argc, char *argv[]) {
 
             std::string bytesPerSecond = "-";
 
-            auto elapsedSeconds = (SystemClock::now() - start) / 1s;
+            auto elapsedSeconds = (util::now() - start) / 1s;
             if (elapsedSeconds != 0) {
                 bytesPerSecond = util::toString(status.completedResourceSize / elapsedSeconds);
             }
@@ -119,8 +111,17 @@ int main(int argc, char *argv[]) {
         OfflineRegion& region;
         DefaultFileSource& fileSource;
         util::RunLoop& loop;
-        SystemTimePoint start;
+        Timestamp start;
     };
+
+    static auto stop = [&] {
+        if (region) {
+            std::cout << "Stopping download... ";
+            fileSource.setOfflineRegionDownloadState(*region, OfflineRegionDownloadState::Inactive);
+        }
+    };
+
+    std::signal(SIGINT, [] (int) { stop(); });
 
     fileSource.createOfflineRegion(definition, metadata, [&] (std::exception_ptr error, optional<OfflineRegion> region_) {
         if (error) {

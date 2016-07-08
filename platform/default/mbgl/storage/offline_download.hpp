@@ -1,7 +1,6 @@
-    #pragma once
+#pragma once
 
 #include <mbgl/storage/offline.hpp>
-#include <mbgl/style/types.hpp>
 
 #include <list>
 #include <set>
@@ -11,13 +10,14 @@ namespace mbgl {
 
 class OfflineDatabase;
 class FileSource;
-class WorkRequest;
-class FileRequest;
+class AsyncRequest;
 class Resource;
 class Response;
-class SourceInfo;
-class StyleParser;
-class Source;
+class Tileset;
+
+namespace style {
+class Parser;
+} // namespace style
 
 /**
  * Coordinates the request and storage of all resources for an offline region.
@@ -38,9 +38,9 @@ private:
     void activateDownload();
     void deactivateDownload();
 
-    std::vector<Resource> spriteResources(const StyleParser&) const;
-    std::vector<Resource> glyphResources(const StyleParser&) const;
-    std::vector<Resource> tileResources(SourceType, uint16_t, const SourceInfo&) const;
+    std::vector<Resource> spriteResources(const style::Parser&) const;
+    std::vector<Resource> glyphResources(const style::Parser&) const;
+    std::vector<Resource> tileResources(SourceType, uint16_t, const Tileset&) const;
 
     /*
      * Ensure that the resource is stored in the database, requesting it if necessary.
@@ -48,7 +48,7 @@ private:
      * is deactivated, all in progress requests are cancelled.
      */
     void ensureResource(const Resource&, std::function<void (Response)> = {});
-    void ensureTiles(SourceType, uint16_t, const SourceInfo&);
+    void ensureTiles(SourceType, uint16_t, const Tileset&);
     bool checkTileCountLimit(const Resource& resource);
     
     int64_t id;
@@ -57,8 +57,7 @@ private:
     FileSource& onlineFileSource;
     OfflineRegionStatus status;
     std::unique_ptr<OfflineRegionObserver> observer;
-    std::list<std::unique_ptr<WorkRequest>> workRequests;
-    std::list<std::unique_ptr<FileRequest>> fileRequests;
+    std::list<std::unique_ptr<AsyncRequest>> requests;
     std::set<std::string> requiredSourceURLs;
 };
 

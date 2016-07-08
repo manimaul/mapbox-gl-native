@@ -2,16 +2,24 @@ package com.mapbox.mapboxsdk.maps;
 
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.support.annotation.ColorInt;
+import android.support.annotation.IntRange;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.content.ContextCompat;
 import android.util.AttributeSet;
 import android.view.Gravity;
 
 import com.mapbox.mapboxsdk.R;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
 import com.mapbox.mapboxsdk.constants.MapboxConstants;
+import com.mapbox.mapboxsdk.utils.ColorUtils;
+
+import java.util.Arrays;
 
 /**
  * Defines configuration MapboxMapMapOptions for a MapboxMap. These options can be used when adding a
@@ -40,6 +48,8 @@ public class MapboxMapOptions implements Parcelable {
     private int logoGravity = Gravity.BOTTOM | Gravity.START;
     private int logoMargins[];
 
+    @ColorInt
+    private int attributionTintColor = -1;
     private boolean attributionEnabled = true;
     private int attributionGravity = Gravity.BOTTOM;
     private int attributionMargins[];
@@ -53,9 +63,18 @@ public class MapboxMapOptions implements Parcelable {
     private boolean zoomGesturesEnabled = true;
     private boolean zoomControlsEnabled = false;
 
-    private boolean locationEnabled;
+    private boolean myLocationEnabled;
+    private Drawable myLocationForegroundDrawable;
+    private Drawable myLocationForegroundBearingDrawable;
+    private Drawable myLocationBackgroundDrawable;
+    private int myLocationForegroundTintColor;
+    private int myLocationBackgroundTintColor;
+    private int[] myLocationBackgroundPadding;
+    private int myLocationAccuracyTintColor;
+    private int myLocationAccuracyAlpha;
 
     private String style;
+    @Deprecated
     private String accessToken;
 
     /**
@@ -79,6 +98,7 @@ public class MapboxMapOptions implements Parcelable {
         attributionEnabled = in.readByte() != 0;
         attributionGravity = in.readInt();
         attributionMargins = in.createIntArray();
+        attributionTintColor = in.readInt();
 
         minZoom = in.readFloat();
         maxZoom = in.readFloat();
@@ -89,7 +109,15 @@ public class MapboxMapOptions implements Parcelable {
         zoomControlsEnabled = in.readByte() != 0;
         zoomGesturesEnabled = in.readByte() != 0;
 
-        locationEnabled = in.readByte() != 0;
+        myLocationEnabled = in.readByte() != 0;
+        //myLocationForegroundDrawable;
+        //myLocationForegroundBearingDrawable;
+        //myLocationBackgroundDrawable;
+        myLocationForegroundTintColor = in.readInt();
+        myLocationBackgroundTintColor = in.readInt();
+        myLocationBackgroundPadding = in.createIntArray();
+        myLocationAccuracyAlpha = in.readInt();
+        myLocationAccuracyTintColor = in.readInt();
 
         style = in.readString();
         accessToken = in.readString();
@@ -137,6 +165,7 @@ public class MapboxMapOptions implements Parcelable {
                     , (int) (typedArray.getDimension(R.styleable.MapView_logo_margin_right, DIMENSION_SIXTEEN_DP) * screenDensity)
                     , (int) (typedArray.getDimension(R.styleable.MapView_logo_margin_bottom, DIMENSION_SIXTEEN_DP) * screenDensity)});
 
+            mapboxMapOptions.attributionTintColor(typedArray.getColor(R.styleable.MapView_attribution_tint, -1));
             mapboxMapOptions.attributionEnabled(typedArray.getBoolean(R.styleable.MapView_attribution_enabled, true));
             mapboxMapOptions.attributionGravity(typedArray.getInt(R.styleable.MapView_attribution_gravity, Gravity.BOTTOM));
             mapboxMapOptions.attributionMargins(new int[]{(int) (typedArray.getDimension(R.styleable.MapView_attribution_margin_left, DIMENSION_SEVENTY_SIX_DP) * screenDensity)
@@ -145,6 +174,32 @@ public class MapboxMapOptions implements Parcelable {
                     , (int) (typedArray.getDimension(R.styleable.MapView_attribution_margin_bottom, DIMENSION_SEVEN_DP) * screenDensity)});
 
             mapboxMapOptions.locationEnabled(typedArray.getBoolean(R.styleable.MapView_my_location_enabled, false));
+            mapboxMapOptions.myLocationForegroundTintColor(typedArray.getColor(R.styleable.MapView_my_location_foreground_tint, Color.TRANSPARENT));
+            mapboxMapOptions.myLocationBackgroundTintColor(typedArray.getColor(R.styleable.MapView_my_location_background_tint, Color.TRANSPARENT));
+
+            Drawable foregroundDrawable = typedArray.getDrawable(R.styleable.MapView_my_location_foreground);
+            if (foregroundDrawable == null) {
+                foregroundDrawable = ContextCompat.getDrawable(context, R.drawable.ic_mylocationview_normal);
+            }
+
+            Drawable foregroundBearingDrawable = typedArray.getDrawable(R.styleable.MapView_my_location_foreground_bearing);
+            if (foregroundBearingDrawable == null) {
+                foregroundBearingDrawable = ContextCompat.getDrawable(context, R.drawable.ic_mylocationview_bearing);
+            }
+
+            Drawable backgroundDrawable = typedArray.getDrawable(R.styleable.MapView_my_location_background);
+            if (backgroundDrawable == null) {
+                backgroundDrawable = ContextCompat.getDrawable(context, R.drawable.ic_mylocationview_background);
+            }
+
+            mapboxMapOptions.myLocationForegroundDrawables(foregroundDrawable, foregroundBearingDrawable);
+            mapboxMapOptions.myLocationBackgroundDrawable(backgroundDrawable);
+            mapboxMapOptions.myLocationBackgroundPadding(new int[]{(int) (typedArray.getDimension(R.styleable.MapView_my_location_background_left, 0) * screenDensity)
+                    , (int) (typedArray.getDimension(R.styleable.MapView_my_location_background_top, 0) * screenDensity)
+                    , (int) (typedArray.getDimension(R.styleable.MapView_my_location_background_right, 0) * screenDensity)
+                    , (int) (typedArray.getDimension(R.styleable.MapView_my_location_background_bottom, 0) * screenDensity)});
+            mapboxMapOptions.myLocationAccuracyAlpha(typedArray.getInt(R.styleable.MapView_my_location_accuracy_alpha, 100));
+            mapboxMapOptions.myLocationAccuracyTint(typedArray.getColor(R.styleable.MapView_my_location_accuracy_tint, ColorUtils.getPrimaryColor(context)));
         } finally {
             typedArray.recycle();
         }
@@ -163,11 +218,16 @@ public class MapboxMapOptions implements Parcelable {
     }
 
     /**
+     * <p>
+     * DEPRECATED @see MapboxAccountManager#start(String)
+     * </p>
      * Specifies the accesstoken associated with a map view.
      *
      * @param accessToken Token to be used to access the service
      * @return This
+     * @deprecated As of release 4.1.0, replaced by {@link com.mapbox.mapboxsdk.MapboxAccountManager#start(Context, String)}
      */
+    @Deprecated
     public MapboxMapOptions accessToken(String accessToken) {
         this.accessToken = accessToken;
         return this;
@@ -317,6 +377,17 @@ public class MapboxMapOptions implements Parcelable {
     }
 
     /**
+     * Specifies the tint color of the attribution for a map view
+     *
+     * @param color integer resembling a color
+     * @return This
+     */
+    public MapboxMapOptions attributionTintColor(@ColorInt int color) {
+        attributionTintColor = color;
+        return this;
+    }
+
+    /**
      * Specifies if the rotate gesture is enabled for a map view.
      *
      * @param enabled True and gesture will be enabled
@@ -378,7 +449,106 @@ public class MapboxMapOptions implements Parcelable {
      * @return This
      */
     public MapboxMapOptions locationEnabled(boolean locationEnabled) {
-        this.locationEnabled = locationEnabled;
+        this.myLocationEnabled = locationEnabled;
+        return this;
+    }
+
+    /**
+     * Set the foreground drawables of the MyLocationView.
+     *
+     * @param myLocationForegroundDrawable the drawable to show as foreground without bearing
+     * @param myLocationBearingDrawable    the drawable to show as foreground when bearing is disabled
+     * @return This
+     */
+    public MapboxMapOptions myLocationForegroundDrawables(Drawable myLocationForegroundDrawable, Drawable myLocationBearingDrawable) {
+        this.myLocationForegroundDrawable = myLocationForegroundDrawable;
+        this.myLocationForegroundBearingDrawable = myLocationBearingDrawable;
+        return this;
+    }
+
+    /**
+     * Set the foreground drawable of the MyLocationView.
+     * <p>
+     * The same drawable will be used for both bearing as non bearing modes.
+     * </p>
+     *
+     * @param myLocationForegroundDrawable the drawable to show as foreground
+     * @return This
+     */
+    public MapboxMapOptions myLocationForegroundDrawable(Drawable myLocationForegroundDrawable) {
+        this.myLocationForegroundDrawable = myLocationForegroundDrawable;
+        return this;
+    }
+
+    /**
+     * Set the background drawable of MyLocationView.
+     * <p>
+     * Padding can be added to provide an offset to the background.
+     * </p>
+     *
+     * @param myLocationBackgroundDrawable the drawable to show as background
+     * @return This
+     */
+    public MapboxMapOptions myLocationBackgroundDrawable(Drawable myLocationBackgroundDrawable) {
+        this.myLocationBackgroundDrawable = myLocationBackgroundDrawable;
+        return this;
+    }
+
+    /**
+     * Set the foreground tint color of MyLocationView.
+     * <p>
+     * The color will tint both the foreground and the bearing foreground drawable.
+     * </p>
+     *
+     * @param myLocationForegroundTintColor the color to tint the foreground drawable
+     * @return This
+     */
+    public MapboxMapOptions myLocationForegroundTintColor(@ColorInt int myLocationForegroundTintColor) {
+        this.myLocationForegroundTintColor = myLocationForegroundTintColor;
+        return this;
+    }
+
+    /**
+     * Set the background tint color of MyLocationView.
+     *
+     * @param myLocationBackgroundTintColor the color to tint the background
+     * @return This
+     */
+    public MapboxMapOptions myLocationBackgroundTintColor(@ColorInt int myLocationBackgroundTintColor) {
+        this.myLocationBackgroundTintColor = myLocationBackgroundTintColor;
+        return this;
+    }
+
+    /**
+     * Set the MyLocationView padding.
+     *
+     * @param myLocationBackgroundPadding the color to tint the background
+     * @return This
+     */
+    public MapboxMapOptions myLocationBackgroundPadding(int[] myLocationBackgroundPadding) {
+        this.myLocationBackgroundPadding = myLocationBackgroundPadding;
+        return this;
+    }
+
+    /**
+     * Set the MyLocationView accuracy circle tint color.
+     *
+     * @param myLocationAccuracyTintColor the color to tint the accuracy circle
+     * @return This
+     */
+    public MapboxMapOptions myLocationAccuracyTint(@ColorInt int myLocationAccuracyTintColor) {
+        this.myLocationAccuracyTintColor = myLocationAccuracyTintColor;
+        return this;
+    }
+
+    /**
+     * Set the MyLocationView accuracy alpha value.
+     *
+     * @param alpha the alpha value
+     * @return This
+     */
+    public MapboxMapOptions myLocationAccuracyAlpha(@IntRange(from = 0, to = 255) int alpha) {
+        this.myLocationAccuracyAlpha = alpha;
         return this;
     }
 
@@ -464,10 +634,14 @@ public class MapboxMapOptions implements Parcelable {
     }
 
     /**
+     * <p>
+     * DEPRECATED @see MapboxAccountManager#start(String)
+     * </p>
      * Get the current configured access token for a map view.
      *
      * @return Access token to be used.
      */
+    @Deprecated
     public String getAccessToken() {
         return accessToken;
     }
@@ -554,12 +728,94 @@ public class MapboxMapOptions implements Parcelable {
     }
 
     /**
+     * Get the current configured tint color for attribution for a map view.
+     *
+     * @return the tint color
+     */
+    @ColorInt
+    public int getAttributionTintColor() {
+        return attributionTintColor;
+    }
+
+    /**
      * Get the current configured user location view state for a map view.
      *
      * @return True and user location will be shown
      */
     public boolean getLocationEnabled() {
-        return locationEnabled;
+        return myLocationEnabled;
+    }
+
+    /**
+     * Get the current configured MyLocationView foreground drawable.
+     *
+     * @return the drawable used as foreground
+     */
+    public Drawable getMyLocationForegroundDrawable() {
+        return myLocationForegroundDrawable;
+    }
+
+    /**
+     * Get the current configured MyLocationView foreground bearing drawable.
+     *
+     * @return the drawable used as foreground when bearing is enabled
+     */
+    public Drawable getMyLocationForegroundBearingDrawable() {
+        return myLocationForegroundBearingDrawable;
+    }
+
+    /**
+     * Get the current configured MyLocationView background drawable.
+     *
+     * @return the drawable used as background
+     */
+    public Drawable getMyLocationBackgroundDrawable() {
+        return myLocationBackgroundDrawable;
+    }
+
+    /**
+     * Get the current configured MyLocationView foreground tint color.
+     *
+     * @return the tint color
+     */
+    public int getMyLocationForegroundTintColor() {
+        return myLocationForegroundTintColor;
+    }
+
+    /**
+     * Get the current configured MyLocationView background tint color.
+     *
+     * @return the tint color
+     */
+    public int getMyLocationBackgroundTintColor() {
+        return myLocationBackgroundTintColor;
+    }
+
+    /**
+     * Get the current configured MyLocationView background padding.
+     *
+     * @return an array describing the padding in a LTRB manner
+     */
+    public int[] getMyLocationBackgroundPadding() {
+        return myLocationBackgroundPadding;
+    }
+
+    /**
+     * Get the current configured MyLocationView accuracy circle color tint value.
+     *
+     * @return the tint color
+     */
+    public int getMyLocationAccuracyTintColor() {
+        return myLocationAccuracyTintColor;
+    }
+
+    /**
+     * Get the current configured MyLocationView accuracy circle alpha value.
+     *
+     * @return the alpha value
+     */
+    public int getMyLocationAccuracyAlpha() {
+        return myLocationAccuracyAlpha;
     }
 
     /**
@@ -603,6 +859,7 @@ public class MapboxMapOptions implements Parcelable {
         dest.writeByte((byte) (attributionEnabled ? 1 : 0));
         dest.writeInt(attributionGravity);
         dest.writeIntArray(attributionMargins);
+        dest.writeInt(attributionTintColor);
 
         dest.writeFloat(minZoom);
         dest.writeFloat(maxZoom);
@@ -613,9 +870,94 @@ public class MapboxMapOptions implements Parcelable {
         dest.writeByte((byte) (zoomControlsEnabled ? 1 : 0));
         dest.writeByte((byte) (zoomGesturesEnabled ? 1 : 0));
 
-        dest.writeByte((byte) (locationEnabled ? 1 : 0));
+        dest.writeByte((byte) (myLocationEnabled ? 1 : 0));
+        //myLocationForegroundDrawable;
+        //myLocationForegroundBearingDrawable;
+        //myLocationBackgroundDrawable;
+        dest.writeInt(myLocationForegroundTintColor);
+        dest.writeInt(myLocationBackgroundTintColor);
+        dest.writeIntArray(myLocationBackgroundPadding);
+        dest.writeInt(myLocationAccuracyAlpha);
+        dest.writeInt(myLocationAccuracyTintColor);
 
         dest.writeString(style);
         dest.writeString(accessToken);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        MapboxMapOptions options = (MapboxMapOptions) o;
+
+        if (debugActive != options.debugActive) return false;
+        if (compassEnabled != options.compassEnabled) return false;
+        if (compassGravity != options.compassGravity) return false;
+        if (logoEnabled != options.logoEnabled) return false;
+        if (logoGravity != options.logoGravity) return false;
+        if (attributionEnabled != options.attributionEnabled) return false;
+        if (attributionGravity != options.attributionGravity) return false;
+        if (Float.compare(options.minZoom, minZoom) != 0) return false;
+        if (Float.compare(options.maxZoom, maxZoom) != 0) return false;
+        if (rotateGesturesEnabled != options.rotateGesturesEnabled) return false;
+        if (scrollGesturesEnabled != options.scrollGesturesEnabled) return false;
+        if (tiltGesturesEnabled != options.tiltGesturesEnabled) return false;
+        if (zoomGesturesEnabled != options.zoomGesturesEnabled) return false;
+        if (zoomControlsEnabled != options.zoomControlsEnabled) return false;
+        if (myLocationEnabled != options.myLocationEnabled) return false;
+        if (myLocationForegroundTintColor != options.myLocationForegroundTintColor) return false;
+        if (myLocationBackgroundTintColor != options.myLocationBackgroundTintColor) return false;
+        if (myLocationAccuracyTintColor != options.myLocationAccuracyTintColor) return false;
+        if (myLocationAccuracyAlpha != options.myLocationAccuracyAlpha) return false;
+        if (cameraPosition != null ? !cameraPosition.equals(options.cameraPosition) : options.cameraPosition != null)
+            return false;
+        if (!Arrays.equals(compassMargins, options.compassMargins)) return false;
+        if (!Arrays.equals(logoMargins, options.logoMargins)) return false;
+        if (!Arrays.equals(attributionMargins, options.attributionMargins)) return false;
+        if (myLocationForegroundDrawable != null ? !myLocationForegroundDrawable.equals(options.myLocationForegroundDrawable) : options.myLocationForegroundDrawable != null)
+            return false;
+        if (myLocationForegroundBearingDrawable != null ? !myLocationForegroundBearingDrawable.equals(options.myLocationForegroundBearingDrawable) : options.myLocationForegroundBearingDrawable != null)
+            return false;
+        if (myLocationBackgroundDrawable != null ? !myLocationBackgroundDrawable.equals(options.myLocationBackgroundDrawable) : options.myLocationBackgroundDrawable != null)
+            return false;
+        if (!Arrays.equals(myLocationBackgroundPadding, options.myLocationBackgroundPadding))
+            return false;
+        if (style != null ? !style.equals(options.style) : options.style != null) return false;
+        return accessToken != null ? accessToken.equals(options.accessToken) : options.accessToken == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = cameraPosition != null ? cameraPosition.hashCode() : 0;
+        result = 31 * result + (debugActive ? 1 : 0);
+        result = 31 * result + (compassEnabled ? 1 : 0);
+        result = 31 * result + compassGravity;
+        result = 31 * result + Arrays.hashCode(compassMargins);
+        result = 31 * result + (logoEnabled ? 1 : 0);
+        result = 31 * result + logoGravity;
+        result = 31 * result + Arrays.hashCode(logoMargins);
+        result = 31 * result + (attributionEnabled ? 1 : 0);
+        result = 31 * result + attributionGravity;
+        result = 31 * result + Arrays.hashCode(attributionMargins);
+        result = 31 * result + (minZoom != +0.0f ? Float.floatToIntBits(minZoom) : 0);
+        result = 31 * result + (maxZoom != +0.0f ? Float.floatToIntBits(maxZoom) : 0);
+        result = 31 * result + (rotateGesturesEnabled ? 1 : 0);
+        result = 31 * result + (scrollGesturesEnabled ? 1 : 0);
+        result = 31 * result + (tiltGesturesEnabled ? 1 : 0);
+        result = 31 * result + (zoomGesturesEnabled ? 1 : 0);
+        result = 31 * result + (zoomControlsEnabled ? 1 : 0);
+        result = 31 * result + (myLocationEnabled ? 1 : 0);
+        result = 31 * result + (myLocationForegroundDrawable != null ? myLocationForegroundDrawable.hashCode() : 0);
+        result = 31 * result + (myLocationForegroundBearingDrawable != null ? myLocationForegroundBearingDrawable.hashCode() : 0);
+        result = 31 * result + (myLocationBackgroundDrawable != null ? myLocationBackgroundDrawable.hashCode() : 0);
+        result = 31 * result + myLocationForegroundTintColor;
+        result = 31 * result + myLocationBackgroundTintColor;
+        result = 31 * result + Arrays.hashCode(myLocationBackgroundPadding);
+        result = 31 * result + myLocationAccuracyTintColor;
+        result = 31 * result + myLocationAccuracyAlpha;
+        result = 31 * result + (style != null ? style.hashCode() : 0);
+        result = 31 * result + (accessToken != null ? accessToken.hashCode() : 0);
+        return result;
     }
 }

@@ -1,86 +1,74 @@
-#ifndef MBGL_PAINT_PROPERTY
-#define MBGL_PAINT_PROPERTY
+#pragma once
 
 #include <mbgl/style/class_dictionary.hpp>
 #include <mbgl/style/property_parsing.hpp>
-#include <mbgl/style/function.hpp>
-#include <mbgl/style/property_transition.hpp>
-#include <mbgl/style/style_cascade_parameters.hpp>
-#include <mbgl/style/style_calculation_parameters.hpp>
+#include <mbgl/style/property_evaluator.hpp>
+#include <mbgl/style/transition_options.hpp>
+#include <mbgl/style/cascade_parameters.hpp>
+#include <mbgl/style/calculation_parameters.hpp>
+#include <mbgl/util/constants.hpp>
 #include <mbgl/util/interpolate.hpp>
-#include <mbgl/util/std.hpp>
 #include <mbgl/util/rapidjson.hpp>
 
 #include <map>
 #include <utility>
 
 namespace mbgl {
+namespace style {
 
-template <typename T, typename Result = T>
+template <class T, template <class S> class Evaluator = PropertyEvaluator>
 class PaintProperty {
 public:
-    using Fn = Function<Result>;
+    using Result = typename Evaluator<T>::ResultType;
 
-    explicit PaintProperty(T fallbackValue)
-        : value(fallbackValue) {
-        values.emplace(ClassID::Fallback, Fn(fallbackValue));
+    explicit PaintProperty(T defaultValue_)
+        : defaultValue(defaultValue_) {
+        values.emplace(ClassID::Fallback, defaultValue_);
     }
 
     PaintProperty(const PaintProperty& other)
-        : values(other.values),
+        : defaultValue(other.defaultValue),
+          values(other.values),
           transitions(other.transitions) {
     }
 
-    void parse(const char* name, const JSValue& layer) {
-        mbgl::util::erase_if(values, [] (const auto& p) { return p.first != ClassID::Fallback; });
-
-        std::string transitionName = { name };
-        transitionName += "-transition";
-
-        for (auto it = layer.MemberBegin(); it != layer.MemberEnd(); ++it) {
-            const std::string paintName { it->name.GetString(), it->name.GetStringLength() };
-            if (paintName.compare(0, 5, "paint") != 0)
-                continue;
-
-            bool isClass = paintName.compare(0, 6, "paint.") == 0;
-            if (isClass && paintName.length() <= 6)
-                continue;
-
-            ClassID classID = isClass ? ClassDictionary::Get().lookup(paintName.substr(6)) : ClassID::Default;
-
-            if (it->value.HasMember(name)) {
-                auto v = parseProperty<Fn>(name, it->value[name]);
-                if (v) {
-                    values.emplace(classID, *v);
-                }
-            }
-
-            if (it->value.HasMember(transitionName.c_str())) {
-                auto v = parseProperty<PropertyTransition>(name, it->value[transitionName.c_str()]);
-                if (v) {
-                    transitions.emplace(classID, *v);
-                }
-            }
-        }
+    PaintProperty& operator=(const PaintProperty& other) {
+        defaultValue = other.defaultValue;
+        values = other.values;
+        transitions = other.transitions;
+        return *this;
     }
 
-    void cascade(const StyleCascadeParameters& parameters) {
-        Duration delay = *parameters.defaultTransition.delay;
-        Duration duration = *parameters.defaultTransition.duration;
+    const PropertyValue<T>& get() const {
+        return values.at(ClassID::Default);
+    }
 
-        for (auto classID : parameters.classes) {
+    void set(const PropertyValue<T>& value_, const optional<std::string>& klass) {
+        values[klass ? ClassDictionary::Get().lookup(*klass) : ClassID::Default] = value_;
+    }
+
+    void setTransition(const TransitionOptions& transition, const optional<std::string>& klass) {
+        transitions[klass ? ClassDictionary::Get().lookup(*klass) : ClassID::Default] = transition;
+    }
+
+    void cascade(const CascadeParameters& params) {
+        const bool overrideTransition = !params.transition.delay && !params.transition.duration;
+        Duration delay = params.transition.delay.value_or(Duration::zero());
+        Duration duration = params.transition.duration.value_or(Duration::zero());
+
+        for (const auto classID : params.classes) {
             if (values.find(classID) == values.end())
                 continue;
 
-            if (transitions.find(classID) != transitions.end()) {
-                const PropertyTransition& transition = transitions[classID];
+            if (overrideTransition && transitions.find(classID) != transitions.end()) {
+                const TransitionOptions& transition = transitions[classID];
                 if (transition.delay) delay = *transition.delay;
                 if (transition.duration) duration = *transition.duration;
             }
 
             cascaded = std::make_unique<CascadedValue>(std::move(cascaded),
-                                                       parameters.now + delay,
-                                                       parameters.now + delay + duration,
+                                                       params.now + delay,
+                                                       params.now + delay + duration,
                                                        values.at(classID));
 
             break;
@@ -89,56 +77,57 @@ public:
         assert(cascaded);
     }
 
-    bool calculate(const StyleCalculationParameters& parameters) {
+    bool calculate(const CalculationParameters& parameters) {
         assert(cascaded);
-        value = cascaded->calculate(parameters);
+        Evaluator<T> evaluator(parameters, defaultValue);
+        value = cascaded->calculate(evaluator, parameters.now);
         return cascaded->prior.operator bool();
     }
 
-    void operator=(const T& v) { values.emplace(ClassID::Default, Fn(v)); }
+    // TODO: remove / privatize
     operator T() const { return value; }
+    Result value;
 
-    std::map<ClassID, Fn> values;
-    std::map<ClassID, PropertyTransition> transitions;
+private:
+    T defaultValue;
+    std::map<ClassID, PropertyValue<T>> values;
+    std::map<ClassID, TransitionOptions> transitions;
 
     struct CascadedValue {
         CascadedValue(std::unique_ptr<CascadedValue> prior_,
                       TimePoint begin_,
                       TimePoint end_,
-                      Fn value_)
+                      PropertyValue<T> value_)
             : prior(std::move(prior_)),
-              begin(begin_),
-              end(end_),
+              begin(std::move(begin_)),
+              end(std::move(end_)),
               value(std::move(value_)) {
         }
 
-        Result calculate(const StyleCalculationParameters& parameters) {
-            Result final = value.evaluate(parameters);
+        Result calculate(const Evaluator<T>& evaluator, const TimePoint& now) {
+            Result finalValue = PropertyValue<T>::visit(value, evaluator);
             if (!prior) {
                 // No prior value.
-                return final;
-            } else if (parameters.now >= end) {
+                return finalValue;
+            } else if (now >= end) {
                 // Transition from prior value is now complete.
                 prior.reset();
-                return final;
+                return finalValue;
             } else {
                 // Interpolate between recursively-calculated prior value and final.
-                float t = std::chrono::duration<float>(parameters.now - begin) / (end - begin);
-                return util::interpolate(prior->calculate(parameters), final, t);
+                float t = std::chrono::duration<float>(now - begin) / (end - begin);
+                return util::interpolate(prior->calculate(evaluator, now), finalValue, util::DEFAULT_TRANSITION_EASE.solve(t, 0.001));
             }
         }
 
         std::unique_ptr<CascadedValue> prior;
         TimePoint begin;
         TimePoint end;
-        Fn value;
+        PropertyValue<T> value;
     };
 
     std::unique_ptr<CascadedValue> cascaded;
-
-    Result value;
 };
 
+} // namespace style
 } // namespace mbgl
-
-#endif

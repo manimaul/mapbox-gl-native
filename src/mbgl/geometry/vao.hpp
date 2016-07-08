@@ -1,16 +1,14 @@
-#ifndef MBGL_GEOMETRY_VAO
-#define MBGL_GEOMETRY_VAO
+#pragma once
 
 #include <mbgl/shader/shader.hpp>
 #include <mbgl/gl/gl.hpp>
-#include <mbgl/gl/gl_object_store.hpp>
+#include <mbgl/gl/object_store.hpp>
 #include <mbgl/util/noncopyable.hpp>
+#include <mbgl/util/optional.hpp>
 
 #include <stdexcept>
 
 namespace mbgl {
-
-class Shader;
 
 class VertexArrayObject : public util::noncopyable {
 public:
@@ -19,11 +17,11 @@ public:
     VertexArrayObject();
     ~VertexArrayObject();
 
-    template <typename Shader, typename VertexBuffer>
-    inline void bind(Shader& shader, VertexBuffer &vertexBuffer, GLbyte *offset, gl::GLObjectStore& glObjectStore) {
-        bindVertexArrayObject(glObjectStore);
+    template <typename VertexBuffer>
+    void bind(Shader& shader, VertexBuffer& vertexBuffer, GLbyte* offset, gl::ObjectStore& store) {
+        bindVertexArrayObject(store);
         if (bound_shader == 0) {
-            vertexBuffer.bind(glObjectStore);
+            vertexBuffer.bind(store);
             shader.bind(offset);
             if (vao) {
                 storeBinding(shader, vertexBuffer.getID(), 0, offset);
@@ -33,12 +31,12 @@ public:
         }
     }
 
-    template <typename Shader, typename VertexBuffer, typename ElementsBuffer>
-    inline void bind(Shader& shader, VertexBuffer &vertexBuffer, ElementsBuffer &elementsBuffer, GLbyte *offset, gl::GLObjectStore& glObjectStore) {
-        bindVertexArrayObject(glObjectStore);
+    template <typename VertexBuffer, typename ElementsBuffer>
+    void bind(Shader& shader, VertexBuffer& vertexBuffer, ElementsBuffer& elementsBuffer, GLbyte* offset, gl::ObjectStore& store) {
+        bindVertexArrayObject(store);
         if (bound_shader == 0) {
-            vertexBuffer.bind(glObjectStore);
-            elementsBuffer.bind(glObjectStore);
+            vertexBuffer.bind(store);
+            elementsBuffer.bind(store);
             shader.bind(offset);
             if (vao) {
                 storeBinding(shader, vertexBuffer.getID(), elementsBuffer.getID(), offset);
@@ -49,25 +47,23 @@ public:
     }
 
     GLuint getID() const {
-        return vao.getID();
+        return *vao;
     }
 
 private:
-    void bindVertexArrayObject(gl::GLObjectStore&);
+    void bindVertexArrayObject(gl::ObjectStore&);
     void storeBinding(Shader &shader, GLuint vertexBuffer, GLuint elementsBuffer, GLbyte *offset);
     void verifyBinding(Shader &shader, GLuint vertexBuffer, GLuint elementsBuffer, GLbyte *offset);
 
-    gl::VAOHolder vao;
+    mbgl::optional<gl::UniqueVAO> vao;
 
     // For debug reasons, we're storing the bind information so that we can
     // detect errors and report
     GLuint bound_shader = 0;
-    const char *bound_shader_name = "";
+    const char* bound_shader_name = "";
     GLuint bound_vertex_buffer = 0;
     GLuint bound_elements_buffer = 0;
-    GLbyte *bound_offset = 0;
+    GLbyte *bound_offset = nullptr;
 };
 
 } // namespace mbgl
-
-#endif

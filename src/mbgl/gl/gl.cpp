@@ -10,6 +10,27 @@
 namespace mbgl {
 namespace gl {
 
+ExtensionFunction<void (GLuint array)>
+    BindVertexArray({
+        {"GL_ARB_vertex_array_object", "glBindVertexArray"},
+        {"GL_OES_vertex_array_object", "glBindVertexArrayOES"},
+        {"GL_APPLE_vertex_array_object", "glBindVertexArrayAPPLE"}
+    });
+
+ExtensionFunction<void (GLsizei n, const GLuint* arrays)>
+    DeleteVertexArrays({
+        {"GL_ARB_vertex_array_object", "glDeleteVertexArrays"},
+        {"GL_OES_vertex_array_object", "glDeleteVertexArraysOES"},
+        {"GL_APPLE_vertex_array_object", "glDeleteVertexArraysAPPLE"}
+    });
+
+ExtensionFunction<void (GLsizei n, GLuint* arrays)>
+    GenVertexArrays({
+        {"GL_ARB_vertex_array_object", "glGenVertexArrays"},
+        {"GL_OES_vertex_array_object", "glGenVertexArraysOES"},
+        {"GL_APPLE_vertex_array_object", "glGenVertexArraysAPPLE"}
+    });
+
 std::vector<ExtensionFunctionBase*>& ExtensionFunctionBase::functions() {
     static std::vector<ExtensionFunctionBase*> functions;
     return functions;
@@ -100,7 +121,7 @@ namespace mbgl {
         void mbx_trapExtension(const char *, GLenum, GLuint, GLsizei, const GLchar *) { }
         void mbx_trapExtension(const char *, GLDEBUGPROC, const void *) { }
         void mbx_trapExtension(const char *, GLuint, GLuint, GLuint, GLuint, GLint, const char *, const void*) { }
-        
+
         void mbx_trapExtension(const char *name, GLuint array) {
             if(strncasecmp(name, "glBindVertexArray", 17) == 0) {
                 currentVertexArray = array;
@@ -167,7 +188,7 @@ void mbx_glBufferData(GLenum target,
     }
     std::cout << "GL glBufferData: " << currentBinding << " using " << bufferBindingToSizeMap[currentBinding] << " bytes current total " << currentUsedBufferBytes << " high water mark " << largestAmountUsedSoFar << "\n";
     lock.unlock();
-    
+
     glBufferData(target, size, data, usage);
 }
 

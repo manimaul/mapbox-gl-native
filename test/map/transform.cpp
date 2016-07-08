@@ -1,5 +1,4 @@
-#include "../fixtures/util.hpp"
-#include "../fixtures/mock_view.hpp"
+#include <mbgl/test/util.hpp>
 
 #include <mbgl/map/transform.hpp>
 #include <mbgl/util/geo.hpp>
@@ -7,8 +6,7 @@
 using namespace mbgl;
 
 TEST(Transform, InvalidScale) {
-    MockView view;
-    Transform transform(view, ConstrainMode::HeightOnly);
+    Transform transform;
 
     ASSERT_DOUBLE_EQ(0, transform.getLatLng().latitude);
     ASSERT_DOUBLE_EQ(0, transform.getLatLng().longitude);
@@ -47,8 +45,7 @@ TEST(Transform, InvalidScale) {
 }
 
 TEST(Transform, InvalidLatLng) {
-    MockView view;
-    Transform transform(view, ConstrainMode::HeightOnly);
+    Transform transform;
 
     ASSERT_DOUBLE_EQ(0, transform.getLatLng().latitude);
     ASSERT_DOUBLE_EQ(0, transform.getLatLng().longitude);
@@ -83,8 +80,7 @@ TEST(Transform, InvalidLatLng) {
 
 
 TEST(Transform, InvalidBearing) {
-    MockView view;
-    Transform transform(view, ConstrainMode::HeightOnly);
+    Transform transform;
 
     ASSERT_DOUBLE_EQ(0, transform.getLatLng().latitude);
     ASSERT_DOUBLE_EQ(0, transform.getLatLng().longitude);
@@ -108,10 +104,9 @@ TEST(Transform, InvalidBearing) {
 }
 
 TEST(Transform, PerspectiveProjection) {
-    MockView view;
     LatLng loc;
 
-    Transform transform(view, ConstrainMode::HeightOnly);
+    Transform transform;
     transform.resize({{ 1000, 1000 }});
     transform.setScale(2 << 9);
     transform.setPitch(0.9);
@@ -141,8 +136,7 @@ TEST(Transform, PerspectiveProjection) {
 }
 
 TEST(Transform, UnwrappedLatLng) {
-    MockView view;
-    Transform transform(view, ConstrainMode::HeightOnly);
+    Transform transform;
     transform.resize({{ 1000, 1000 }});
     transform.setScale(2 << 9);
     transform.setPitch(0.9);
@@ -172,10 +166,9 @@ TEST(Transform, UnwrappedLatLng) {
 }
 
 TEST(Transform, ConstrainHeightOnly) {
-    MockView view;
     LatLng loc;
 
-    Transform transform(view, ConstrainMode::HeightOnly);
+    Transform transform;
     transform.resize({{ 1000, 1000 }});
     transform.setScale(std::pow(2, util::MAX_ZOOM));
 
@@ -191,10 +184,9 @@ TEST(Transform, ConstrainHeightOnly) {
 }
 
 TEST(Transform, ConstrainWidthAndHeight) {
-    MockView view;
     LatLng loc;
 
-    Transform transform(view, ConstrainMode::WidthAndHeight);
+    Transform transform(nullptr, ConstrainMode::WidthAndHeight);
     transform.resize({{ 1000, 1000 }});
     transform.setScale(std::pow(2, util::MAX_ZOOM));
 
@@ -210,8 +202,7 @@ TEST(Transform, ConstrainWidthAndHeight) {
 }
 
 TEST(Transform, Anchor) {
-    MockView view;
-    Transform transform(view, ConstrainMode::HeightOnly);
+    Transform transform;
     transform.resize({{ 1000, 1000 }});
 
     const LatLng latLng { 10, -100 };
@@ -222,24 +213,96 @@ TEST(Transform, Anchor) {
     ASSERT_DOUBLE_EQ(10, transform.getZoom());
     ASSERT_DOUBLE_EQ(0, transform.getAngle());
 
+    const optional<ScreenCoordinate> invalidAnchorPoint {};
+    const ScreenCoordinate anchorPoint = { 150, 150 };
+
+    const LatLng anchorLatLng = transform.getState().screenCoordinateToLatLng(anchorPoint);
+    ASSERT_NE(latLng.latitude, anchorLatLng.latitude);
+    ASSERT_NE(latLng.longitude, anchorLatLng.longitude);
+
+    transform.setLatLngZoom(latLng, 2);
+    transform.scaleBy(1);
+    ASSERT_DOUBLE_EQ(4, transform.getScale());
+    ASSERT_DOUBLE_EQ(latLng.latitude, transform.getLatLng().latitude);
+    ASSERT_DOUBLE_EQ(latLng.longitude, transform.getLatLng().longitude);
+
+    transform.scaleBy(1.5, invalidAnchorPoint);
+    ASSERT_DOUBLE_EQ(6, transform.getScale());
+    ASSERT_DOUBLE_EQ(latLng.latitude, transform.getLatLng().latitude);
+    ASSERT_DOUBLE_EQ(latLng.longitude, transform.getLatLng().longitude);
+
+    transform.scaleBy(2, anchorPoint);
+    ASSERT_DOUBLE_EQ(12, transform.getScale());
+    ASSERT_NE(latLng.latitude, transform.getLatLng().latitude);
+    ASSERT_NE(latLng.longitude, transform.getLatLng().longitude);
+
+    transform.setLatLngZoom(latLng, 10);
+    transform.setScale(2 << 2);
+    ASSERT_DOUBLE_EQ(2 << 2, transform.getScale());
+    ASSERT_NEAR(latLng.latitude, transform.getLatLng().latitude, 0.000001);
+    ASSERT_NEAR(latLng.longitude, transform.getLatLng().longitude, 0.000001);
+
+    transform.setScale(2 << 4, invalidAnchorPoint);
+    ASSERT_DOUBLE_EQ(2 << 4, transform.getScale());
+    ASSERT_NEAR(latLng.latitude, transform.getLatLng().latitude, 0.000001);
+    ASSERT_NEAR(latLng.longitude, transform.getLatLng().longitude, 0.000001);
+
+    transform.setScale(2 << 6, anchorPoint);
+    ASSERT_DOUBLE_EQ(2 << 6, transform.getScale());
+    ASSERT_NE(latLng.latitude, transform.getLatLng().latitude);
+    ASSERT_NE(latLng.longitude, transform.getLatLng().longitude);
+
+    transform.setLatLngZoom(latLng, 10);
+    transform.setZoom(2);
+    ASSERT_DOUBLE_EQ(2, transform.getZoom());
+    ASSERT_NEAR(latLng.latitude, transform.getLatLng().latitude, 0.000001);
+    ASSERT_NEAR(latLng.longitude, transform.getLatLng().longitude, 0.000001);
+
+    transform.setZoom(4, invalidAnchorPoint);
+    ASSERT_DOUBLE_EQ(4, transform.getZoom());
+    ASSERT_NEAR(latLng.latitude, transform.getLatLng().latitude, 0.000001);
+    ASSERT_NEAR(latLng.longitude, transform.getLatLng().longitude, 0.000001);
+
+    transform.setZoom(8, anchorPoint);
+    ASSERT_DOUBLE_EQ(8, transform.getZoom());
+    ASSERT_NE(latLng.latitude, transform.getLatLng().latitude);
+    ASSERT_NE(latLng.longitude, transform.getLatLng().longitude);
+
+    transform.setLatLngZoom(latLng, 10);
     transform.setAngle(M_PI_4);
     ASSERT_NEAR(M_PI_4, transform.getAngle(), 0.000001);
     ASSERT_DOUBLE_EQ(latLng.latitude, transform.getLatLng().latitude);
     ASSERT_DOUBLE_EQ(latLng.longitude, transform.getLatLng().longitude);
 
-    const ScreenCoordinate anchorPoint = { 150, 150 };
-    const LatLng anchorLatLng = transform.getState().screenCoordinateToLatLng(anchorPoint);
-    transform.setAngle(-45 * util::DEG2RAD, anchorPoint);
-    ASSERT_NEAR(-45 / util::RAD2DEG, transform.getAngle(), 0.000001);
-    ASSERT_NE(latLng.latitude, transform.getLatLng().latitude);
-    ASSERT_NE(latLng.longitude, transform.getLatLng().longitude);
+    transform.setAngle(0, invalidAnchorPoint);
+    ASSERT_DOUBLE_EQ(0, transform.getAngle());
+    ASSERT_DOUBLE_EQ(latLng.latitude, transform.getLatLng().latitude);
+    ASSERT_DOUBLE_EQ(latLng.longitude, transform.getLatLng().longitude);
+
+    transform.setAngle(45 * util::DEG2RAD, anchorPoint);
+    ASSERT_NEAR(45 / util::RAD2DEG, transform.getAngle(), 0.000001);
+    ASSERT_NEAR(anchorLatLng.latitude, transform.getLatLng().latitude, 1);
+    ASSERT_NEAR(anchorLatLng.longitude, transform.getLatLng().longitude, 1);
+
+    transform.setLatLngZoom(latLng, 10);
+    transform.setPitch(10 * util::DEG2RAD);
+    ASSERT_DOUBLE_EQ(10 / util::RAD2DEG, transform.getPitch());
+    ASSERT_DOUBLE_EQ(latLng.latitude, transform.getLatLng().latitude);
+    ASSERT_DOUBLE_EQ(latLng.longitude, transform.getLatLng().longitude);
+
+    transform.setPitch(15 * util::DEG2RAD, invalidAnchorPoint);
+    ASSERT_DOUBLE_EQ(15 / util::RAD2DEG, transform.getPitch());
+    ASSERT_DOUBLE_EQ(latLng.latitude, transform.getLatLng().latitude);
+    ASSERT_DOUBLE_EQ(latLng.longitude, transform.getLatLng().longitude);
+
+    transform.setPitch(20 * util::DEG2RAD, anchorPoint);
+    ASSERT_DOUBLE_EQ(20 / util::RAD2DEG, transform.getPitch());
     ASSERT_NEAR(anchorLatLng.latitude, transform.getLatLng().latitude, 1);
     ASSERT_NEAR(anchorLatLng.longitude, transform.getLatLng().longitude, 1);
 }
 
 TEST(Transform, Padding) {
-    MockView view;
-    Transform transform(view, ConstrainMode::HeightOnly);
+    Transform transform;
     transform.resize({{ 1000, 1000 }});
 
     ASSERT_DOUBLE_EQ(0, transform.getLatLng().latitude);
@@ -276,8 +339,7 @@ TEST(Transform, Padding) {
 }
 
 TEST(Transform, MoveBy) {
-    MockView view;
-    Transform transform(view, ConstrainMode::HeightOnly);
+    Transform transform;
     transform.resize({{ 1000, 1000 }});
     transform.setLatLngZoom({ 0, 0 }, 10);
 
@@ -304,8 +366,7 @@ TEST(Transform, MoveBy) {
 }
 
 TEST(Transform, Antimeridian) {
-    MockView view;
-    Transform transform(view, ConstrainMode::HeightOnly);
+    Transform transform;
     transform.resize({{ 1000, 1000 }});
     transform.setLatLngZoom({ 0, 0 }, 1);
 
@@ -334,9 +395,122 @@ TEST(Transform, Antimeridian) {
     ScreenCoordinate pixelWaikiriForwards = transform.latLngToScreenCoordinate(coordinateWaikiri);
     ASSERT_DOUBLE_EQ(437.95953728819512, pixelWaikiriForwards.x);
     ASSERT_DOUBLE_EQ(pixelWaikiri.y, pixelWaikiriForwards.y);
+    LatLng coordinateFromPixel = transform.screenCoordinateToLatLng(pixelWaikiriForwards);
+    ASSERT_NEAR(coordinateWaikiri.latitude, coordinateFromPixel.latitude, 0.000001);
+    ASSERT_NEAR(coordinateWaikiri.longitude, coordinateFromPixel.longitude, 0.000001);
 
     transform.setLatLng({ coordinateWaikiri.latitude, -179.9787 });
     ScreenCoordinate pixelWaikiriBackwards = transform.latLngToScreenCoordinate(coordinateWaikiri);
     ASSERT_DOUBLE_EQ(pixelWaikiriForwards.x, pixelWaikiriBackwards.x);
     ASSERT_DOUBLE_EQ(pixelWaikiriForwards.y, pixelWaikiriBackwards.y);
+    coordinateFromPixel = transform.screenCoordinateToLatLng(pixelWaikiriBackwards);
+    ASSERT_NEAR(coordinateWaikiri.latitude, coordinateFromPixel.latitude, 0.000001);
+    ASSERT_NEAR(coordinateWaikiri.longitude, coordinateFromPixel.longitude, 0.000001);
+}
+
+TEST(Transform, Camera) {
+    Transform transform;
+    transform.resize({{ 1000, 1000 }});
+
+    const LatLng latLng1 { 45, 135 };
+    CameraOptions cameraOptions1;
+    cameraOptions1.zoom = 20;
+    cameraOptions1.center = latLng1;
+    transform.jumpTo(cameraOptions1);
+
+    ASSERT_DOUBLE_EQ(latLng1.latitude, transform.getLatLng().latitude);
+    ASSERT_DOUBLE_EQ(latLng1.longitude, transform.getLatLng().longitude);
+    ASSERT_DOUBLE_EQ(20, transform.getZoom());
+
+    const LatLng latLng2 { -45, -135 };
+    CameraOptions cameraOptions2;
+    cameraOptions2.zoom = 10;
+    cameraOptions2.center = latLng2;
+
+    transform.jumpTo(cameraOptions2);
+    ASSERT_DOUBLE_EQ(latLng2.latitude, transform.getLatLng().latitude);
+    ASSERT_DOUBLE_EQ(latLng2.longitude, transform.getLatLng().longitude);
+    ASSERT_DOUBLE_EQ(10, transform.getZoom());
+
+    AnimationOptions easeOptions(Seconds(1));
+    easeOptions.transitionFrameFn = [&](double t) {
+        ASSERT_TRUE(t >= 0 && t <= 1);
+        ASSERT_GE(latLng1.latitude, transform.getLatLng().latitude);
+        ASSERT_LE(latLng1.longitude, transform.getLatLng().longitude);
+    };
+    easeOptions.transitionFinishFn = [&]() {
+        ASSERT_NEAR(latLng1.latitude, transform.getLatLng().latitude, 0.000001);
+        ASSERT_NEAR(latLng1.longitude, transform.getLatLng().longitude, 0.000001);
+        ASSERT_NEAR(20, transform.getZoom(), 0.000001);
+    };
+
+    transform.easeTo(cameraOptions1, easeOptions);
+    ASSERT_TRUE(transform.inTransition());
+    transform.updateTransitions(transform.getTransitionStart() + Milliseconds(250));
+    transform.updateTransitions(transform.getTransitionStart() + Milliseconds(500));
+    transform.updateTransitions(transform.getTransitionStart() + Milliseconds(750));
+    transform.updateTransitions(transform.getTransitionStart() + transform.getTransitionDuration());
+    ASSERT_FALSE(transform.inTransition());
+
+    AnimationOptions flyOptions(Seconds(1));
+    flyOptions.transitionFrameFn = [&](double t) {
+        ASSERT_TRUE(t >= 0 && t <= 1);
+        ASSERT_LE(latLng2.latitude, transform.getLatLng().latitude);
+        ASSERT_GE(latLng2.longitude, transform.getLatLng().longitude);
+    };
+    flyOptions.transitionFinishFn = [&]() {
+        // XXX Fix precision loss in flyTo:
+        // https://github.com/mapbox/mapbox-gl-native/issues/4298
+        ASSERT_NEAR(latLng2.latitude, transform.getLatLng().latitude, 0.001);
+        ASSERT_NEAR(latLng2.longitude, transform.getLatLng().longitude, 0.001);
+        ASSERT_NEAR(10, transform.getZoom(), 0.00001);
+    };
+
+    transform.flyTo(cameraOptions2, flyOptions);
+    ASSERT_TRUE(transform.inTransition());
+    transform.updateTransitions(transform.getTransitionStart() + Milliseconds(250));
+    transform.updateTransitions(transform.getTransitionStart() + Milliseconds(500));
+    transform.updateTransitions(transform.getTransitionStart() + Milliseconds(750));
+    transform.updateTransitions(transform.getTransitionStart() + transform.getTransitionDuration());
+    ASSERT_FALSE(transform.inTransition());
+}
+
+TEST(Transform, DefaultTransform) {
+    Transform transform;
+    const TransformState& state = transform.getState();
+
+    LatLng nullIsland, latLng = {};
+    ScreenCoordinate center, point = {};
+    const uint16_t min = std::numeric_limits<uint16_t>::min();
+    const uint16_t max = std::numeric_limits<uint16_t>::max();
+
+    auto testConversions = [&](const LatLng& coord, const ScreenCoordinate& screenCoord) {
+        latLng = state.screenCoordinateToLatLng(center);
+        ASSERT_NEAR(latLng.latitude, coord.latitude, 0.000001);
+        ASSERT_NEAR(latLng.longitude, coord.longitude, 0.000001);
+        point = state.latLngToScreenCoordinate(nullIsland);
+        ASSERT_DOUBLE_EQ(point.x, screenCoord.x);
+        ASSERT_DOUBLE_EQ(point.y, screenCoord.y);
+    };
+
+    testConversions(nullIsland, center);
+
+    // Cannot assign the current size.
+    ASSERT_FALSE(transform.resize({{}}));
+
+    ASSERT_TRUE(transform.resize({{ min, max }}));
+    testConversions(nullIsland, center);
+
+    ASSERT_TRUE(transform.resize({{ max, min }}));
+    testConversions(nullIsland, center);
+
+    ASSERT_TRUE(transform.resize({{ min, min }}));
+    testConversions(nullIsland, center);
+
+    center = { max / 2., max / 2. };
+
+    // -1 evaluates to UINT_MAX.
+    ASSERT_TRUE(transform.resize({{ static_cast<uint16_t>(-1), static_cast<uint16_t>(-1) }}));
+    ASSERT_FALSE(transform.resize({{ max, max }}));
+    testConversions(nullIsland, center);
 }

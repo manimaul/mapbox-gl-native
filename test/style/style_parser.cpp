@@ -1,11 +1,12 @@
-#include "../fixtures/util.hpp"
+#include <mbgl/test/util.hpp>
+#include <mbgl/test/fixture_log_observer.hpp>
 
-#include <mbgl/style/style_parser.hpp>
+#include <mbgl/style/parser.hpp>
 #include <mbgl/util/io.hpp>
+#include <mbgl/util/enum.hpp>
+#include <mbgl/util/tileset.hpp>
 
 #include <rapidjson/document.h>
-
-#include "../fixtures/fixture_log_observer.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -27,10 +28,10 @@ TEST_P(StyleParserTest, ParseStyle) {
     ASSERT_FALSE(infoDoc.HasParseError());
     ASSERT_TRUE(infoDoc.IsObject());
 
-    FixtureLogObserver* observer = new FixtureLogObserver();
+    auto observer = new FixtureLogObserver();
     Log::setObserver(std::unique_ptr<Log::Observer>(observer));
 
-    StyleParser parser;
+    style::Parser parser;
     parser.parse(util::read_file(base + ".style.json"));
 
     for (auto it = infoDoc.MemberBegin(), end = infoDoc.MemberEnd(); it != end; it++) {
@@ -47,8 +48,8 @@ TEST_P(StyleParserTest, ParseStyle) {
 
                 const uint32_t count = js_entry[rapidjson::SizeType(0)].GetUint();
                 const FixtureLogObserver::LogMessage message {
-                    EventSeverityClass(js_entry[rapidjson::SizeType(1)].GetString()),
-                    EventClass(js_entry[rapidjson::SizeType(2)].GetString()),
+                    *Enum<EventSeverity>::toEnum(js_entry[rapidjson::SizeType(1)].GetString()),
+                    *Enum<Event>::toEnum(js_entry[rapidjson::SizeType(2)].GetString()),
                     int64_t(-1),
                     js_entry[rapidjson::SizeType(3)].GetString()
                 };
@@ -62,7 +63,7 @@ TEST_P(StyleParserTest, ParseStyle) {
             std::cerr << "Unchecked Log Messages (" << base << "/" << name << "): " << std::endl << unchecked;
         }
 
-        ASSERT_EQ(0ul, unchecked.size());
+        ASSERT_EQ(0u, unchecked.size());
     }
 }
 
@@ -82,46 +83,16 @@ INSTANTIATE_TEST_CASE_P(StyleParser, StyleParserTest, ::testing::ValuesIn([] {
         closedir(dir);
     }
 
-    EXPECT_GT(names.size(), 0ul);
+    EXPECT_GT(names.size(), 0u);
     return names;
 }()));
 
-TEST(StyleParser, ParseTileJSONRaster) {
-    auto result = StyleParser::parseTileJSON(
-        util::read_file("test/fixtures/style_parser/tilejson.raster.json"),
-        "mapbox://mapbox.satellite",
-        SourceType::Raster,
-        256);
-
-    EXPECT_EQ(0, result->minZoom);
-    EXPECT_EQ(15, result->maxZoom);
-    EXPECT_EQ("attribution", result->attribution);
-#if !defined(__ANDROID__) && !defined(__APPLE__)
-    EXPECT_EQ("mapbox://tiles/mapbox.satellite/{z}/{x}/{y}{ratio}.webp", result->tiles[0]);
-#else
-    EXPECT_EQ("mapbox://tiles/mapbox.satellite/{z}/{x}/{y}{ratio}.png", result->tiles[0]);
-#endif
-}
-
-TEST(StyleParser, ParseTileJSONVector) {
-    auto result = StyleParser::parseTileJSON(
-        util::read_file("test/fixtures/style_parser/tilejson.vector.json"),
-        "mapbox://mapbox.streets",
-        SourceType::Vector,
-        256);
-
-    EXPECT_EQ(0, result->minZoom);
-    EXPECT_EQ(15, result->maxZoom);
-    EXPECT_EQ("attribution", result->attribution);
-    EXPECT_EQ("mapbox://tiles/mapbox.streets/{z}/{x}/{y}.vector.pbf", result->tiles[0]);
-}
-
 TEST(StyleParser, FontStacks) {
-    StyleParser parser;
+    style::Parser parser;
     parser.parse(util::read_file("test/fixtures/style_parser/font_stacks.json"));
     auto result = parser.fontStacks();
-    ASSERT_EQ(3, result.size());
-    ASSERT_EQ("a", result[0]);
-    ASSERT_EQ("a,b", result[1]);
-    ASSERT_EQ("a,b,c", result[2]);
+    ASSERT_EQ(3u, result.size());
+    ASSERT_EQ(FontStack({"a"}), result[0]);
+    ASSERT_EQ(FontStack({"a", "b"}), result[1]);
+    ASSERT_EQ(FontStack({"a", "b", "c"}), result[2]);
 }

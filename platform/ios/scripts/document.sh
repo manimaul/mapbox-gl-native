@@ -27,18 +27,22 @@ README=/tmp/mbgl/README.md
 cp platform/ios/docs/doc-README.md "${README}"
 # http://stackoverflow.com/a/4858011/4585461
 echo "## Changes in version ${RELEASE_VERSION}" >> "${README}"
-sed -n -e '/^## /{' -e ':a' -e 'n' -e '/^##/q' -e 'p' -e 'ba' -e '}' platform/ios/CHANGELOG.md >> "${README}"
+sed -n -e '/^## /{' -e ':a' -e 'n' -e '/^## /q' -e 'p' -e 'ba' -e '}' platform/ios/CHANGELOG.md >> "${README}"
 
 rm -rf ${OUTPUT}
 mkdir -p ${OUTPUT}
 
+cp platform/ios/screenshot.png "${OUTPUT}"
+
 jazzy \
+    --config platform/ios/jazzy.yml \
     --sdk iphonesimulator \
     --swift-version $SWIFT_VERSION \
     --github-file-prefix https://github.com/mapbox/mapbox-gl-native/tree/${BRANCH} \
     --module-version ${SHORT_VERSION} \
     --readme ${README} \
     --root-url https://www.mapbox.com/ios-sdk/api/${RELEASE_VERSION}/ \
+    --theme platform/darwin/docs/theme \
     --output ${OUTPUT}
 # https://github.com/realm/jazzy/issues/411
 find ${OUTPUT} -name *.html -exec \

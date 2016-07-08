@@ -1,5 +1,4 @@
-#ifndef MBGL_UTIL_THREAD_LOCAL
-#define MBGL_UTIL_THREAD_LOCAL
+#pragma once
 
 #include <mbgl/util/noncopyable.hpp>
 
@@ -13,12 +12,12 @@ namespace util {
 template <class T>
 class ThreadLocal : public noncopyable {
 public:
-    inline ThreadLocal(T* val) {
+    ThreadLocal(T* val) {
         ThreadLocal();
         set(val);
     }
 
-    inline ThreadLocal() {
+    ThreadLocal() {
         int ret = pthread_key_create(&key, [](void *ptr) {
             delete reinterpret_cast<T *>(ptr);
         });
@@ -28,13 +27,13 @@ public:
         }
     }
 
-    inline ~ThreadLocal() {
+    ~ThreadLocal() {
         if (pthread_key_delete(key)) {
             throw std::runtime_error("Failed to delete local storage key.");
         }
     }
 
-    inline T* get() {
+    T* get() {
         T* ret = reinterpret_cast<T*>(pthread_getspecific(key));
         if (!ret) {
             return nullptr;
@@ -43,7 +42,7 @@ public:
         return ret;
     }
 
-    inline void set(T* ptr) {
+    void set(T* ptr) {
         if (pthread_setspecific(key, ptr)) {
             throw std::runtime_error("Failed to set local storage.");
         }
@@ -55,5 +54,3 @@ private:
 
 } // namespace util
 } // namespace mbgl
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef MBGL_GL_GL_CONFIG
-#define MBGL_GL_GL_CONFIG
+#pragma once
 
 #include <cstdint>
 #include <tuple>
@@ -13,22 +12,32 @@ namespace gl {
 template <typename T>
 class Value {
 public:
-    inline void operator=(const typename T::Type& value) {
-        if (dirty || current != value) {
+    void operator=(const typename T::Type& value) {
+        if (*this != value) {
             dirty = false;
             current = value;
             T::Set(current);
         }
     }
 
-    inline void reset() {
-        dirty = true;
-        current = T::Default;
-        T::Set(current);
+    bool operator!=(const typename T::Type& value) const {
+        return dirty || current != value;
     }
 
-    inline void setDirty() {
+    void reset() {
+        *this = T::Default;
+    }
+
+    void setDirty() {
         dirty = true;
+    }
+
+    typename T::Type getCurrent() const {
+        return current;
+    }
+
+    bool getDirty() const {
+        return dirty;
     }
 
 private:
@@ -49,12 +58,18 @@ public:
         depthFunc.reset();
         blend.reset();
         blendFunc.reset();
+        blendColor.reset();
         colorMask.reset();
         clearDepth.reset();
         clearColor.reset();
         clearStencil.reset();
         program.reset();
         lineWidth.reset();
+        activeTexture.reset();
+#ifndef GL_ES_VERSION_2_0
+        pixelZoom.reset();
+        rasterPos.reset();
+#endif // GL_ES_VERSION_2_0
     }
 
     void setDirty() {
@@ -68,12 +83,18 @@ public:
         depthFunc.setDirty();
         blend.setDirty();
         blendFunc.setDirty();
+        blendColor.setDirty();
         colorMask.setDirty();
         clearDepth.setDirty();
         clearColor.setDirty();
         clearStencil.setDirty();
         program.setDirty();
         lineWidth.setDirty();
+        activeTexture.setDirty();
+#ifndef GL_ES_VERSION_2_0
+        pixelZoom.setDirty();
+        rasterPos.setDirty();
+#endif // GL_ES_VERSION_2_0
     }
 
     Value<StencilFunc> stencilFunc;
@@ -86,15 +107,20 @@ public:
     Value<DepthFunc> depthFunc;
     Value<Blend> blend;
     Value<BlendFunc> blendFunc;
+    Value<BlendColor> blendColor;
     Value<ColorMask> colorMask;
     Value<ClearDepth> clearDepth;
     Value<ClearColor> clearColor;
     Value<ClearStencil> clearStencil;
     Value<Program> program;
     Value<LineWidth> lineWidth;
+    Value<ActiveTexture> activeTexture;
+#ifndef GL_ES_VERSION_2_0
+    Value<PixelZoom> pixelZoom;
+    Value<RasterPos> rasterPos;
+#endif // GL_ES_VERSION_2_0
+    std::array<Value<BindTexture>, 2> texture;
 };
 
 } // namespace gl
 } // namespace mbgl
-
-#endif // MBGL_RENDERER_GL_CONFIG

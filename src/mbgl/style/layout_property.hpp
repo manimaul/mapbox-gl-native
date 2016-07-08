@@ -1,38 +1,44 @@
-#ifndef MBGL_LAYOUT_PROPERTY
-#define MBGL_LAYOUT_PROPERTY
+#pragma once
 
+#include <mbgl/style/property_value.hpp>
 #include <mbgl/style/property_parsing.hpp>
-#include <mbgl/style/function.hpp>
-#include <mbgl/util/rapidjson.hpp>
+#include <mbgl/style/property_evaluator.hpp>
 
 #include <utility>
 
 namespace mbgl {
+namespace style {
 
 template <typename T>
 class LayoutProperty {
 public:
-    explicit LayoutProperty(T v) : value(std::move(v)) {}
+    explicit LayoutProperty(T v)
+        : value(std::move(v)),
+          defaultValue(value) {}
 
-    void parse(const char * name, const JSValue& layout) {
-        if (layout.HasMember(name)) {
-            parsedValue = parseProperty<Function<T>>(name, layout[name]);
+    const PropertyValue<T>& get() const {
+        return currentValue;
+    }
+
+    void set(const PropertyValue<T>& value_) {
+        currentValue = value_;
+    }
+
+    void calculate(const CalculationParameters& parameters) {
+        if (currentValue) {
+            PropertyEvaluator<T> evaluator(parameters, defaultValue);
+            value = PropertyValue<T>::visit(currentValue, evaluator);
         }
     }
 
-    void calculate(const StyleCalculationParameters& parameters) {
-        if (parsedValue) {
-            value = (*parsedValue).evaluate(parameters);
-        }
-    }
-
-    void operator=(const T& v) { value = v; }
+    // TODO: remove / privatize
     operator T() const { return value; }
-
-    optional<Function<T>> parsedValue;
     T value;
+
+private:
+    T defaultValue;
+    PropertyValue<T> currentValue;
 };
 
+} // namespace style
 } // namespace mbgl
-
-#endif

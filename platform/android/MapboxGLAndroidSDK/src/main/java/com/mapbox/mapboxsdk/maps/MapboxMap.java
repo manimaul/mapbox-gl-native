@@ -1,5 +1,7 @@
 package com.mapbox.mapboxsdk.maps;
 
+import android.content.Context;
+import android.graphics.Bitmap;
 import android.location.Location;
 import android.os.SystemClock;
 import android.support.annotation.FloatRange;
@@ -7,16 +9,23 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.UiThread;
 import android.support.v4.util.LongSparseArray;
+import android.support.v4.util.Pools;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 
+import com.mapbox.mapboxsdk.MapboxAccountManager;
 import com.mapbox.mapboxsdk.annotations.Annotation;
 import com.mapbox.mapboxsdk.annotations.BaseMarkerOptions;
+import com.mapbox.mapboxsdk.annotations.BaseMarkerViewOptions;
 import com.mapbox.mapboxsdk.annotations.Icon;
+import com.mapbox.mapboxsdk.annotations.IconFactory;
 import com.mapbox.mapboxsdk.annotations.InfoWindow;
 import com.mapbox.mapboxsdk.annotations.Marker;
 import com.mapbox.mapboxsdk.annotations.MarkerOptions;
+import com.mapbox.mapboxsdk.annotations.MarkerView;
+import com.mapbox.mapboxsdk.annotations.MarkerViewManager;
 import com.mapbox.mapboxsdk.annotations.Polygon;
 import com.mapbox.mapboxsdk.annotations.PolygonOptions;
 import com.mapbox.mapboxsdk.annotations.Polyline;
@@ -30,8 +39,10 @@ import com.mapbox.mapboxsdk.constants.MyLocationTracking;
 import com.mapbox.mapboxsdk.constants.Style;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.layers.CustomLayer;
+import com.mapbox.mapboxsdk.maps.widgets.MyLocationViewSettings;
 import com.mapbox.mapboxsdk.provider.OfflineProvider;
 
+import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -42,7 +53,7 @@ import java.util.concurrent.TimeUnit;
  * you must obtain one from the getMapAsync() method on a MapFragment or MapView that you have
  * added to your application.
  * <p>
- * Note: Similar to a View object, a GoogleMap should only be read and modified from the main thread.
+ * Note: Similar to a View object, a MapboxMap should only be read and modified from the main thread.
  * </p>
  */
 public class MapboxMap {
@@ -50,11 +61,15 @@ public class MapboxMap {
     private MapView mMapView;
     private UiSettings mUiSettings;
     private TrackingSettings mTrackingSettings;
+    private MyLocationViewSettings myLocationViewSettings;
     private Projection mProjection;
     private CameraPosition mCameraPosition;
     private boolean mInvalidCameraPosition;
     private LongSparseArray<Annotation> mAnnotations;
+
     private List<Marker> mSelectedMarkers;
+    private MarkerViewManager mMarkerViewManager;
+
     private List<InfoWindow> mInfoWindows;
     private MapboxMap.InfoWindowAdapter mInfoWindowAdapter;
 
@@ -86,6 +101,7 @@ public class MapboxMap {
         mAnnotations = new LongSparseArray<>();
         mSelectedMarkers = new ArrayList<>();
         mInfoWindows = new ArrayList<>();
+        mMarkerViewManager = new MarkerViewManager(this, mapView);
     }
 
     //
@@ -187,6 +203,20 @@ public class MapboxMap {
     }
 
     //
+    // MyLocationViewSettings
+    //
+
+    /**
+     * Gets the settings of the user location for the map.
+     */
+    public MyLocationViewSettings getMyLocationViewSettings() {
+        if (myLocationViewSettings == null) {
+            myLocationViewSettings = new MyLocationViewSettings(mMapView, mMapView.getUserLocationView());
+        }
+        return myLocationViewSettings;
+    }
+
+    //
     // Projection
     //
 
@@ -246,24 +276,21 @@ public class MapboxMap {
      */
     @UiThread
     public final void moveCamera(CameraUpdate update, MapboxMap.CancelableCallback callback) {
-        CameraPosition cameraPosition = update.getCameraPosition(this);
-        if (cameraPosition.isValid()) {
-            mCameraPosition = cameraPosition;
-            mMapView.jumpTo(mCameraPosition.bearing, mCameraPosition.target, mCameraPosition.tilt, mCameraPosition.zoom);
-            if (callback != null) {
-                callback.onFinish();
-            }
-            invalidateCameraPosition();
-        } else if (callback != null) {
-            callback.onCancel();
+        mCameraPosition = update.getCameraPosition(this);
+        mMapView.jumpTo(mCameraPosition.bearing, mCameraPosition.target, mCameraPosition.tilt, mCameraPosition.zoom);
+        if (callback != null) {
+            callback.onFinish();
         }
+        invalidateCameraPosition();
     }
 
     /**
-     * Ease the map according to the update with an animation over a specified duration, and calls an optional callback on completion. See CameraUpdateFactory for a set of updates.
-     * If getCameraPosition() is called during the animation, it will return the current location of the camera in flight.
+     * Gradually move the camera by the default duration, zoom will not be affected unless specified
+     * within {@link CameraUpdate}. If {@link #getCameraPosition()} is called during the animation,
+     * it will return the current location of the camera in flight.
      *
      * @param update The change that should be applied to the camera.
+     * @see com.mapbox.mapboxsdk.camera.CameraUpdateFactory for a set of updates.
      */
     @UiThread
     public final void easeCamera(CameraUpdate update) {
@@ -271,11 +298,14 @@ public class MapboxMap {
     }
 
     /**
-     * Ease the map according to the update with an animation over a specified duration, and calls an optional callback on completion. See CameraUpdateFactory for a set of updates.
-     * If getCameraPosition() is called during the animation, it will return the current location of the camera in flight.
+     * Gradually move the camera by a specified duration in milliseconds, zoom will not be affected
+     * unless specified within {@link CameraUpdate}. If {@link #getCameraPosition()} is called
+     * during the animation, it will return the current location of the camera in flight.
      *
      * @param update     The change that should be applied to the camera.
-     * @param durationMs The duration of the animation in milliseconds. This must be strictly positive, otherwise an IllegalArgumentException will be thrown.
+     * @param durationMs The duration of the animation in milliseconds. This must be strictly
+     *                   positive, otherwise an IllegalArgumentException will be thrown.
+     * @see com.mapbox.mapboxsdk.camera.CameraUpdateFactory for a set of updates.
      */
     @UiThread
     public final void easeCamera(CameraUpdate update, int durationMs) {
@@ -283,47 +313,61 @@ public class MapboxMap {
     }
 
     /**
-     * Ease the map according to the update with an animation over a specified duration, and calls an optional callback on completion. See CameraUpdateFactory for a set of updates.
-     * If getCameraPosition() is called during the animation, it will return the current location of the camera in flight.
+     * Gradually move the camera by a specified duration in milliseconds, zoom will not be affected
+     * unless specified within {@link CameraUpdate}. A callback can be used to be notified when
+     * easing the camera stops. If {@link #getCameraPosition()} is called during the animation, it
+     * will return the current location of the camera in flight.
      *
      * @param update     The change that should be applied to the camera.
-     * @param durationMs The duration of the animation in milliseconds. This must be strictly positive, otherwise an IllegalArgumentException will be thrown.
-     * @param callback   An optional callback to be notified from the main thread when the animation stops. If the animation stops due to its natural completion, the callback will be notified with onFinish(). If the animation stops due to interruption by a later camera movement or a user gesture, onCancel() will be called. The callback should not attempt to move or animate the camera in its cancellation method. If a callback isn't required, leave it as null.
+     * @param durationMs The duration of the animation in milliseconds. This must be strictly
+     *                   positive, otherwise an IllegalArgumentException will be thrown.
+     * @param callback   An optional callback to be notified from the main thread when the animation
+     *                   stops. If the animation stops due to its natural completion, the callback
+     *                   will be notified with onFinish(). If the animation stops due to interruption
+     *                   by a later camera movement or a user gesture, onCancel() will be called.
+     *                   Do not update or ease the camera from within onCancel().
+     * @see com.mapbox.mapboxsdk.camera.CameraUpdateFactory for a set of updates.
      */
     @UiThread
     public final void easeCamera(CameraUpdate update, int durationMs, final MapboxMap.CancelableCallback callback) {
-        CameraPosition cameraPosition = update.getCameraPosition(this);
-        if (cameraPosition.isValid()) {
-            mCameraPosition = cameraPosition;
-            mMapView.easeTo(mCameraPosition.bearing, mCameraPosition.target, getDurationNano(durationMs), mCameraPosition.tilt, mCameraPosition.zoom, new CancelableCallback() {
-                @Override
-                public void onCancel() {
-                    if (callback != null) {
-                        callback.onCancel();
-                    }
-                    invalidateCameraPosition();
-                }
+        easeCamera(update, durationMs, true, callback);
+    }
 
-                @Override
-                public void onFinish() {
-                    if (callback != null) {
-                        callback.onFinish();
-                    }
-                    invalidateCameraPosition();
+    @UiThread
+    public final void easeCamera(CameraUpdate update, int durationMs, boolean easingInterpolator) {
+        easeCamera(update, durationMs, easingInterpolator, null);
+    }
+
+    @UiThread
+    public final void easeCamera(CameraUpdate update, int durationMs, boolean easingInterpolator, final MapboxMap.CancelableCallback callback) {
+        mCameraPosition = update.getCameraPosition(this);
+        mMapView.easeTo(mCameraPosition.bearing, mCameraPosition.target, getDurationNano(durationMs), mCameraPosition.tilt, mCameraPosition.zoom, easingInterpolator, new CancelableCallback() {
+            @Override
+            public void onCancel() {
+                if (callback != null) {
+                    callback.onCancel();
                 }
-            });
-        } else if (callback != null) {
-            callback.onCancel();
-        }
+                invalidateCameraPosition();
+            }
+
+            @Override
+            public void onFinish() {
+                if (callback != null) {
+                    callback.onFinish();
+                }
+                invalidateCameraPosition();
+            }
+        });
     }
 
     /**
-     * Animates the movement of the camera from the current position to the position defined in the update.
-     * During the animation, a call to getCameraPosition() returns an intermediate location of the camera.
-     * <p/>
-     * See CameraUpdateFactory for a set of updates.
+     * Animate the camera to a new location defined within {@link CameraUpdate} using a transition
+     * animation that evokes powered flight. The animation will last the default amount of time.
+     * During the animation, a call to {@link #getCameraPosition()} returns an intermediate location
+     * of the camera in flight.
      *
      * @param update The change that should be applied to the camera.
+     * @see com.mapbox.mapboxsdk.camera.CameraUpdateFactory for a set of updates.
      */
     @UiThread
     public final void animateCamera(CameraUpdate update) {
@@ -331,12 +375,16 @@ public class MapboxMap {
     }
 
     /**
-     * Animates the movement of the camera from the current position to the position defined in the update and calls an optional callback on completion.
-     * See CameraUpdateFactory for a set of updates.
-     * During the animation, a call to getCameraPosition() returns an intermediate location of the camera.
+     * Animate the camera to a new location defined within {@link CameraUpdate} using a transition
+     * animation that evokes powered flight. The animation will last the default amount of time. A
+     * callback can be used to be notified when animating the camera stops. During the animation, a
+     * call to {@link #getCameraPosition()} returns an intermediate location of the camera in flight.
      *
      * @param update   The change that should be applied to the camera.
-     * @param callback The callback to invoke from the main thread when the animation stops. If the animation completes normally, onFinish() is called; otherwise, onCancel() is called. Do not update or animate the camera from within onCancel().
+     * @param callback The callback to invoke from the main thread when the animation stops. If the
+     *                 animation completes normally, onFinish() is called; otherwise, onCancel() is
+     *                 called. Do not update or animate the camera from within onCancel().
+     * @see com.mapbox.mapboxsdk.camera.CameraUpdateFactory for a set of updates.
      */
     @UiThread
     public final void animateCamera(CameraUpdate update, MapboxMap.CancelableCallback callback) {
@@ -344,11 +392,15 @@ public class MapboxMap {
     }
 
     /**
-     * Moves the map according to the update with an animation over a specified duration. See CameraUpdateFactory for a set of updates.
-     * If getCameraPosition() is called during the animation, it will return the current location of the camera in flight.
+     * Animate the camera to a new location defined within {@link CameraUpdate} using a transition
+     * animation that evokes powered flight. The animation will last a specified amount of time
+     * given in milliseconds. During the animation, a call to {@link #getCameraPosition()} returns
+     * an intermediate location of the camera in flight.
      *
      * @param update     The change that should be applied to the camera.
-     * @param durationMs The duration of the animation in milliseconds. This must be strictly positive, otherwise an IllegalArgumentException will be thrown.
+     * @param durationMs The duration of the animation in milliseconds. This must be strictly
+     *                   positive, otherwise an IllegalArgumentException will be thrown.
+     * @see com.mapbox.mapboxsdk.camera.CameraUpdateFactory for a set of updates.
      */
     @UiThread
     public final void animateCamera(CameraUpdate update, int durationMs) {
@@ -356,42 +408,47 @@ public class MapboxMap {
     }
 
     /**
-     * Moves the map according to the update with an animation over a specified duration, and calls an optional callback on completion. See CameraUpdateFactory for a set of updates.
-     * If getCameraPosition() is called during the animation, it will return the current location of the camera in flight.
+     * Animate the camera to a new location defined within {@link CameraUpdate} using a transition
+     * animation that evokes powered flight. The animation will last a specified amount of time
+     * given in milliseconds. A callback can be used to be notified when animating the camera stops.
+     * During the animation, a call to {@link #getCameraPosition()} returns an intermediate location
+     * of the camera in flight.
      *
      * @param update     The change that should be applied to the camera.
-     * @param durationMs The duration of the animation in milliseconds. This must be strictly positive, otherwise an IllegalArgumentException will be thrown.
-     * @param callback   An optional callback to be notified from the main thread when the animation stops. If the animation stops due to its natural completion, the callback will be notified with onFinish(). If the animation stops due to interruption by a later camera movement or a user gesture, onCancel() will be called. The callback should not attempt to move or animate the camera in its cancellation method. If a callback isn't required, leave it as null.
+     * @param durationMs The duration of the animation in milliseconds. This must be strictly
+     *                   positive, otherwise an IllegalArgumentException will be thrown.
+     * @param callback   An optional callback to be notified from the main thread when the animation
+     *                   stops. If the animation stops due to its natural completion, the callback
+     *                   will be notified with onFinish(). If the animation stops due to interruption
+     *                   by a later camera movement or a user gesture, onCancel() will be called.
+     *                   Do not update or animate the camera from within onCancel(). If a callback
+     *                   isn't required, leave it as null.
+     * @see com.mapbox.mapboxsdk.camera.CameraUpdateFactory for a set of updates.
      */
     @UiThread
     public final void animateCamera(CameraUpdate update, int durationMs, final MapboxMap.CancelableCallback callback) {
-        CameraPosition cameraPosition = update.getCameraPosition(this);
-        if (cameraPosition.isValid()) {
-            mCameraPosition = cameraPosition;
-            mMapView.flyTo(mCameraPosition.bearing, mCameraPosition.target, getDurationNano(durationMs), mCameraPosition.tilt, mCameraPosition.zoom, new CancelableCallback() {
-                @Override
-                public void onCancel() {
-                    if (callback != null) {
-                        callback.onCancel();
-                    }
-                    invalidateCameraPosition();
+        mCameraPosition = update.getCameraPosition(this);
+        mMapView.flyTo(mCameraPosition.bearing, mCameraPosition.target, getDurationNano(durationMs), mCameraPosition.tilt, mCameraPosition.zoom, new CancelableCallback() {
+            @Override
+            public void onCancel() {
+                if (callback != null) {
+                    callback.onCancel();
+                }
+                invalidateCameraPosition();
+            }
+
+            @Override
+            public void onFinish() {
+                if (mOnCameraChangeListener != null) {
+                    mOnCameraChangeListener.onCameraChange(mCameraPosition);
                 }
 
-                @Override
-                public void onFinish() {
-                    if (mOnCameraChangeListener != null) {
-                        mOnCameraChangeListener.onCameraChange(mCameraPosition);
-                    }
-
-                    if (callback != null) {
-                        callback.onFinish();
-                    }
-                    invalidateCameraPosition();
+                if (callback != null) {
+                    callback.onFinish();
                 }
-            });
-        } else if (callback != null) {
-            callback.onCancel();
-        }
+                invalidateCameraPosition();
+            }
+        });
     }
 
     /**
@@ -547,8 +604,10 @@ public class MapboxMap {
      *
      * @param style The bundled style. Accepts one of the values from {@link Style}.
      * @see Style
+     * @deprecated use {@link #setStyleUrl(String)} instead with versioned url methods from {@link Style}
      */
     @UiThread
+    @Deprecated
     public void setStyle(@Style.StyleUrl String style) {
         setStyleUrl(style);
     }
@@ -573,22 +632,34 @@ public class MapboxMap {
 
     /**
      * <p>
+     * DEPRECATED @see MapboxAccountManager#start(String)
+     * </p>
+     * <p>
      * Sets the current Mapbox access token used to load map styles and tiles.
      * </p>
      *
      * @param accessToken Your public Mapbox access token.
      * @see MapView#setAccessToken(String)
+     * @deprecated As of release 4.1.0, replaced by {@link com.mapbox.mapboxsdk.MapboxAccountManager#start(Context, String)}
      */
+    @Deprecated
     @UiThread
     public void setAccessToken(@NonNull String accessToken) {
         mMapView.setAccessToken(accessToken);
     }
 
     /**
+     * <p>
+     * DEPRECATED @see MapboxAccountManager#getAccessToken()
+     * </p>
+     * <p>
      * Returns the current Mapbox access token used to load map styles and tiles.
+     * </p>
      *
      * @return The current Mapbox access token.
+     * @deprecated As of release 4.1.0, replaced by {@link MapboxAccountManager#getAccessToken()}
      */
+    @Deprecated
     @UiThread
     @Nullable
     public String getAccessToken() {
@@ -598,6 +669,12 @@ public class MapboxMap {
     //
     // Annotations
     //
+
+    void setTilt(double tilt) {
+        mMarkerViewManager.setTilt((float) tilt);
+        mMapView.setTilt(tilt);
+    }
+
 
     /**
      * <p>
@@ -638,6 +715,28 @@ public class MapboxMap {
 
     /**
      * <p>
+     * Adds a marker to this map.
+     * </p>
+     * The marker's icon is rendered on the map at the location {@code Marker.position}.
+     * If {@code Marker.title} is defined, the map shows an info box with the marker's title and snippet.
+     *
+     * @param markerOptions A marker options object that defines how to render the marker.
+     * @return The {@code Marker} that was added to the map.
+     */
+    @UiThread
+    @NonNull
+    public MarkerView addMarker(@NonNull BaseMarkerViewOptions markerOptions) {
+        MarkerView marker = prepareViewMarker(markerOptions);
+        marker.setMapboxMap(this);
+        long id = mMapView.addMarker(marker);
+        marker.setId(id);
+        mAnnotations.put(id, marker);
+        mMarkerViewManager.invalidateViewMarkersInBounds();
+        return marker;
+    }
+
+    /**
+     * <p>
      * Adds multiple markers to this map.
      * </p>
      * The marker's icon is rendered on the map at the location {@code Marker.position}.
@@ -648,11 +747,11 @@ public class MapboxMap {
      */
     @UiThread
     @NonNull
-    public List<Marker> addMarkers(@NonNull List<MarkerOptions> markerOptionsList) {
+    public List<Marker> addMarkers(@NonNull List<? extends BaseMarkerOptions> markerOptionsList) {
         int count = markerOptionsList.size();
         List<Marker> markers = new ArrayList<>(count);
         if (count > 0) {
-            MarkerOptions markerOptions;
+            BaseMarkerOptions markerOptions;
             Marker marker;
             for (int i = 0; i < count; i++) {
                 markerOptions = markerOptionsList.get(i);
@@ -734,7 +833,7 @@ public class MapboxMap {
         Polyline polyline;
         List<Polyline> polylines = new ArrayList<>(count);
 
-        if(count>0) {
+        if (count > 0) {
             for (PolylineOptions options : polylineOptionsList) {
                 polyline = options.getPolyline();
                 if (!polyline.getPoints().isEmpty()) {
@@ -798,7 +897,7 @@ public class MapboxMap {
 
         Polygon polygon;
         List<Polygon> polygons = new ArrayList<>(count);
-        if(count>0) {
+        if (count > 0) {
             for (PolygonOptions polygonOptions : polygonOptionsList) {
                 polygon = polygonOptions.getPolygon();
                 if (!polygon.getPoints().isEmpty()) {
@@ -808,8 +907,8 @@ public class MapboxMap {
 
             long[] ids = mMapView.addPolygons(polygons);
 
-            // if unit tests or polygons correcly added to map
-            if(ids==null || ids.length==polygons.size()) {
+            // if unit tests or polygons correctly added to map
+            if (ids == null || ids.length == polygons.size()) {
                 long id = 0;
                 for (int i = 0; i < polygons.size(); i++) {
                     polygon = polygons.get(i);
@@ -875,7 +974,11 @@ public class MapboxMap {
     @UiThread
     public void removeAnnotation(@NonNull Annotation annotation) {
         if (annotation instanceof Marker) {
-            ((Marker) annotation).hideInfoWindow();
+            Marker marker = (Marker) annotation;
+            marker.hideInfoWindow();
+            if (marker instanceof MarkerView) {
+                mMarkerViewManager.removeMarkerView((MarkerView) marker);
+            }
         }
         long id = annotation.getId();
         mMapView.removeAnnotation(id);
@@ -905,7 +1008,11 @@ public class MapboxMap {
         for (int i = 0; i < count; i++) {
             Annotation annotation = annotationList.get(i);
             if (annotation instanceof Marker) {
-                ((Marker) annotation).hideInfoWindow();
+                Marker marker = (Marker) annotation;
+                marker.hideInfoWindow();
+                if (marker instanceof MarkerView) {
+                    mMarkerViewManager.removeMarkerView((MarkerView) marker);
+                }
             }
             ids[i] = annotationList.get(i).getId();
         }
@@ -927,7 +1034,11 @@ public class MapboxMap {
             ids[i] = mAnnotations.keyAt(i);
             annotation = mAnnotations.get(ids[i]);
             if (annotation instanceof Marker) {
-                ((Marker) annotation).hideInfoWindow();
+                Marker marker = (Marker) annotation;
+                marker.hideInfoWindow();
+                if (marker instanceof MarkerView) {
+                    mMarkerViewManager.removeMarkerView((MarkerView) marker);
+                }
             }
         }
         mMapView.removeAnnotations(ids);
@@ -935,11 +1046,18 @@ public class MapboxMap {
     }
 
     /**
+     * Removes all markers, polylines, polygons, overlays, etc from the map.
+     */
+    @UiThread
+    public void clear() {
+        removeAnnotations();
+    }
+
+    /**
      * Return a annotation based on its id.
      *
      * @return An annotation with a matched id, null is returned if no match was found.
      */
-    @UiThread
     @Nullable
     public Annotation getAnnotation(long id) {
         return mAnnotations.get(id);
@@ -1030,8 +1148,7 @@ public class MapboxMap {
     @UiThread
     public void selectMarker(@NonNull Marker marker) {
         if (marker == null) {
-            Log.w(MapboxConstants.TAG, "marker was null, so just" +
-                    " returning");
+            Log.w(MapboxConstants.TAG, "marker was null, so just returning");
             return;
         }
 
@@ -1051,6 +1168,11 @@ public class MapboxMap {
         }
 
         if (!handledDefaultClick) {
+
+            if (marker instanceof MarkerView) {
+                mMarkerViewManager.ensureInfoWindowOffset((MarkerView) marker);
+            }
+
             if (isInfoWindowValidForMarker(marker) || getInfoWindowAdapter() != null) {
                 mInfoWindows.add(marker.showInfoWindow(this, mMapView));
             }
@@ -1071,6 +1193,10 @@ public class MapboxMap {
         for (Marker marker : mSelectedMarkers) {
             if (marker.isInfoWindowShown()) {
                 marker.hideInfoWindow();
+            }
+
+            if (marker instanceof MarkerView) {
+                mMarkerViewManager.deselect((MarkerView) marker);
             }
         }
 
@@ -1109,6 +1235,26 @@ public class MapboxMap {
         Icon icon = mMapView.loadIconForMarker(marker);
         marker.setTopOffsetPixels(mMapView.getTopOffsetPixelsForIcon(icon));
         return marker;
+    }
+
+    private MarkerView prepareViewMarker(BaseMarkerViewOptions markerViewOptions) {
+        MarkerView marker = markerViewOptions.getMarker();
+
+        Icon icon = markerViewOptions.getIcon();
+        if (icon == null) {
+            icon = IconFactory.getInstance(mMapView.getContext()).defaultMarkerView();
+        }
+        marker.setIcon(icon);
+        return marker;
+    }
+
+    /**
+     * Get the MarkerViewManager associated to the MapView.
+     *
+     * @return the associated MarkerViewManager
+     */
+    public MarkerViewManager getMarkerViewManager() {
+        return mMarkerViewManager;
     }
 
     //
@@ -1175,14 +1321,17 @@ public class MapboxMap {
     //
 
     /**
+     * <p>
      * Sets the distance from the edges of the map view’s frame to the edges of the map
      * view’s logical viewport.
-     * <p/>
+     * </p>
+     * <p>
      * When the value of this property is equal to {0,0,0,0}, viewport
      * properties such as `centerCoordinate` assume a viewport that matches the map
      * view’s frame. Otherwise, those properties are inset, excluding part of the
      * frame from the viewport. For instance, if the only the top edge is inset, the
      * map center is effectively shifted downward.
+     * </p>
      *
      * @param left   The left margin in pixels.
      * @param top    The top margin in pixels.
@@ -1192,8 +1341,6 @@ public class MapboxMap {
     public void setPadding(int left, int top, int right, int bottom) {
         mMapView.setContentPadding(left, top, right, bottom);
         mUiSettings.invalidate();
-
-        moveCamera(CameraUpdateFactory.newCameraPosition(new CameraPosition.Builder(mCameraPosition).build()));
     }
 
     /**
@@ -1492,6 +1639,14 @@ public class MapboxMap {
         return mMapView;
     }
 
+    void setUiSettings(UiSettings uiSettings) {
+        mUiSettings = uiSettings;
+    }
+
+    void setProjection(Projection projection) {
+        mProjection = projection;
+    }
+
     //
     // Invalidate
     //
@@ -1501,6 +1656,27 @@ public class MapboxMap {
      */
     public void invalidate() {
         mMapView.update();
+    }
+
+    /**
+     * Takes a snapshot of the map.
+     *
+     * @param callback Callback method invoked when the snapshot is taken.
+     * @param bitmap   A pre-allocated bitmap.
+     */
+    @UiThread
+    public void snapshot(@NonNull SnapshotReadyCallback callback, @Nullable final Bitmap bitmap) {
+        mMapView.snapshot(callback, bitmap);
+    }
+
+    /**
+     * Takes a snapshot of the map.
+     *
+     * @param callback Callback method invoked when the snapshot is taken.
+     */
+    @UiThread
+    public void snapshot(@NonNull SnapshotReadyCallback callback) {
+        mMapView.snapshot(callback, null);
     }
 
     //
@@ -1665,6 +1841,141 @@ public class MapboxMap {
     }
 
     /**
+     * Interface definition for a callback to be invoked when an MarkerView will be shown.
+     *
+     * @param <U> the instance type of MarkerView
+     */
+    public static abstract class MarkerViewAdapter<U extends MarkerView> {
+
+        private Context context;
+        private final Class<U> persistentClass;
+        private final Pools.SimplePool<View> mViewReusePool;
+
+        /**
+         * Create an instance of MarkerViewAdapter.
+         *
+         * @param context the context associated to a MapView
+         */
+        @SuppressWarnings("unchecked")
+        public MarkerViewAdapter(Context context) {
+            this.context = context;
+            persistentClass = (Class<U>) ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
+            mViewReusePool = new Pools.SimplePool<>(10000);
+        }
+
+        /**
+         * Called when an MarkerView will be added to the MapView.
+         *
+         * @param marker      the model representing the MarkerView
+         * @param convertView the reusable view
+         * @param parent      the parent ViewGroup of the convertview
+         * @return the View that is adapted to the contents of MarkerView
+         */
+        @Nullable
+        public abstract View getView(@NonNull U marker, @NonNull View convertView, @NonNull ViewGroup parent);
+
+        /**
+         * Called when an MarkerView is removed from the MapView or the View object is going to be reused.
+         * <p>
+         * <p>
+         * This method should be used to reset an animated view back to it's original state for view reuse.
+         * </p>
+         * <p>
+         * Returning true indicates you want to the view reuse to be handled automatically.
+         * Returning false indicates you want to perform an animation and you are required calling {@link #releaseView(View)} yourself.
+         * </p>
+         *
+         * @param marker      the model representing the MarkerView
+         * @param convertView the reusable view
+         * @return true if you want reuse to occur automatically, false if you want to manage this yourself.
+         */
+        public boolean prepareViewForReuse(@NonNull MarkerView marker, @NonNull View convertView) {
+            return true;
+        }
+
+        /**
+         * Called when a MarkerView is selected from the MapView.
+         * <p>
+         * Returning true from this method indicates you want to move the MarkerView to the selected state.
+         * Returning false indicates you want to animate the View first an manually select the MarkerView when appropriate.
+         * </p>
+         *
+         * @param marker                   the model representing the MarkerView
+         * @param convertView              the reusable view
+         * @param reselectionFromRecycling indicates if the onSelect callback is the initial selection
+         *                                 callback or that selection occurs due to recreation of selected marker
+         * @return true if you want to select the Marker immediately, false if you want to manage this yourself.
+         */
+        public boolean onSelect(@NonNull U marker, @NonNull View convertView, boolean reselectionFromRecycling) {
+            return true;
+        }
+
+        /**
+         * Called when a MarkerView is deselected from the MapView.
+         *
+         * @param marker      the model representing the MarkerView
+         * @param convertView the reusable view
+         */
+        public void onDeselect(@NonNull U marker, @NonNull View convertView) {
+        }
+
+        /**
+         * Returns the generic type of the used MarkerView.
+         *
+         * @return the generic type
+         */
+        public final Class<U> getMarkerClass() {
+            return persistentClass;
+        }
+
+        /**
+         * Returns the pool used to store reusable Views.
+         *
+         * @return the pool associated to this adapter
+         */
+        public final Pools.SimplePool<View> getViewReusePool() {
+            return mViewReusePool;
+        }
+
+        /**
+         * Returns the context associated to the hosting MapView.
+         *
+         * @return the context used
+         */
+        public final Context getContext() {
+            return context;
+        }
+
+        /**
+         * Release a View to the ViewPool.
+         *
+         * @param view the view to be released
+         */
+        public final void releaseView(View view) {
+            view.setVisibility(View.GONE);
+            mViewReusePool.release(view);
+        }
+    }
+
+    /**
+     * Interface definition for a callback to be invoked when the user clicks on a MarkerView.
+     *
+     * @see MarkerViewManager#setOnMarkerViewClickListener(OnMarkerViewClickListener)
+     */
+    public interface OnMarkerViewClickListener {
+
+        /**
+         * Called when the user clicks on a MarkerView.
+         *
+         * @param marker  the MarkerView associated to the clicked View
+         * @param view    the clicked View
+         * @param adapter the adapter used to adapt the MarkerView to the View
+         * @return If true the listener has consumed the event and the info window will not be shown
+         */
+        boolean onMarkerClick(@NonNull Marker marker, @NonNull View view, @NonNull MarkerViewAdapter adapter);
+    }
+
+    /**
      * Interface definition for a callback to be invoked when the the My Location view changes location.
      *
      * @see MapboxMap#setOnMyLocationChangeListener(OnMyLocationChangeListener)
@@ -1722,6 +2033,16 @@ public class MapboxMap {
          * Invoked when a task is complete.
          */
         void onFinish();
+    }
+
+    /**
+     * Interface definition for a callback to be invoked when the snapshot has been taken.
+     */
+    public interface SnapshotReadyCallback {
+        /**
+         * Invoked when the snapshot has been taken.
+         */
+        void onSnapshotReady(Bitmap snapshot);
     }
 
     private class MapChangeCameraPositionListener implements MapView.OnMapChangedListener {

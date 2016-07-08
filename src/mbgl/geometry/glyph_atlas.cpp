@@ -1,18 +1,16 @@
 #include <mbgl/geometry/glyph_atlas.hpp>
 
-#include <mbgl/text/font_stack.hpp>
-
 #include <mbgl/gl/gl.hpp>
-#include <mbgl/gl/gl_object_store.hpp>
+#include <mbgl/gl/object_store.hpp>
+#include <mbgl/gl/gl_config.hpp>
 #include <mbgl/platform/log.hpp>
 #include <mbgl/platform/platform.hpp>
-#include <mbgl/util/thread_context.hpp>
 
 #include <cassert>
 #include <algorithm>
 
 
-using namespace mbgl;
+namespace mbgl {
 
 GlyphAtlas::GlyphAtlas(uint16_t width_, uint16_t height_)
     : width(width_),
@@ -22,19 +20,17 @@ GlyphAtlas::GlyphAtlas(uint16_t width_, uint16_t height_)
       dirty(true) {
 }
 
-GlyphAtlas::~GlyphAtlas() {
-    assert(util::ThreadContext::currentlyOn(util::ThreadType::Map));
-}
+GlyphAtlas::~GlyphAtlas() = default;
 
 void GlyphAtlas::addGlyphs(uintptr_t tileUID,
                            const std::u32string& text,
-                           const std::string& stackName,
                            const FontStack& fontStack,
+                           const GlyphSet& glyphSet,
                            GlyphPositions& face)
 {
     std::lock_guard<std::mutex> lock(mtx);
 
-    const std::map<uint32_t, SDFGlyph>& sdfs = fontStack.getSDFs();
+    const std::map<uint32_t, SDFGlyph>& sdfs = glyphSet.getSDFs();
 
     for (uint32_t chr : text)
     {
@@ -44,20 +40,20 @@ void GlyphAtlas::addGlyphs(uintptr_t tileUID,
         }
 
         const SDFGlyph& sdf = sdf_it->second;
-        Rect<uint16_t> rect = addGlyph(tileUID, stackName, sdf);
+        Rect<uint16_t> rect = addGlyph(tileUID, fontStack, sdf);
         face.emplace(chr, Glyph{rect, sdf.metrics});
     }
 }
 
 Rect<uint16_t> GlyphAtlas::addGlyph(uintptr_t tileUID,
-                                    const std::string& stackName,
+                                    const FontStack& fontStack,
                                     const SDFGlyph& glyph)
 {
     // Use constant value for now.
     const uint8_t buffer = 3;
 
-    std::map<uint32_t, GlyphValue>& face = index[stackName];
-    std::map<uint32_t, GlyphValue>::iterator it = face.find(glyph.id);
+    std::map<uint32_t, GlyphValue>& face = index[fontStack];
+    auto it = face.find(glyph.id);
 
     // The glyph is already in this texture.
     if (it != face.end()) {
@@ -146,13 +142,14 @@ void GlyphAtlas::removeGlyphs(uintptr_t tileUID) {
     }
 }
 
-void GlyphAtlas::upload(gl::GLObjectStore& glObjectStore) {
+void GlyphAtlas::upload(gl::ObjectStore& store, gl::Config& config, uint32_t unit) {
     if (dirty) {
         const bool first = !texture;
-        bind(glObjectStore);
+        bind(store, config, unit);
 
         std::lock_guard<std::mutex> lock(mtx);
 
+        config.activeTexture = unit;
         if (first) {
             MBGL_CHECK_ERROR(glTexImage2D(
                 GL_TEXTURE_2D, // GLenum target
@@ -187,10 +184,11 @@ void GlyphAtlas::upload(gl::GLObjectStore& glObjectStore) {
     }
 }
 
-void GlyphAtlas::bind(gl::GLObjectStore& glObjectStore) {
+void GlyphAtlas::bind(gl::ObjectStore& store, gl::Config& config, uint32_t unit) {
     if (!texture) {
-        texture.create(glObjectStore);
-        MBGL_CHECK_ERROR(glBindTexture(GL_TEXTURE_2D, texture.getID()));
+        texture = store.createTexture();
+        config.activeTexture = unit;
+        config.texture[unit] = *texture;
 #ifndef GL_ES_VERSION_2_0
         MBGL_CHECK_ERROR(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0));
 #endif
@@ -198,7 +196,10 @@ void GlyphAtlas::bind(gl::GLObjectStore& glObjectStore) {
         MBGL_CHECK_ERROR(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
         MBGL_CHECK_ERROR(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
         MBGL_CHECK_ERROR(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
-    } else {
-        MBGL_CHECK_ERROR(glBindTexture(GL_TEXTURE_2D, texture.getID()));
+    } else if (config.texture[unit] != *texture) {
+        config.activeTexture = unit;
+        config.texture[unit] = *texture;
     }
-};
+}
+
+} // namespace mbgl

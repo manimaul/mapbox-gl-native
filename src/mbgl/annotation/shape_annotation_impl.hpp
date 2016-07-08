@@ -1,40 +1,65 @@
-#ifndef MBGL_SHAPE_ANNOTATION_IMPL
-#define MBGL_SHAPE_ANNOTATION_IMPL
+#pragma once
 
 #include <mapbox/geojsonvt.hpp>
 
 #include <mbgl/annotation/annotation.hpp>
-#include <mbgl/annotation/shape_annotation.hpp>
-#include <mbgl/util/geo.hpp>
+#include <mbgl/util/geometry.hpp>
 
-#include <memory>
 #include <string>
-#include <map>
+#include <memory>
 
 namespace mbgl {
 
+class AnnotationTileData;
+class CanonicalTileID;
+
+namespace style {
 class Style;
-class AnnotationTile;
+} // namespace style
 
 class ShapeAnnotationImpl {
 public:
-    using Map = std::map<AnnotationID, std::unique_ptr<ShapeAnnotationImpl>>;
+    ShapeAnnotationImpl(const AnnotationID, const uint8_t maxZoom);
+    virtual ~ShapeAnnotationImpl() = default;
 
-    ShapeAnnotationImpl(const AnnotationID, const ShapeAnnotation&, const uint8_t maxZoom);
+    virtual void updateStyle(style::Style&) const = 0;
+    virtual const ShapeAnnotationGeometry& geometry() const = 0;
 
-    void updateStyle(Style&);
-    void updateTile(const TileID&, AnnotationTile&);
+    void updateTileData(const CanonicalTileID&, AnnotationTileData&);
 
     const AnnotationID id;
-    const std::string layerID;
-    const ShapeAnnotation shape;
-
-private:
     const uint8_t maxZoom;
-    mapbox::geojsonvt::ProjectedFeatureType type;
+    const std::string layerID;
     std::unique_ptr<mapbox::geojsonvt::GeoJSONVT> shapeTiler;
 };
 
-} // namespace mbgl
+struct CloseShapeAnnotation {
+    ShapeAnnotationGeometry operator()(const mbgl::LineString<double> &geom) const {
+        return geom;
+    }
+    ShapeAnnotationGeometry operator()(const mbgl::MultiLineString<double> &geom) const {
+        return geom;
+    }
+    ShapeAnnotationGeometry operator()(const mbgl::Polygon<double> &geom) const {
+        mbgl::Polygon<double> closed = geom;
+        for (auto &ring : closed) {
+            if (!ring.empty() && ring.front() != ring.back()) {
+                ring.emplace_back(ring.front());
+            }
+        }
+        return closed;
+    }
+    ShapeAnnotationGeometry operator()(const mbgl::MultiPolygon<double> &geom) const {
+        mbgl::MultiPolygon<double> closed = geom;
+        for (auto &polygon : closed) {
+            for (auto &ring : polygon) {
+                if (!ring.empty() && ring.front() != ring.back()) {
+                    ring.emplace_back(ring.front());
+                }
+            }
+        }
+        return closed;
+    }
+};
 
-#endif
+} // namespace mbgl

@@ -20,13 +20,14 @@ bool isMapboxURL(const std::string& url) {
 std::vector<std::string> getMapboxURLPathname(const std::string& url) {
     std::vector<std::string> pathname;
     std::size_t startIndex = protocol.length();
-    while (startIndex < url.length()) {
+    std::size_t end = url.find_first_of("?#");
+    if (end == std::string::npos) {
+        end = url.length();
+    }
+    while (startIndex < end) {
         std::size_t endIndex = url.find("/", startIndex);
         if (endIndex == std::string::npos) {
-            endIndex = url.find_first_of("?#");
-        }
-        if (endIndex == std::string::npos) {
-            endIndex = url.length();
+            endIndex = end;
         }
         pathname.push_back(url.substr(startIndex, endIndex - startIndex));
         startIndex = endIndex + 1;
@@ -153,12 +154,12 @@ std::string canonicalizeTileURL(const std::string& url, SourceType type, uint16_
     auto tileset = url.substr(tilesetStartIdx, tilesetEndIdx - tilesetStartIdx);
     auto extension = url.substr(extensionIdx + 1, queryIdx - extensionIdx - 1);
 
-#if !defined(__ANDROID__) && !defined(__APPLE__)
+#if !defined(__ANDROID__) && !defined(__APPLE__) && !defined(QT_IMAGE_DECODERS)
     // Replace PNG with WebP.
     if (extension == "png") {
         extension = "webp";
     }
-#endif // !defined(__ANDROID__) && !defined(__APPLE__)
+#endif // !defined(__ANDROID__) && !defined(__APPLE__) && !defined(QT_IMAGE_DECODERS)
 
     std::string result = "mapbox://tiles/" + tileset + "/{z}/{x}/{y}";
 

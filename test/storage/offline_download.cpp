@@ -1,4 +1,4 @@
-#include "../fixtures/stub_file_source.hpp"
+#include <mbgl/test/stub_file_source.hpp>
 
 #include <mbgl/storage/offline.hpp>
 #include <mbgl/storage/offline_database.hpp>
@@ -48,7 +48,7 @@ public:
 
     Response response(const std::string& path) {
         Response result;
-        result.data = std::make_shared<std::string>(util::read_file("test/fixtures/"s + path));
+        result.data = std::make_shared<std::string>(util::read_file("test/fixtures/offline_download/"s + path));
         size_t uncompressed = result.data->size();
         size_t compressed = util::compress(*result.data).size();
         size += std::min(uncompressed, compressed);
@@ -61,12 +61,12 @@ TEST(OfflineDownload, NoSubresources) {
     OfflineRegion region = test.createRegion();
     OfflineDownload download(
         region.getID(),
-        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/offline/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
+        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
         test.db, test.fileSource);
 
     test.fileSource.styleResponse = [&] (const Resource& resource) {
-        EXPECT_EQ("http://127.0.0.1:3000/offline/style.json", resource.url);
-        return test.response("offline/empty.style.json");
+        EXPECT_EQ("http://127.0.0.1:3000/style.json", resource.url);
+        return test.response("empty.style.json");
     };
 
     auto observer = std::make_unique<MockObserver>();
@@ -77,12 +77,12 @@ TEST(OfflineDownload, NoSubresources) {
             if (!expectsInactiveStatus) {
                 expectsInactiveStatus = true;
                 EXPECT_EQ(OfflineRegionDownloadState::Active, status.downloadState);
-                EXPECT_EQ(1, status.completedResourceCount);
+                EXPECT_EQ(1u, status.completedResourceCount);
                 EXPECT_EQ(test.size, status.completedResourceSize);
                 EXPECT_TRUE(status.requiredResourceCountIsPrecise);
             } else {
                 EXPECT_EQ(OfflineRegionDownloadState::Inactive, status.downloadState);
-                EXPECT_EQ(1, status.completedResourceCount);
+                EXPECT_EQ(1u, status.completedResourceCount);
                 EXPECT_EQ(test.size, status.completedResourceSize);
                 EXPECT_TRUE(status.requiredResourceCountIsPrecise);
                 test.loop.stop();
@@ -101,29 +101,29 @@ TEST(OfflineDownload, InlineSource) {
     OfflineRegion region = test.createRegion();
     OfflineDownload download(
         region.getID(),
-        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/offline/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
+        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
         test.db, test.fileSource);
 
     test.fileSource.styleResponse = [&] (const Resource& resource) {
-        EXPECT_EQ("http://127.0.0.1:3000/offline/style.json", resource.url);
-        return test.response("offline/inline_source.style.json");
+        EXPECT_EQ("http://127.0.0.1:3000/style.json", resource.url);
+        return test.response("inline_source.style.json");
     };
 
     test.fileSource.tileResponse = [&] (const Resource& resource) {
         const Resource::TileData& tile = *resource.tileData;
-        EXPECT_EQ("http://127.0.0.1:3000/offline/{z}-{x}-{y}.vector.pbf", tile.urlTemplate);
+        EXPECT_EQ("http://127.0.0.1:3000/{z}-{x}-{y}.vector.pbf", tile.urlTemplate);
         EXPECT_EQ(1, tile.pixelRatio);
         EXPECT_EQ(0, tile.x);
         EXPECT_EQ(0, tile.y);
         EXPECT_EQ(0, tile.z);
-        return test.response("offline/0-0-0.vector.pbf");
+        return test.response("0-0-0.vector.pbf");
     };
 
     auto observer = std::make_unique<MockObserver>();
 
     observer->statusChangedFn = [&] (OfflineRegionStatus status) {
         if (status.complete()) {
-            EXPECT_EQ(2, status.completedResourceCount);
+            EXPECT_EQ(2u, status.completedResourceCount);
             EXPECT_EQ(test.size, status.completedResourceSize);
             EXPECT_TRUE(status.requiredResourceCountIsPrecise);
             test.loop.stop();
@@ -141,24 +141,24 @@ TEST(OfflineDownload, GeoJSONSource) {
     OfflineRegion region = test.createRegion();
     OfflineDownload download(
         region.getID(),
-        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/offline/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
+        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
         test.db, test.fileSource);
 
     test.fileSource.styleResponse = [&] (const Resource& resource) {
-        EXPECT_EQ("http://127.0.0.1:3000/offline/style.json", resource.url);
-        return test.response("offline/geojson_source.style.json");
+        EXPECT_EQ("http://127.0.0.1:3000/style.json", resource.url);
+        return test.response("geojson_source.style.json");
     };
 
     test.fileSource.sourceResponse = [&] (const Resource& resource) {
-        EXPECT_EQ("http://127.0.0.1:3000/offline/geojson.json", resource.url);
-        return test.response("offline/geojson.json");
+        EXPECT_EQ("http://127.0.0.1:3000/geojson.json", resource.url);
+        return test.response("geojson.json");
     };
 
     auto observer = std::make_unique<MockObserver>();
 
     observer->statusChangedFn = [&] (OfflineRegionStatus status) {
         if (status.complete()) {
-            EXPECT_EQ(2, status.completedResourceCount);
+            EXPECT_EQ(2u, status.completedResourceCount);
             EXPECT_EQ(test.size, status.completedResourceSize);
             EXPECT_TRUE(status.requiredResourceCountIsPrecise);
             test.loop.stop();
@@ -176,48 +176,48 @@ TEST(OfflineDownload, Activate) {
     OfflineRegion region = test.createRegion();
     OfflineDownload download(
         region.getID(),
-        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/offline/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
+        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
         test.db, test.fileSource);
 
     test.fileSource.styleResponse = [&] (const Resource& resource) {
-        EXPECT_EQ("http://127.0.0.1:3000/offline/style.json", resource.url);
-        return test.response("offline/style.json");
+        EXPECT_EQ("http://127.0.0.1:3000/style.json", resource.url);
+        return test.response("style.json");
     };
 
     test.fileSource.spriteImageResponse = [&] (const Resource& resource) {
-        EXPECT_EQ("http://127.0.0.1:3000/offline/sprite.png", resource.url);
-        return test.response("offline/sprite.png");
+        EXPECT_EQ("http://127.0.0.1:3000/sprite.png", resource.url);
+        return test.response("sprite.png");
     };
 
     test.fileSource.spriteJSONResponse = [&] (const Resource& resource) {
-        EXPECT_EQ("http://127.0.0.1:3000/offline/sprite.json", resource.url);
-        return test.response("offline/sprite.json");
+        EXPECT_EQ("http://127.0.0.1:3000/sprite.json", resource.url);
+        return test.response("sprite.json");
     };
 
     test.fileSource.glyphsResponse = [&] (const Resource&) {
-        return test.response("offline/glyph.pbf");
+        return test.response("glyph.pbf");
     };
 
     test.fileSource.sourceResponse = [&] (const Resource& resource) {
-        EXPECT_EQ("http://127.0.0.1:3000/offline/streets.json", resource.url);
-        return test.response("offline/streets.json");
+        EXPECT_EQ("http://127.0.0.1:3000/streets.json", resource.url);
+        return test.response("streets.json");
     };
 
     test.fileSource.tileResponse = [&] (const Resource& resource) {
         const Resource::TileData& tile = *resource.tileData;
-        EXPECT_EQ("http://127.0.0.1:3000/offline/{z}-{x}-{y}.vector.pbf", tile.urlTemplate);
+        EXPECT_EQ("http://127.0.0.1:3000/{z}-{x}-{y}.vector.pbf", tile.urlTemplate);
         EXPECT_EQ(1, tile.pixelRatio);
         EXPECT_EQ(0, tile.x);
         EXPECT_EQ(0, tile.y);
         EXPECT_EQ(0, tile.z);
-        return test.response("offline/0-0-0.vector.pbf");
+        return test.response("0-0-0.vector.pbf");
     };
 
     auto observer = std::make_unique<MockObserver>();
 
     observer->statusChangedFn = [&] (OfflineRegionStatus status) {
         if (status.complete()) {
-            EXPECT_EQ(261, status.completedResourceCount); // 256 glyphs, 1 tile, 1 style, source, sprite image, and sprite json
+            EXPECT_EQ(261u, status.completedResourceCount); // 256 glyphs, 1 tile, 1 style, source, sprite image, and sprite json
             EXPECT_EQ(test.size, status.completedResourceSize);
 
             download.setState(OfflineRegionDownloadState::Inactive);
@@ -226,6 +226,8 @@ TEST(OfflineDownload, Activate) {
             EXPECT_EQ(status.requiredResourceCount, computedStatus.requiredResourceCount);
             EXPECT_EQ(status.completedResourceCount, computedStatus.completedResourceCount);
             EXPECT_EQ(status.completedResourceSize, computedStatus.completedResourceSize);
+            EXPECT_EQ(status.completedTileCount, computedStatus.completedTileCount);
+            EXPECT_EQ(status.completedTileSize, computedStatus.completedTileSize);
             EXPECT_TRUE(status.requiredResourceCountIsPrecise);
 
             test.loop.stop();
@@ -243,14 +245,14 @@ TEST(OfflineDownload, GetStatusNoResources) {
     OfflineRegion region = test.createRegion();
     OfflineDownload download(
         region.getID(),
-        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/offline/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
+        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
         test.db, test.fileSource);
     OfflineRegionStatus status = download.getStatus();
 
     EXPECT_EQ(OfflineRegionDownloadState::Inactive, status.downloadState);
-    EXPECT_EQ(0, status.completedResourceCount);
-    EXPECT_EQ(0, status.completedResourceSize);
-    EXPECT_EQ(1, status.requiredResourceCount);
+    EXPECT_EQ(0u, status.completedResourceCount);
+    EXPECT_EQ(0u, status.completedResourceSize);
+    EXPECT_EQ(1u, status.requiredResourceCount);
     EXPECT_FALSE(status.requiredResourceCountIsPrecise);
     EXPECT_FALSE(status.complete());
 }
@@ -260,19 +262,19 @@ TEST(OfflineDownload, GetStatusStyleComplete) {
     OfflineRegion region = test.createRegion();
     OfflineDownload download(
         region.getID(),
-        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/offline/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
+        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
         test.db, test.fileSource);
 
     test.db.putRegionResource(1,
-        Resource::style("http://127.0.0.1:3000/offline/style.json"),
-        test.response("offline/style.json"));
+        Resource::style("http://127.0.0.1:3000/style.json"),
+        test.response("style.json"));
 
     OfflineRegionStatus status = download.getStatus();
 
     EXPECT_EQ(OfflineRegionDownloadState::Inactive, status.downloadState);
-    EXPECT_EQ(1, status.completedResourceCount);
+    EXPECT_EQ(1u, status.completedResourceCount);
     EXPECT_EQ(test.size, status.completedResourceSize);
-    EXPECT_EQ(260, status.requiredResourceCount);
+    EXPECT_EQ(260u, status.requiredResourceCount);
     EXPECT_FALSE(status.requiredResourceCountIsPrecise);
     EXPECT_FALSE(status.complete());
 }
@@ -282,23 +284,23 @@ TEST(OfflineDownload, GetStatusStyleAndSourceComplete) {
     OfflineRegion region = test.createRegion();
     OfflineDownload download(
         region.getID(),
-        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/offline/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
+        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
         test.db, test.fileSource);
 
     test.db.putRegionResource(1,
-        Resource::style("http://127.0.0.1:3000/offline/style.json"),
-        test.response("offline/style.json"));
+        Resource::style("http://127.0.0.1:3000/style.json"),
+        test.response("style.json"));
 
     test.db.putRegionResource(1,
-        Resource::source("http://127.0.0.1:3000/offline/streets.json"),
-        test.response("offline/streets.json"));
+        Resource::source("http://127.0.0.1:3000/streets.json"),
+        test.response("streets.json"));
 
     OfflineRegionStatus status = download.getStatus();
 
     EXPECT_EQ(OfflineRegionDownloadState::Inactive, status.downloadState);
-    EXPECT_EQ(2, status.completedResourceCount);
+    EXPECT_EQ(2u, status.completedResourceCount);
     EXPECT_EQ(test.size, status.completedResourceSize);
-    EXPECT_EQ(261, status.requiredResourceCount);
+    EXPECT_EQ(261u, status.requiredResourceCount);
     EXPECT_TRUE(status.requiredResourceCountIsPrecise);
     EXPECT_FALSE(status.complete());
 }
@@ -308,7 +310,7 @@ TEST(OfflineDownload, RequestError) {
     OfflineRegion region = test.createRegion();
     OfflineDownload download(
         region.getID(),
-        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/offline/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
+        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
         test.db, test.fileSource);
 
     test.fileSource.styleResponse = [&] (const Resource&) {
@@ -336,12 +338,12 @@ TEST(OfflineDownload, RequestErrorsAreRetried) {
     OfflineRegion region = test.createRegion();
     OfflineDownload download(
         region.getID(),
-        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/offline/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
+        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
         test.db, test.fileSource);
 
     test.fileSource.styleResponse = [&] (const Resource&) {
         test.fileSource.styleResponse = [&] (const Resource&) {
-            return test.response("offline/empty.style.json");
+            return test.response("empty.style.json");
         };
 
         Response response;
@@ -353,7 +355,7 @@ TEST(OfflineDownload, RequestErrorsAreRetried) {
 
     observer->statusChangedFn = [&] (OfflineRegionStatus status) {
         if (status.complete()) {
-            EXPECT_EQ(1, status.completedResourceCount);
+            EXPECT_EQ(1u, status.completedResourceCount);
             test.loop.stop();
         }
     };
@@ -369,7 +371,7 @@ TEST(OfflineDownload, TileCountLimitExceededNoTileResponse) {
     OfflineRegion region = test.createRegion();
     OfflineDownload download(
         region.getID(),
-        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/offline/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
+        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
         test.db, test.fileSource);
 
     uint64_t tileLimit = 0;
@@ -377,8 +379,8 @@ TEST(OfflineDownload, TileCountLimitExceededNoTileResponse) {
     test.db.setOfflineMapboxTileCountLimit(tileLimit);
 
     test.fileSource.styleResponse = [&] (const Resource& resource) {
-        EXPECT_EQ("http://127.0.0.1:3000/offline/style.json", resource.url);
-        return test.response("offline/mapbox_source.style.json");
+        EXPECT_EQ("http://127.0.0.1:3000/style.json", resource.url);
+        return test.response("mapbox_source.style.json");
     };
 
     auto observer = std::make_unique<MockObserver>();
@@ -391,7 +393,7 @@ TEST(OfflineDownload, TileCountLimitExceededNoTileResponse) {
     };
 
     observer->statusChangedFn = [&] (OfflineRegionStatus status) {
-        if (!mapboxTileCountLimitExceededCalled) {            
+        if (!mapboxTileCountLimitExceededCalled) {
             EXPECT_FALSE(status.complete());
             EXPECT_EQ(OfflineRegionDownloadState::Active, status.downloadState);
         } else {
@@ -411,7 +413,7 @@ TEST(OfflineDownload, TileCountLimitExceededWithTileResponse) {
     OfflineRegion region = test.createRegion();
     OfflineDownload download(
         region.getID(),
-        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/offline/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
+        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
         test.db, test.fileSource);
 
     uint64_t tileLimit = 1;
@@ -419,10 +421,10 @@ TEST(OfflineDownload, TileCountLimitExceededWithTileResponse) {
     test.db.setOfflineMapboxTileCountLimit(tileLimit);
 
     test.fileSource.styleResponse = [&] (const Resource& resource) {
-        EXPECT_EQ("http://127.0.0.1:3000/offline/style.json", resource.url);
-        return test.response("offline/mapbox_source.style.json");
+        EXPECT_EQ("http://127.0.0.1:3000/style.json", resource.url);
+        return test.response("mapbox_source.style.json");
     };
-    
+
     test.fileSource.tileResponse = [&] (const Resource& resource) {
         const Resource::TileData& tile = *resource.tileData;
         EXPECT_EQ("mapbox://{z}-{x}-{y}.vector.pbf", tile.urlTemplate);
@@ -430,7 +432,7 @@ TEST(OfflineDownload, TileCountLimitExceededWithTileResponse) {
         EXPECT_EQ(0, tile.x);
         EXPECT_EQ(0, tile.y);
         EXPECT_EQ(0, tile.z);
-        return test.response("offline/0-0-0.vector.pbf");
+        return test.response("0-0-0.vector.pbf");
     };
 
     auto observer = std::make_unique<MockObserver>();
@@ -442,7 +444,7 @@ TEST(OfflineDownload, TileCountLimitExceededWithTileResponse) {
         mapboxTileCountLimitExceededCalled = true;
     };
 
-    observer->statusChangedFn = [&] (OfflineRegionStatus status) {        
+    observer->statusChangedFn = [&] (OfflineRegionStatus status) {
         if (!mapboxTileCountLimitExceededCalled) {
             EXPECT_EQ(OfflineRegionDownloadState::Active, status.downloadState);
         } else {
@@ -465,23 +467,23 @@ TEST(OfflineDownload, WithPreviouslyExistingTile) {
     OfflineRegion region = test.createRegion();
     OfflineDownload download(
         region.getID(),
-        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/offline/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
+        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
         test.db, test.fileSource);
 
     test.fileSource.styleResponse = [&] (const Resource& resource) {
-        EXPECT_EQ("http://127.0.0.1:3000/offline/style.json", resource.url);
-        return test.response("offline/inline_source.style.json");
+        EXPECT_EQ("http://127.0.0.1:3000/style.json", resource.url);
+        return test.response("inline_source.style.json");
     };
 
     test.db.put(
-        Resource::tile("http://127.0.0.1:3000/offline/{z}-{x}-{y}.vector.pbf", 1, 0, 0, 0),
-        test.response("offline/0-0-0.vector.pbf"));
+        Resource::tile("http://127.0.0.1:3000/{z}-{x}-{y}.vector.pbf", 1, 0, 0, 0),
+        test.response("0-0-0.vector.pbf"));
 
     auto observer = std::make_unique<MockObserver>();
 
     observer->statusChangedFn = [&] (OfflineRegionStatus status) {
         if (status.complete()) {
-            EXPECT_EQ(2, status.completedResourceCount);
+            EXPECT_EQ(2u, status.completedResourceCount);
             EXPECT_EQ(test.size, status.completedResourceSize);
             EXPECT_TRUE(status.requiredResourceCountIsPrecise);
             test.loop.stop();
@@ -499,17 +501,17 @@ TEST(OfflineDownload, ReactivatePreviouslyCompletedDownload) {
     OfflineRegion region = test.createRegion();
     OfflineDownload download(
         region.getID(),
-        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/offline/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
+        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
         test.db, test.fileSource);
 
     test.fileSource.styleResponse = [&] (const Resource& resource) {
-        EXPECT_EQ("http://127.0.0.1:3000/offline/style.json", resource.url);
-        return test.response("offline/inline_source.style.json");
+        EXPECT_EQ("http://127.0.0.1:3000/style.json", resource.url);
+        return test.response("inline_source.style.json");
     };
 
     test.db.put(
-        Resource::tile("http://127.0.0.1:3000/offline/{z}-{x}-{y}.vector.pbf", 1, 0, 0, 0),
-        test.response("offline/0-0-0.vector.pbf"));
+        Resource::tile("http://127.0.0.1:3000/{z}-{x}-{y}.vector.pbf", 1, 0, 0, 0),
+        test.response("0-0-0.vector.pbf"));
 
     auto observer = std::make_unique<MockObserver>();
     observer->statusChangedFn = [&] (OfflineRegionStatus status) {
@@ -525,7 +527,7 @@ TEST(OfflineDownload, ReactivatePreviouslyCompletedDownload) {
 
     OfflineDownload redownload(
         region.getID(),
-        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/offline/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
+        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
         test.db, test.fileSource);
 
     std::vector<OfflineRegionStatus> statusesAfterReactivate;
@@ -543,22 +545,22 @@ TEST(OfflineDownload, ReactivatePreviouslyCompletedDownload) {
 
     test.loop.run();
 
-    ASSERT_EQ(4, statusesAfterReactivate.size());
+    ASSERT_EQ(4u, statusesAfterReactivate.size());
 
     EXPECT_EQ(OfflineRegionDownloadState::Active, statusesAfterReactivate[0].downloadState);
     EXPECT_FALSE(statusesAfterReactivate[0].requiredResourceCountIsPrecise);
-    EXPECT_EQ(1, statusesAfterReactivate[0].requiredResourceCount);
-    EXPECT_EQ(0, statusesAfterReactivate[0].completedResourceCount);
+    EXPECT_EQ(1u, statusesAfterReactivate[0].requiredResourceCount);
+    EXPECT_EQ(0u, statusesAfterReactivate[0].completedResourceCount);
 
     EXPECT_EQ(OfflineRegionDownloadState::Active, statusesAfterReactivate[1].downloadState);
     EXPECT_TRUE(statusesAfterReactivate[1].requiredResourceCountIsPrecise);
-    EXPECT_EQ(2, statusesAfterReactivate[1].requiredResourceCount);
-    EXPECT_EQ(1, statusesAfterReactivate[1].completedResourceCount);
+    EXPECT_EQ(2u, statusesAfterReactivate[1].requiredResourceCount);
+    EXPECT_EQ(1u, statusesAfterReactivate[1].completedResourceCount);
 
     EXPECT_EQ(OfflineRegionDownloadState::Active, statusesAfterReactivate[2].downloadState);
     EXPECT_TRUE(statusesAfterReactivate[2].requiredResourceCountIsPrecise);
-    EXPECT_EQ(2, statusesAfterReactivate[2].requiredResourceCount);
-    EXPECT_EQ(2, statusesAfterReactivate[2].completedResourceCount);
+    EXPECT_EQ(2u, statusesAfterReactivate[2].requiredResourceCount);
+    EXPECT_EQ(2u, statusesAfterReactivate[2].completedResourceCount);
 }
 
 TEST(OfflineDownload, Deactivate) {
@@ -566,12 +568,12 @@ TEST(OfflineDownload, Deactivate) {
     OfflineRegion region = test.createRegion();
     OfflineDownload download(
         region.getID(),
-        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/offline/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
+        OfflineTilePyramidRegionDefinition("http://127.0.0.1:3000/style.json", LatLngBounds::world(), 0.0, 0.0, 1.0),
         test.db, test.fileSource);
 
     test.fileSource.styleResponse = [&] (const Resource& resource) {
-        EXPECT_EQ("http://127.0.0.1:3000/offline/style.json", resource.url);
-        return test.response("offline/mapbox_source.style.json");
+        EXPECT_EQ("http://127.0.0.1:3000/style.json", resource.url);
+        return test.response("mapbox_source.style.json");
     };
 
     auto observer = std::make_unique<MockObserver>();

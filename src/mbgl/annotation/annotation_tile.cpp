@@ -1,10 +1,25 @@
 #include <mbgl/annotation/annotation_tile.hpp>
+#include <mbgl/annotation/annotation_manager.hpp>
 #include <mbgl/util/constants.hpp>
-#include <mbgl/map/map_data.hpp>
 #include <mbgl/storage/file_source.hpp>
+#include <mbgl/style/update_parameters.hpp>
+
 #include <utility>
 
 namespace mbgl {
+
+AnnotationTile::AnnotationTile(const OverscaledTileID& overscaledTileID,
+                               const style::UpdateParameters& parameters)
+    : GeometryTile(overscaledTileID, AnnotationManager::SourceID, parameters.style, parameters.mode),
+      annotationManager(parameters.annotationManager) {
+    annotationManager.addTile(*this);
+}
+
+AnnotationTile::~AnnotationTile() {
+    annotationManager.removeTile(*this);
+}
+
+void AnnotationTile::setNecessity(Necessity) {}
 
 AnnotationTileFeature::AnnotationTileFeature(FeatureType type_, GeometryCollection geometries_,
                                  std::unordered_map<std::string, std::string> properties_)
@@ -20,31 +35,15 @@ optional<Value> AnnotationTileFeature::getValue(const std::string& key) const {
     return optional<Value>();
 }
 
-util::ptr<GeometryTileLayer> AnnotationTile::getLayer(const std::string& name) const {
+AnnotationTileLayer::AnnotationTileLayer(std::string name_)
+    : name(std::move(name_)) {}
+
+util::ptr<GeometryTileLayer> AnnotationTileData::getLayer(const std::string& name) const {
     auto it = layers.find(name);
     if (it != layers.end()) {
         return it->second;
     }
     return nullptr;
-}
-
-AnnotationTileMonitor::AnnotationTileMonitor(const TileID& tileID_, MapData& data_)
-    : tileID(tileID_),
-      data(data_) {
-}
-
-AnnotationTileMonitor::~AnnotationTileMonitor() {
-    data.getAnnotationManager()->removeTileMonitor(*this);
-}
-
-std::unique_ptr<FileRequest> AnnotationTileMonitor::monitorTile(const GeometryTileMonitor::Callback& callback_) {
-    callback = callback_;
-    data.getAnnotationManager()->addTileMonitor(*this);
-    return nullptr;
-}
-
-void AnnotationTileMonitor::update(std::unique_ptr<GeometryTile> tile) {
-    callback(nullptr, std::move(tile), {}, {});
 }
 
 } // namespace mbgl

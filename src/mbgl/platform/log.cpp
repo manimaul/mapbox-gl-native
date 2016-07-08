@@ -1,6 +1,6 @@
 #include <mbgl/platform/log.hpp>
-
-#include <mbgl/util/thread_context.hpp>
+#include <mbgl/util/enum.hpp>
+#include <mbgl/util/thread.hpp>
 
 #include <cstdio>
 #include <cstdarg>
@@ -49,8 +49,9 @@ void Log::record(EventSeverity severity, Event event, int64_t code, const std::s
     }
 
     std::stringstream logStream;
-    logStream << "{" << util::ThreadContext::getName() << "}";
-    logStream << "[" << event << "]";
+
+    logStream << "{" << util::getCurrentThreadName() << "}";
+    logStream << "[" << Enum<Event>::toString(event) << "]";
 
     if (code >= 0) {
         logStream << "(" << code << ")";

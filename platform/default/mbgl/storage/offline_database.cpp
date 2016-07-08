@@ -4,7 +4,6 @@
 #include <mbgl/util/io.hpp>
 #include <mbgl/util/string.hpp>
 #include <mbgl/util/chrono.hpp>
-#include <mbgl/map/tile_id.hpp>
 #include <mbgl/platform/log.hpp>
 
 #include "sqlite3.hpp"
@@ -12,15 +11,13 @@
 
 namespace mbgl {
 
-using namespace mapbox::sqlite;
-
 OfflineDatabase::Statement::~Statement() {
     stmt.reset();
     stmt.clearBindings();
 }
 
-OfflineDatabase::OfflineDatabase(const std::string& path_, uint64_t maximumCacheSize_)
-    : path(path_),
+OfflineDatabase::OfflineDatabase(std::string path_, uint64_t maximumCacheSize_)
+    : path(std::move(path_)),
       maximumCacheSize(maximumCacheSize_) {
     ensureSchema();
 }
@@ -37,7 +34,7 @@ OfflineDatabase::~OfflineDatabase() {
 }
 
 void OfflineDatabase::connect(int flags) {
-    db = std::make_unique<Database>(path.c_str(), flags);
+    db = std::make_unique<mapbox::sqlite::Database>(path.c_str(), flags);
     db->setBusyTimeout(Milliseconds::max());
     db->exec("PRAGMA foreign_keys = ON");
 }
@@ -45,7 +42,7 @@ void OfflineDatabase::connect(int flags) {
 void OfflineDatabase::ensureSchema() {
     if (path != ":memory:") {
         try {
-            connect(ReadWrite);
+            connect(mapbox::sqlite::ReadWrite);
 
             switch (userVersion()) {
             case 0: break; // cache-only database; ok to delete
@@ -56,7 +53,7 @@ void OfflineDatabase::ensureSchema() {
             }
 
             removeExisting();
-            connect(ReadWrite | Create);
+            connect(mapbox::sqlite::ReadWrite | mapbox::sqlite::Create);
         } catch (mapbox::sqlite::Exception& ex) {
             if (ex.code != SQLITE_CANTOPEN && ex.code != SQLITE_NOTADB) {
                 Log::Error(Event::Database, "Unexpected error connecting to database: %s", ex.what());
@@ -67,7 +64,7 @@ void OfflineDatabase::ensureSchema() {
                 if (ex.code == SQLITE_NOTADB) {
                     removeExisting();
                 }
-                connect(ReadWrite | Create);
+                connect(mapbox::sqlite::ReadWrite | mapbox::sqlite::Create);
             } catch (...) {
                 Log::Error(Event::Database, "Unexpected error creating database: %s", util::toString(std::current_exception()).c_str());
                 throw;
@@ -78,7 +75,7 @@ void OfflineDatabase::ensureSchema() {
     try {
         #include "offline_schema.cpp.include"
 
-        connect(ReadWrite | Create);
+        connect(mapbox::sqlite::ReadWrite | mapbox::sqlite::Create);
 
         // If you change the schema you must write a migration from the previous version.
         db->exec("PRAGMA auto_vacuum = INCREMENTAL");
@@ -158,7 +155,7 @@ std::pair<bool, uint64_t> OfflineDatabase::putInternal(const Resource& resource,
     }
 
     if (evict_ && !evict(size)) {
-        Log::Warning(Event::Database, "Unable to make space for entry");
+        Log::Debug(Event::Database, "Unable to make space for entry");
         return { false, 0 };
     }
 
@@ -179,18 +176,22 @@ std::pair<bool, uint64_t> OfflineDatabase::putInternal(const Resource& resource,
 }
 
 optional<std::pair<Response, uint64_t>> OfflineDatabase::getResource(const Resource& resource) {
+    // clang-format off
     Statement accessedStmt = getStatement(
         "UPDATE resources SET accessed = ?1 WHERE url = ?2");
+    // clang-format on
 
-    accessedStmt->bind(1, SystemClock::now());
+    accessedStmt->bind(1, util::now());
     accessedStmt->bind(2, resource.url);
     accessedStmt->run();
 
+    // clang-format off
     Statement stmt = getStatement(
         //        0      1        2       3        4
         "SELECT etag, expires, modified, data, compressed "
         "FROM resources "
         "WHERE url = ?");
+    // clang-format on
 
     stmt->bind(1, resource.url);
 
@@ -202,8 +203,8 @@ optional<std::pair<Response, uint64_t>> OfflineDatabase::getResource(const Resou
     uint64_t size = 0;
 
     response.etag     = stmt->get<optional<std::string>>(0);
-    response.expires  = stmt->get<optional<SystemTimePoint>>(1);
-    response.modified = stmt->get<optional<SystemTimePoint>>(2);
+    response.expires  = stmt->get<optional<Timestamp>>(1);
+    response.modified = stmt->get<optional<Timestamp>>(2);
 
     optional<std::string> data = stmt->get<optional<std::string>>(3);
     if (!data) {
@@ -224,13 +225,15 @@ bool OfflineDatabase::putResource(const Resource& resource,
                                   const std::string& data,
                                   bool compressed) {
     if (response.notModified) {
+        // clang-format off
         Statement update = getStatement(
             "UPDATE resources "
             "SET accessed = ?1, "
             "    expires  = ?2 "
             "WHERE url    = ?3 ");
+        // clang-format on
 
-        update->bind(1, SystemClock::now());
+        update->bind(1, util::now());
         update->bind(2, response.expires);
         update->bind(3, resource.url);
         update->run();
@@ -239,6 +242,11 @@ bool OfflineDatabase::putResource(const Resource& resource,
 
     // We can't use REPLACE because it would change the id value.
 
+    // Begin an immediate-mode transaction to ensure that two writers do not attempt
+    // to INSERT a resource at the same moment.
+    mapbox::sqlite::Transaction transaction(*db, mapbox::sqlite::Transaction::Immediate);
+
+    // clang-format off
     Statement update = getStatement(
         "UPDATE resources "
         "SET kind       = ?1, "
@@ -249,12 +257,13 @@ bool OfflineDatabase::putResource(const Resource& resource,
         "    data       = ?6, "
         "    compressed = ?7 "
         "WHERE url      = ?8 ");
+    // clang-format on
 
     update->bind(1, int(resource.kind));
     update->bind(2, response.etag);
     update->bind(3, response.expires);
     update->bind(4, response.modified);
-    update->bind(5, SystemClock::now());
+    update->bind(5, util::now());
     update->bind(8, resource.url);
 
     if (response.noContent) {
@@ -267,19 +276,22 @@ bool OfflineDatabase::putResource(const Resource& resource,
 
     update->run();
     if (db->changes() != 0) {
+        transaction.commit();
         return false;
     }
 
+    // clang-format off
     Statement insert = getStatement(
         "INSERT INTO resources (url, kind, etag, expires, modified, accessed, data, compressed) "
         "VALUES                (?1,  ?2,   ?3,   ?4,      ?5,       ?6,       ?7,   ?8) ");
+    // clang-format on
 
     insert->bind(1, resource.url);
     insert->bind(2, int(resource.kind));
     insert->bind(3, response.etag);
     insert->bind(4, response.expires);
     insert->bind(5, response.modified);
-    insert->bind(6, SystemClock::now());
+    insert->bind(6, util::now());
 
     if (response.noContent) {
         insert->bind(7, nullptr);
@@ -290,10 +302,13 @@ bool OfflineDatabase::putResource(const Resource& resource,
     }
 
     insert->run();
+    transaction.commit();
+
     return true;
 }
 
 optional<std::pair<Response, uint64_t>> OfflineDatabase::getTile(const Resource::TileData& tile) {
+    // clang-format off
     Statement accessedStmt = getStatement(
         "UPDATE tiles "
         "SET accessed       = ?1 "
@@ -302,8 +317,9 @@ optional<std::pair<Response, uint64_t>> OfflineDatabase::getTile(const Resource:
         "  AND x            = ?4 "
         "  AND y            = ?5 "
         "  AND z            = ?6 ");
+    // clang-format on
 
-    accessedStmt->bind(1, SystemClock::now());
+    accessedStmt->bind(1, util::now());
     accessedStmt->bind(2, tile.urlTemplate);
     accessedStmt->bind(3, tile.pixelRatio);
     accessedStmt->bind(4, tile.x);
@@ -311,6 +327,7 @@ optional<std::pair<Response, uint64_t>> OfflineDatabase::getTile(const Resource:
     accessedStmt->bind(6, tile.z);
     accessedStmt->run();
 
+    // clang-format off
     Statement stmt = getStatement(
         //        0      1        2       3        4
         "SELECT etag, expires, modified, data, compressed "
@@ -320,6 +337,7 @@ optional<std::pair<Response, uint64_t>> OfflineDatabase::getTile(const Resource:
         "  AND x            = ?3 "
         "  AND y            = ?4 "
         "  AND z            = ?5 ");
+    // clang-format on
 
     stmt->bind(1, tile.urlTemplate);
     stmt->bind(2, tile.pixelRatio);
@@ -335,8 +353,8 @@ optional<std::pair<Response, uint64_t>> OfflineDatabase::getTile(const Resource:
     uint64_t size = 0;
 
     response.etag     = stmt->get<optional<std::string>>(0);
-    response.expires  = stmt->get<optional<SystemTimePoint>>(1);
-    response.modified = stmt->get<optional<SystemTimePoint>>(2);
+    response.expires  = stmt->get<optional<Timestamp>>(1);
+    response.modified = stmt->get<optional<Timestamp>>(2);
 
     optional<std::string> data = stmt->get<optional<std::string>>(3);
     if (!data) {
@@ -357,6 +375,7 @@ bool OfflineDatabase::putTile(const Resource::TileData& tile,
                               const std::string& data,
                               bool compressed) {
     if (response.notModified) {
+        // clang-format off
         Statement update = getStatement(
             "UPDATE tiles "
             "SET accessed       = ?1, "
@@ -366,8 +385,9 @@ bool OfflineDatabase::putTile(const Resource::TileData& tile,
             "  AND x            = ?5 "
             "  AND y            = ?6 "
             "  AND z            = ?7 ");
+        // clang-format on
 
-        update->bind(1, SystemClock::now());
+        update->bind(1, util::now());
         update->bind(2, response.expires);
         update->bind(3, tile.urlTemplate);
         update->bind(4, tile.pixelRatio);
@@ -380,6 +400,11 @@ bool OfflineDatabase::putTile(const Resource::TileData& tile,
 
     // We can't use REPLACE because it would change the id value.
 
+    // Begin an immediate-mode transaction to ensure that two writers do not attempt
+    // to INSERT a resource at the same moment.
+    mapbox::sqlite::Transaction transaction(*db, mapbox::sqlite::Transaction::Immediate);
+
+    // clang-format off
     Statement update = getStatement(
         "UPDATE tiles "
         "SET modified       = ?1, "
@@ -393,11 +418,12 @@ bool OfflineDatabase::putTile(const Resource::TileData& tile,
         "  AND x            = ?9 "
         "  AND y            = ?10 "
         "  AND z            = ?11 ");
+    // clang-format on
 
     update->bind(1, response.modified);
     update->bind(2, response.etag);
     update->bind(3, response.expires);
-    update->bind(4, SystemClock::now());
+    update->bind(4, util::now());
     update->bind(7, tile.urlTemplate);
     update->bind(8, tile.pixelRatio);
     update->bind(9, tile.x);
@@ -414,12 +440,15 @@ bool OfflineDatabase::putTile(const Resource::TileData& tile,
 
     update->run();
     if (db->changes() != 0) {
+        transaction.commit();
         return false;
     }
 
+    // clang-format off
     Statement insert = getStatement(
         "INSERT INTO tiles (url_template, pixel_ratio, x,  y,  z,  modified,  etag,  expires,  accessed,  data, compressed) "
         "VALUES            (?1,           ?2,          ?3, ?4, ?5, ?6,        ?7,    ?8,       ?9,        ?10,  ?11) ");
+    // clang-format on
 
     insert->bind(1, tile.urlTemplate);
     insert->bind(2, tile.pixelRatio);
@@ -429,7 +458,7 @@ bool OfflineDatabase::putTile(const Resource::TileData& tile,
     insert->bind(6, response.modified);
     insert->bind(7, response.etag);
     insert->bind(8, response.expires);
-    insert->bind(9, SystemClock::now());
+    insert->bind(9, util::now());
 
     if (response.noContent) {
         insert->bind(10, nullptr);
@@ -440,12 +469,16 @@ bool OfflineDatabase::putTile(const Resource::TileData& tile,
     }
 
     insert->run();
+    transaction.commit();
+
     return true;
 }
 
 std::vector<OfflineRegion> OfflineDatabase::listRegions() {
+    // clang-format off
     Statement stmt = getStatement(
         "SELECT id, definition, description FROM regions");
+    // clang-format on
 
     std::vector<OfflineRegion> result;
 
@@ -461,9 +494,11 @@ std::vector<OfflineRegion> OfflineDatabase::listRegions() {
 
 OfflineRegion OfflineDatabase::createRegion(const OfflineRegionDefinition& definition,
                                             const OfflineRegionMetadata& metadata) {
+    // clang-format off
     Statement stmt = getStatement(
         "INSERT INTO regions (definition, description) "
         "VALUES              (?1,         ?2) ");
+    // clang-format on
 
     stmt->bind(1, encodeOfflineRegionDefinition(definition));
     stmt->bindBlob(2, metadata);
@@ -473,8 +508,10 @@ OfflineRegion OfflineDatabase::createRegion(const OfflineRegionDefinition& defin
 }
 
 void OfflineDatabase::deleteRegion(OfflineRegion&& region) {
+    // clang-format off
     Statement stmt = getStatement(
         "DELETE FROM regions WHERE id = ?");
+    // clang-format on
 
     stmt->bind(1, region.getID());
     stmt->run();
@@ -512,6 +549,7 @@ uint64_t OfflineDatabase::putRegionResource(int64_t regionID, const Resource& re
 
 bool OfflineDatabase::markUsed(int64_t regionID, const Resource& resource) {
     if (resource.kind == Resource::Kind::Tile) {
+        // clang-format off
         Statement insert = getStatement(
             "INSERT OR IGNORE INTO region_tiles (region_id, tile_id) "
             "SELECT                              ?1,        tiles.id "
@@ -521,6 +559,7 @@ bool OfflineDatabase::markUsed(int64_t regionID, const Resource& resource) {
             "  AND x            = ?4 "
             "  AND y            = ?5 "
             "  AND z            = ?6 ");
+        // clang-format on
 
         const Resource::TileData& tile = *resource.tileData;
         insert->bind(1, regionID);
@@ -535,6 +574,7 @@ bool OfflineDatabase::markUsed(int64_t regionID, const Resource& resource) {
             return false;
         }
 
+        // clang-format off
         Statement select = getStatement(
             "SELECT region_id "
             "FROM region_tiles, tiles "
@@ -545,6 +585,7 @@ bool OfflineDatabase::markUsed(int64_t regionID, const Resource& resource) {
             "  AND y            = ?5 "
             "  AND z            = ?6 "
             "LIMIT 1 ");
+        // clang-format on
 
         select->bind(1, regionID);
         select->bind(2, tile.urlTemplate);
@@ -554,11 +595,13 @@ bool OfflineDatabase::markUsed(int64_t regionID, const Resource& resource) {
         select->bind(6, tile.z);
         return !select->run();
     } else {
+        // clang-format off
         Statement insert = getStatement(
             "INSERT OR IGNORE INTO region_resources (region_id, resource_id) "
             "SELECT                                  ?1,        resources.id "
             "FROM resources "
             "WHERE resources.url = ?2 ");
+        // clang-format on
 
         insert->bind(1, regionID);
         insert->bind(2, resource.url);
@@ -568,12 +611,14 @@ bool OfflineDatabase::markUsed(int64_t regionID, const Resource& resource) {
             return false;
         }
 
+        // clang-format off
         Statement select = getStatement(
             "SELECT region_id "
             "FROM region_resources, resources "
             "WHERE region_id    != ?1 "
             "  AND resources.url = ?2 "
             "LIMIT 1 ");
+        // clang-format on
 
         select->bind(1, regionID);
         select->bind(2, resource.url);
@@ -582,8 +627,10 @@ bool OfflineDatabase::markUsed(int64_t regionID, const Resource& resource) {
 }
 
 OfflineRegionDefinition OfflineDatabase::getRegionDefinition(int64_t regionID) {
+    // clang-format off
     Statement stmt = getStatement(
         "SELECT definition FROM regions WHERE id = ?1");
+    // clang-format on
 
     stmt->bind(1, regionID);
     stmt->run();
@@ -594,26 +641,41 @@ OfflineRegionDefinition OfflineDatabase::getRegionDefinition(int64_t regionID) {
 OfflineRegionStatus OfflineDatabase::getRegionCompletedStatus(int64_t regionID) {
     OfflineRegionStatus result;
 
-    Statement stmt = getStatement(
-        "SELECT COUNT(*), SUM(size) FROM ( "
-        "  SELECT LENGTH(data) as size "
-        "  FROM region_resources, resources "
-        "  WHERE region_id = ?1 "
-        "  AND resource_id = resources.id "
-        "  UNION ALL "
-        "  SELECT LENGTH(data) as size "
-        "  FROM region_tiles, tiles "
-        "  WHERE region_id = ?1 "
-        "  AND tile_id = tiles.id "
-        ") ");
+    std::tie(result.completedResourceCount, result.completedResourceSize)
+        = getCompletedResourceCountAndSize(regionID);
+    std::tie(result.completedTileCount, result.completedTileSize)
+        = getCompletedTileCountAndSize(regionID);
 
-    stmt->bind(1, regionID);
-    stmt->run();
-
-    result.completedResourceCount = stmt->get<int64_t>(0);
-    result.completedResourceSize  = stmt->get<int64_t>(1);
+    result.completedResourceCount += result.completedTileCount;
+    result.completedResourceSize += result.completedTileSize;
 
     return result;
+}
+
+std::pair<int64_t, int64_t> OfflineDatabase::getCompletedResourceCountAndSize(int64_t regionID) {
+    // clang-format off
+    Statement stmt = getStatement(
+        "SELECT COUNT(*), SUM(LENGTH(data)) "
+        "FROM region_resources, resources "
+        "WHERE region_id = ?1 "
+        "AND resource_id = resources.id ");
+    // clang-format on
+    stmt->bind(1, regionID);
+    stmt->run();
+    return { stmt->get<int64_t>(0), stmt->get<int64_t>(1) };
+}
+
+std::pair<int64_t, int64_t> OfflineDatabase::getCompletedTileCountAndSize(int64_t regionID) {
+    // clang-format off
+    Statement stmt = getStatement(
+        "SELECT COUNT(*), SUM(LENGTH(data)) "
+        "FROM region_tiles, tiles "
+        "WHERE region_id = ?1 "
+        "AND tile_id = tiles.id ");
+    // clang-format on
+    stmt->bind(1, regionID);
+    stmt->run();
+    return { stmt->get<int64_t>(0), stmt->get<int64_t>(1) };
 }
 
 template <class T>
@@ -644,6 +706,7 @@ bool OfflineDatabase::evict(uint64_t neededFreeSize) {
     // The addition of pageSize is a fudge factor to account for non `data` column
     // size, and because pages can get fragmented on the database.
     while (usedSize() + neededFreeSize + pageSize > maximumCacheSize) {
+        // clang-format off
         Statement stmt1 = getStatement(
             "DELETE FROM resources "
             "WHERE id IN ( "
@@ -653,10 +716,12 @@ bool OfflineDatabase::evict(uint64_t neededFreeSize) {
             "  WHERE resource_id IS NULL "
             "  ORDER BY accessed ASC LIMIT ?1 "
             ") ");
+        // clang-format on
         stmt1->bind(1, 50);
         stmt1->run();
         uint64_t changes1 = db->changes();
 
+        // clang-format off
         Statement stmt2 = getStatement(
             "DELETE FROM tiles "
             "WHERE id IN ( "
@@ -666,6 +731,7 @@ bool OfflineDatabase::evict(uint64_t neededFreeSize) {
             "  WHERE tile_id IS NULL "
             "  ORDER BY accessed ASC LIMIT ?1 "
             ") ");
+        // clang-format on
         stmt2->bind(1, 50);
         stmt2->run();
         uint64_t changes2 = db->changes();
@@ -703,11 +769,13 @@ uint64_t OfflineDatabase::getOfflineMapboxTileCount() {
         return *offlineMapboxTileCount;
     }
 
+    // clang-format off
     Statement stmt = getStatement(
         "SELECT COUNT(DISTINCT id) "
         "FROM region_tiles, tiles "
         "WHERE tile_id = tiles.id "
         "AND url_template LIKE 'mapbox://%' ");
+    // clang-format on
 
     stmt->run();
 

@@ -1,5 +1,4 @@
-#ifndef MBGL_GL_GL
-#define MBGL_GL_GL
+#pragma once
 
 //#define GL_TRACK
 
@@ -46,9 +45,9 @@ namespace gl {
                                 GLsizei length,
                                 const GLchar *message,
                                 const void *userParam);
-    
+
     template <class... Args> void mbx_trapExtension(const char *name, Args... args);
-    
+
     void mbx_trapExtension(const char *);
     void mbx_trapExtension(const char *, GLint, const char *);
     void mbx_trapExtension(const char *, GLsizei, GLuint *);
@@ -59,16 +58,16 @@ namespace gl {
     void mbx_trapExtension(const char *, GLuint, GLuint, GLuint, GLuint, GLint, const char *, const void*);
     void mbx_trapExtension(const char *name, GLuint array);
 #endif
-    
+
 struct Error : ::std::runtime_error {
-    inline Error(GLenum err, const std::string &msg) : ::std::runtime_error(msg), code(err) {};
+    Error(GLenum err, const std::string &msg) : ::std::runtime_error(msg), code(err) {};
     const GLenum code;
 };
 
 void checkError(const char *cmd, const char *file, int line);
 
 #if defined(DEBUG)
-#define MBGL_CHECK_ERROR(cmd) ([&]() { struct __MBGL_C_E { inline ~__MBGL_C_E() { ::mbgl::gl::checkError(#cmd, __FILE__, __LINE__); } } __MBGL_C_E; return cmd; }())
+#define MBGL_CHECK_ERROR(cmd) ([&]() { struct __MBGL_C_E { ~__MBGL_C_E() { ::mbgl::gl::checkError(#cmd, __FILE__, __LINE__); } } __MBGL_C_E; return cmd; }())
 #else
 #define MBGL_CHECK_ERROR(cmd) (cmd)
 #endif
@@ -110,31 +109,14 @@ public:
 using glProc = void (*)();
 void InitializeExtensions(glProc (*getProcAddress)(const char *));
 
-static gl::ExtensionFunction<
-    void (GLuint array)>
-    BindVertexArray({
-        {"GL_ARB_vertex_array_object", "glBindVertexArray"},
-        {"GL_OES_vertex_array_object", "glBindVertexArrayOES"},
-        {"GL_APPLE_vertex_array_object", "glBindVertexArrayAPPLE"}
-    });
+extern ExtensionFunction<void (GLuint array)>
+    BindVertexArray;
 
-static gl::ExtensionFunction<
-    void (GLsizei n,
-          const GLuint* arrays)>
-    DeleteVertexArrays({
-        {"GL_ARB_vertex_array_object", "glDeleteVertexArrays"},
-        {"GL_OES_vertex_array_object", "glDeleteVertexArraysOES"},
-        {"GL_APPLE_vertex_array_object", "glDeleteVertexArraysAPPLE"}
-    });
+extern ExtensionFunction<void (GLsizei n, const GLuint* arrays)>
+    DeleteVertexArrays;
 
-static gl::ExtensionFunction<
-    void (GLsizei n,
-          GLuint* arrays)>
-    GenVertexArrays({
-        {"GL_ARB_vertex_array_object", "glGenVertexArrays"},
-        {"GL_OES_vertex_array_object", "glGenVertexArraysOES"},
-        {"GL_APPLE_vertex_array_object", "glGenVertexArraysAPPLE"}
-    });
+extern ExtensionFunction<void (GLsizei n, GLuint* arrays)>
+    GenVertexArrays;
 
 } // namespace gl
 } // namespace mbgl
@@ -180,6 +162,4 @@ void mbx_glTexImage2D(GLenum target,
                       GLenum format,
                       GLenum type,
                       const GLvoid * data);
-#endif
-
 #endif

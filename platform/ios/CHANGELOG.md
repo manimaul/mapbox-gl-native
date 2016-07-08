@@ -1,6 +1,81 @@
 # Changelog for Mapbox iOS SDK
 
-Mapbox welcomes participation and contributions from everyone.  If you’d like to do so please see [CONTRIBUTING.md](https://github.com/mapbox/mapbox-gl-native/blob/master/CONTRIBUTING.md) first to get started.
+Mapbox welcomes participation and contributions from everyone.  Please read [CONTRIBUTING.md](../../CONTRIBUTING.md) to get started.
+
+## master
+
+## 3.3.0
+
+### Styles and data
+
+- Added methods to MGLMapView for obtaining the underlying map data rendered by the current style, along with additional classes to represent complex geometry in that data. ([#5110](https://github.com/mapbox/mapbox-gl-native/pull/5110))
+- Improved performance viewing regions with large landcover polygons when viewing a style that uses the Mapbox Streets source. ([#2444](https://github.com/mapbox/mapbox-gl-native/pull/2444))
+- Fixed a memory leak when using raster resources. ([#5141](https://github.com/mapbox/mapbox-gl-native/pull/5141))
+- Rendering now occurs on the main thread, fixing a hang when calling `-[MGLMapView styleURL]` before the map view has fully loaded or while the application is in the background. ([#2909](https://github.com/mapbox/mapbox-gl-native/pull/2909))
+- Added a `-reloadStyle:` action to MGLMapView to force a reload of the current style. ([#4728](https://github.com/mapbox/mapbox-gl-native/pull/4728))
+- A more specific user agent string is now sent with style and tile requests. ([#4012](https://github.com/mapbox/mapbox-gl-native/pull/4012))
+- Added a new option to `MGLMapDebugMaskOptions`, `MGLMapDebugOverdrawVisualizationMask`, that highlights overlapping drawing operations instead of the usual rendered output. ([#5403](https://github.com/mapbox/mapbox-gl-native/pull/5403))
+
+### Interactivity
+
+- The compass, user dot, and visible annotations are now accessible to VoiceOver users. ([#1496](https://github.com/mapbox/mapbox-gl-native/pull/1496))
+- Added a method to MGLMapView, `-anchorPointForGesture:`, that you can override to anchor gestures at a point other than the user location. ([#5302](https://github.com/mapbox/mapbox-gl-native/pull/5302))
+- Added a property to MGLMapView, `decelerationRate`, that allows you to speed up or slow down the drift animation at the end of a user gesture. You can also use this property to disable the drift animation entirely. ([#5504](https://github.com/mapbox/mapbox-gl-native/pull/5504))
+- Improved responsiveness when zooming in then immediately panning around. ([#4595](https://github.com/mapbox/mapbox-gl-native/pull/4595))
+- Added a new method, `-[MGLMapView cameraThatFitsCoordinateBounds:]`, to get a camera that you can pass into `-setCamera:` that fits the given coordinate bounds. ([#4790](https://github.com/mapbox/mapbox-gl-native/pull/4790))
+
+### Annotations
+
+- MGLPointAnnotation and custom MGLAnnotation implementations (but not MGLMultiPoint) can be backed by an MGLAnnotationView instead of an MGLAnnotationImage. MGLAnnotationView is a subclass of UIView, so you can use Core Animation and other familiar technologies with it. To associate an MGLAnnotation with an MGLAnnotationView, implement `-mapView:viewForAnnotation:` in your MGLMapViewDelegate class. ([#4801](https://github.com/mapbox/mapbox-gl-native/pull/4801))
+- An MGLAnnotation can be relocated by changing its `coordinate` property in a KVO-compliant way. An MGLMultiPoint cannot be relocated. ([#3835](https://github.com/mapbox/mapbox-gl-native/pull/3835))
+- Setting the `image` property of an MGLAnnotationImage to `nil` resets it to the default red pin image and reclaims resources that can be used to customize additional annotations. ([#3835](https://github.com/mapbox/mapbox-gl-native/pull/3835))
+- An MGLPolygon can now have interior polygons, representing holes knocked out of the overall shape. ([#5110](https://github.com/mapbox/mapbox-gl-native/pull/5110))
+
+### User location
+
+- The user dot now moves smoothly between user location updates while user location tracking is disabled. ([#1582](https://github.com/mapbox/mapbox-gl-native/pull/1582))
+- Fixed an issue preventing KVO change notifications from being generated on MGLMapView’s `userTrackingMode` key path when `-setUserTrackingMode:animated:` is called. ([#4724](https://github.com/mapbox/mapbox-gl-native/pull/4724))
+- Fixed a crash setting MGLMapView’s `userLocationVerticalAlignment` property before a user location update has occurred. ([#5274](https://github.com/mapbox/mapbox-gl-native/issues/5274))
+- Mapbox Telemetry is automatically disabled while the host application is running in the iOS Simulator. ([#4726](https://github.com/mapbox/mapbox-gl-native/pull/4726))
+
+### Offline maps
+
+- `MGLOfflinePackProgress` now indicates how many tiles have been downloaded and how much space they take up. ([#4874](https://github.com/mapbox/mapbox-gl-native/pull/4874))
+- Fixed an issue where the tile cache could be included in iCloud backups on the first launch. ([#5124](https://github.com/mapbox/mapbox-gl-native/pull/5124), [#5601](https://github.com/mapbox/mapbox-gl-native/pull/5601))
+- Suppressed “Unable to make space for entry” console spew. ([#4708](https://github.com/mapbox/mapbox-gl-native/pull/4708))
+- Deprecated `-[MGLMapView emptyMemoryCache]`. ([#4725](https://github.com/mapbox/mapbox-gl-native/pull/4725))
+
+### Packaging
+
+- Improved the design of the generated API documentation. ([#5306](https://github.com/mapbox/mapbox-gl-native/pull/5306))
+- Applications linking against the SDK static framework no longer need to add `-ObjC` to the Other Linker Flags (`OTHER_LDFLAGS`) build setting. If you previously added this flag solely for this SDK, removing the flag may potentially reduce the overall size of your application. ([#4641](https://github.com/mapbox/mapbox-gl-native/pull/4641))
+- Removed the `armv7s` slice from the SDK to reduce its size. iPhone 5 and iPhone 5c automatically use the `armv7` slice instead. ([#4641](https://github.com/mapbox/mapbox-gl-native/pull/4641))
+- The SDK is now localizable. No localizations are currently provided, other than English, but if you need a particular localization, you can install the SDK manually and drop a .lproj folder into the framework. ([#4783](https://github.com/mapbox/mapbox-gl-native/pull/4783))
+- Removed unused SVG files from the SDK’s resource bundle. ([#4641](https://github.com/mapbox/mapbox-gl-native/pull/4641))
+
+### Other changes
+
+- Added category methods on NSValue for converting to and from the structure types defined in MGLGeometry.h. ([#4802](https://github.com/mapbox/mapbox-gl-native/pull/4802))
+- Added NSFormatter subclasses for converting geographic coordinates and directions into display strings. ([#4802](https://github.com/mapbox/mapbox-gl-native/pull/4802))
+- Added `MGLCoordinateInCoordinateBounds()`, a function that tests whether or not a coordinate is in a given bounds. ([#5053](https://github.com/mapbox/mapbox-gl-native/pull/5053))
+
+## 3.2.3
+
+- Fixed an issue preventing `-[MGLMapViewDelegate mapViewDidFinishLoadingMap:]` from being called when returning to the view controller containing the map view from another view controller. ([#5164](https://github.com/mapbox/mapbox-gl-native/pull/5164))
+- Declarations in the API documentation are shown in both Objective-C and Swift. ([realm/jazzy#530](https://github.com/realm/jazzy/pull/530))
+
+## 3.2.2
+
+- Existing MGLStyle class methods that return default style URLs have been deprecated in favor of new methods that require an explicit style version parameter. The deprecated, unversioned methods continue to return version 8 of the respective styles and will not be updated as new versions of the styles are released. ([#4759](https://github.com/mapbox/mapbox-gl-native/pull/4759))
+- Deprecated `+[MGLStyle emeraldStyleURL]` with no replacement method. To use the Emerald style going forward, we recommend that you use the underlying URL. ([#4759](https://github.com/mapbox/mapbox-gl-native/pull/4759))
+- Added `+[MGLStyle outdoorsStyleURLWithVersion:]` for the new Outdoors style. ([#4759](https://github.com/mapbox/mapbox-gl-native/pull/4759))
+- The Hybrid style is now called Satellite Streets. ([#4759](https://github.com/mapbox/mapbox-gl-native/pull/4759))
+
+## 3.2.1
+
+- Fixed a hang that could occur if the host application attempts to set user defaults on a background queue. ([#4745](https://github.com/mapbox/mapbox-gl-native/pull/4745))
+- User location heading updates now resume properly when an app becomes active again. ([#4674](https://github.com/mapbox/mapbox-gl-native/pull/4674))
+- Fixed an issue causing hyperlinks in the documentation to be displayed as raw Markdown syntax when viewed in Xcode’s Quick Help popover or sidebar. ([#4760](https://github.com/mapbox/mapbox-gl-native/pull/4760))
 
 ## 3.2.0
 

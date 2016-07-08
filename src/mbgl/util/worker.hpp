@@ -1,5 +1,4 @@
-#ifndef MBGL_UTIL_WORKER
-#define MBGL_UTIL_WORKER
+#pragma once
 
 #include <mbgl/util/noncopyable.hpp>
 #include <mbgl/util/thread.hpp>
@@ -10,11 +9,12 @@
 
 namespace mbgl {
 
-class WorkRequest;
+class AsyncRequest;
 class RasterBucket;
 class GeometryTileLoader;
+class CollisionTile;
 
-using RasterTileParseResult = mapbox::util::variant<
+using RasterTileParseResult = variant<
     std::unique_ptr<Bucket>, // success
     std::exception_ptr>;     // error
 
@@ -33,15 +33,15 @@ public:
     // bind references to itself, and if and when those lambdas execute, the references
     // will still be valid.
 
-    using Request = std::unique_ptr<WorkRequest>;
+    using Request = std::unique_ptr<AsyncRequest>;
 
     Request parseRasterTile(std::unique_ptr<RasterBucket> bucket,
                             std::shared_ptr<const std::string> data,
                             std::function<void(RasterTileParseResult)> callback);
 
     Request parseGeometryTile(TileWorker&,
-                              std::vector<std::unique_ptr<StyleLayer>>,
-                              std::unique_ptr<GeometryTile>,
+                              std::vector<std::unique_ptr<style::Layer>>,
+                              std::unique_ptr<GeometryTileData>,
                               PlacementConfig,
                               std::function<void(TileParseResult)> callback);
 
@@ -52,7 +52,7 @@ public:
     Request redoPlacement(TileWorker&,
                           const std::unordered_map<std::string, std::unique_ptr<Bucket>>&,
                           PlacementConfig config,
-                          std::function<void()> callback);
+                          std::function<void(std::unique_ptr<CollisionTile>)> callback);
 
 private:
     class Impl;
@@ -60,5 +60,3 @@ private:
     std::size_t current = 0;
 };
 } // namespace mbgl
-
-#endif

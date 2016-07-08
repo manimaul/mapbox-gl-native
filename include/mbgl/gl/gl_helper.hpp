@@ -1,5 +1,4 @@
-#ifndef MBGL_GL_GL_HELPER
-#define MBGL_GL_GL_HELPER
+#pragma once
 
 namespace mbgl {
 namespace gl {
@@ -7,9 +6,9 @@ namespace gl {
 template <typename T>
 class Preserve {
 public:
-    inline Preserve() : data(T::Get()) {
+    Preserve() : data(T::Get()) {
     }
-    inline ~Preserve() {
+    ~Preserve() {
         T::Set(data);
     }
 
@@ -19,5 +18,3 @@ private:
 
 } // namespace gl
 } // namespace mbgl
-
-#endif

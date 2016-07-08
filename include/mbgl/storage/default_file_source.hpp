@@ -1,5 +1,4 @@
-#ifndef MBGL_STORAGE_DEFAULT_FILE_SOURCE
-#define MBGL_STORAGE_DEFAULT_FILE_SOURCE
+#pragma once
 
 #include <mbgl/storage/file_source.hpp>
 #include <mbgl/storage/offline.hpp>
@@ -27,10 +26,14 @@ public:
                       uint64_t maximumCacheSize = util::DEFAULT_MAX_CACHE_SIZE);
     ~DefaultFileSource() override;
 
+    bool supportsOptionalRequests() const override {
+        return true;
+    }
+
     void setAccessToken(const std::string&);
     std::string getAccessToken() const;
 
-    std::unique_ptr<FileRequest> request(const Resource&, Callback) override;
+    std::unique_ptr<AsyncRequest> request(const Resource&, Callback) override;
 
     /*
      * Retrieve all regions in the offline database.
@@ -111,5 +114,3 @@ private:
 };
 
 } // namespace mbgl
-
-#endif

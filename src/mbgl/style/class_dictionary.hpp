@@ -1,11 +1,11 @@
-#ifndef MBGL_STYLE_CLASS_DICTIONARY
-#define MBGL_STYLE_CLASS_DICTIONARY
+#pragma once
 
 #include <cstdint>
 #include <string>
 #include <unordered_map>
 
 namespace mbgl {
+namespace style {
 
 enum class ClassID : uint32_t {
     Fallback = 0, // These values are from the fallback properties
@@ -32,6 +32,5 @@ private:
     uint32_t offset = 0;
 };
 
+} // namespace style
 } // namespace mbgl
-
-#endif

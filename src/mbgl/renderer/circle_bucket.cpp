@@ -2,33 +2,39 @@
 #include <mbgl/renderer/painter.hpp>
 
 #include <mbgl/shader/circle_shader.hpp>
-#include <mbgl/layer/circle_layer.hpp>
+#include <mbgl/style/layers/circle_layer.hpp>
 #include <mbgl/util/constants.hpp>
 
-using namespace mbgl;
+namespace mbgl {
 
-CircleBucket::CircleBucket() {
+using namespace style;
+
+CircleBucket::CircleBucket(MapMode mode_) : mode(mode_) {
 }
 
 CircleBucket::~CircleBucket() {
     // Do not remove. header file only contains forward definitions to unique pointers.
 }
 
-void CircleBucket::upload(gl::GLObjectStore& glObjectStore) {
-    vertexBuffer_.upload(glObjectStore);
-    elementsBuffer_.upload(glObjectStore);
+void CircleBucket::upload(gl::ObjectStore& store, gl::Config&) {
+    vertexBuffer_.upload(store);
+    elementsBuffer_.upload(store);
     uploaded = true;
 }
 
 void CircleBucket::render(Painter& painter,
-                        const StyleLayer& layer,
-                        const TileID& id,
+                        const Layer& layer,
+                        const UnwrappedTileID& tileID,
                         const mat4& matrix) {
-    painter.renderCircle(*this, *layer.as<CircleLayer>(), id, matrix);
+    painter.renderCircle(*this, *layer.as<CircleLayer>(), tileID, matrix);
 }
 
 bool CircleBucket::hasData() const {
     return !triangleGroups_.empty();
+}
+
+bool CircleBucket::needsClipping() const {
+    return true;
 }
 
 void CircleBucket::addGeometry(const GeometryCollection& geometryCollection) {
@@ -38,7 +44,10 @@ void CircleBucket::addGeometry(const GeometryCollection& geometryCollection) {
             auto y = geometry.y;
 
             // Do not include points that are outside the tile boundaries.
-            if (x < 0 || x >= util::EXTENT || y < 0 || y >= util::EXTENT) continue;
+            // Include all points in Still mode. You need to include points from
+            // neighbouring tiles so that they are not clipped at tile boundaries.
+            if ((mode != MapMode::Still) &&
+                (x < 0 || x >= util::EXTENT || y < 0 || y >= util::EXTENT)) continue;
 
             // this geometry will be of the Point type, and we'll derive
             // two triangles from it.
@@ -73,7 +82,7 @@ void CircleBucket::addGeometry(const GeometryCollection& geometryCollection) {
     }
 }
 
-void CircleBucket::drawCircles(CircleShader& shader, gl::GLObjectStore& glObjectStore) {
+void CircleBucket::drawCircles(CircleShader& shader, gl::ObjectStore& store) {
     GLbyte* vertexIndex = BUFFER_OFFSET(0);
     GLbyte* elementsIndex = BUFFER_OFFSET(0);
 
@@ -82,7 +91,7 @@ void CircleBucket::drawCircles(CircleShader& shader, gl::GLObjectStore& glObject
 
         if (!group->elements_length) continue;
 
-        group->array[0].bind(shader, vertexBuffer_, elementsBuffer_, vertexIndex, glObjectStore);
+        group->array[0].bind(shader, vertexBuffer_, elementsBuffer_, vertexIndex, store);
 
         MBGL_CHECK_ERROR(glDrawElements(GL_TRIANGLES, group->elements_length * 3, GL_UNSIGNED_SHORT, elementsIndex));
 
@@ -90,3 +99,5 @@ void CircleBucket::drawCircles(CircleShader& shader, gl::GLObjectStore& glObject
         elementsIndex += group->elements_length * elementsBuffer_.itemSize;
     }
 }
+
+} // namespace mbgl

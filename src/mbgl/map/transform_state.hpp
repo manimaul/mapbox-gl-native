@@ -1,10 +1,9 @@
-#ifndef MBGL_MAP_TRANSFORM_STATE
-#define MBGL_MAP_TRANSFORM_STATE
+#pragma once
 
 #include <mbgl/map/mode.hpp>
 #include <mbgl/util/geo.hpp>
+#include <mbgl/util/geometry.hpp>
 #include <mbgl/util/constants.hpp>
-#include <mbgl/util/vec.hpp>
 #include <mbgl/util/mat4.hpp>
 
 #include <cstdint>
@@ -13,16 +12,16 @@
 
 namespace mbgl {
 
-class TileID;
+class UnwrappedTileID;
 
 class TransformState {
     friend class Transform;
 
 public:
-    TransformState(ConstrainMode = ConstrainMode::HeightOnly);
+    TransformState(ConstrainMode = ConstrainMode::HeightOnly, ViewportMode = ViewportMode::Default);
 
     // Matrix
-    void matrixFor(mat4& matrix, const TileID& id, const int8_t z) const;
+    void matrixFor(mat4&, const UnwrappedTileID&) const;
     void getProjMatrix(mat4& matrix) const;
 
     // Dimensions
@@ -32,9 +31,12 @@ public:
     // North Orientation
     NorthOrientation getNorthOrientation() const;
     double getNorthOrientationAngle() const;
-    
+
     // Constrain mode
     ConstrainMode getConstrainMode() const;
+
+    // Viewport mode
+    ViewportMode getViewportMode() const;
 
     // Position
     LatLng getLatLng(LatLng::WrapMode = LatLng::Unwrapped) const;
@@ -67,10 +69,11 @@ public:
     ScreenCoordinate latLngToScreenCoordinate(const LatLng&) const;
     LatLng screenCoordinateToLatLng(const ScreenCoordinate&, LatLng::WrapMode = LatLng::Unwrapped) const;
 
-    double xLng(double x, double worldSize) const;
-    double yLat(double y, double worldSize) const;
-    double lngX(double lon) const;
-    double latY(double lat) const;
+    Point<double> project(const LatLng&) const;
+    LatLng unproject(const Point<double>&, double worldSize, LatLng::WrapMode = LatLng::Unwrapped) const;
+
+    double zoomScale(double zoom) const;
+    double scaleZoom(double scale) const;
 
 private:
     bool rotatedNorth() const;
@@ -85,13 +88,11 @@ private:
     // logical dimensions
     uint16_t width = 0, height = 0;
 
-    double zoomScale(double zoom) const;
-    double scaleZoom(double scale) const;
     double worldSize() const;
 
     mat4 coordinatePointMatrix(double z) const;
     mat4 getPixelMatrix() const;
-    
+
     /** Recenter the map so that the given coordinate is located at the given
         point on screen. */
     void moveLatLng(const LatLng&, const ScreenCoordinate&);
@@ -100,6 +101,7 @@ private:
 
 private:
     ConstrainMode constrainMode;
+    ViewportMode viewportMode;
 
     // animation state
     bool rotating = false;
@@ -120,5 +122,3 @@ private:
 };
 
 } // namespace mbgl
-
-#endif // MBGL_MAP_TRANSFORM_STATE
