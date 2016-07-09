@@ -119,7 +119,7 @@ public class MapboxEventManager {
         this.context = context.getApplicationContext();
         this.accessToken = accessToken;
 
-        validateTelemetryServiceConfigured();
+        //validateTelemetryServiceConfigured();
 
         // Setup Message Digest
         try {
@@ -135,7 +135,7 @@ public class MapboxEventManager {
 
         // Determine if Telemetry Should Be Enabled
         Log.i(TAG, "Right before Telemetry set enabled in initialized()");
-        setTelemetryEnabled(prefs.getBoolean(MapboxConstants.MAPBOX_SHARED_PREFERENCE_KEY_TELEMETRY_ENABLED, true));
+        //setTelemetryEnabled(prefs.getBoolean(MapboxConstants.MAPBOX_SHARED_PREFERENCE_KEY_TELEMETRY_ENABLED, true));
 
         // Load / Create Vendor Id
         if (prefs.contains(MapboxConstants.MAPBOX_SHARED_PREFERENCE_KEY_VENDORID)) {
@@ -233,69 +233,69 @@ public class MapboxEventManager {
      * @param telemetryEnabled True to start telemetry, false to stop it
      */
     public void setTelemetryEnabled(boolean telemetryEnabled) {
-        Log.i(TAG, "setTelemetryEnabled(); this.telemetryEnabled = " + this.telemetryEnabled + "; telemetryEnabled = " + telemetryEnabled);
-        if (this.telemetryEnabled == telemetryEnabled) {
-            Log.d(TAG, "No need to start / stop telemetry as it's already in that state.");
-            return;
-        }
-
-        if (telemetryEnabled) {
-            Log.d(TAG, "Starting Telemetry Up!");
-            // Start It Up
-            context.startService(new Intent(context, TelemetryService.class));
-
-            // Make sure Ambient Mode is started at a minimum
-            if (LocationServices.getLocationServices(context).areLocationPermissionsGranted()) {
-                Log.i(TAG, "Permissions are good, see if GPS is enabled and if not then setup Ambient.");
-                if (LocationServices.getLocationServices(context).isGPSEnabled()) {
-                    LocationServices.getLocationServices(context).toggleGPS(false);
-                }
-            } else {
-                // Start timer that checks for Permissions
-                Log.i(TAG, "Permissions are not good.  Need to do some looping to check on stuff.");
-
-                final Handler permsHandler = new Handler();
-                Runnable runnable = new Runnable() {
-                    @Override
-                    public void run() {
-                        if (LocationServices.getLocationServices(context).areLocationPermissionsGranted()) {
-                            Log.i(TAG, "Permissions finally granted, so starting Ambient if GPS isn't already enabled");
-                            // Start Ambient
-                            if (LocationServices.getLocationServices(context).isGPSEnabled()) {
-                                LocationServices.getLocationServices(context).toggleGPS(false);
-                            }
-                        } else {
-                            // Restart Handler
-                            Log.i(TAG, "Permissions not granted yet... let's try again in 30 seconds");
-                            permsHandler.postDelayed(this, 1000 * 30);
-                        }
-                    }
-                };
-                permsHandler.postDelayed(runnable, 1000 * 10);
-            }
-
-            // Manage Timer Flush
-            timer = new Timer();
-            timer.schedule(new FlushEventsTimerTask(), flushDelayInitialInMillis, flushDelayInMillis);
-        } else {
-            Log.d(TAG, "Shutting Telemetry Down");
-            // Shut It Down
-            events.removeAllElements();
-            context.stopService(new Intent(context, TelemetryService.class));
-
-            if (timer != null) {
-                timer.cancel();
-                timer = null;
-            }
-        }
-
-        // Persist
-        this.telemetryEnabled = telemetryEnabled;
-        SharedPreferences prefs = context.getSharedPreferences(MapboxConstants.MAPBOX_SHARED_PREFERENCES_FILE, Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = prefs.edit();
-        editor.putBoolean(MapboxConstants.MAPBOX_SHARED_PREFERENCE_KEY_TELEMETRY_ENABLED, telemetryEnabled);
-        editor.apply();
-        editor.commit();
+//        Log.i(TAG, "setTelemetryEnabled(); this.telemetryEnabled = " + this.telemetryEnabled + "; telemetryEnabled = " + telemetryEnabled);
+//        if (this.telemetryEnabled == telemetryEnabled) {
+//            Log.d(TAG, "No need to start / stop telemetry as it's already in that state.");
+//            return;
+//        }
+//
+//        if (telemetryEnabled) {
+//            Log.d(TAG, "Starting Telemetry Up!");
+//            // Start It Up
+//            context.startService(new Intent(context, TelemetryService.class));
+//
+//            // Make sure Ambient Mode is started at a minimum
+//            if (LocationServices.getLocationServices(context).areLocationPermissionsGranted()) {
+//                Log.i(TAG, "Permissions are good, see if GPS is enabled and if not then setup Ambient.");
+//                if (LocationServices.getLocationServices(context).isGPSEnabled()) {
+//                    LocationServices.getLocationServices(context).toggleGPS(false);
+//                }
+//            } else {
+//                // Start timer that checks for Permissions
+//                Log.i(TAG, "Permissions are not good.  Need to do some looping to check on stuff.");
+//
+//                final Handler permsHandler = new Handler();
+//                Runnable runnable = new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        if (LocationServices.getLocationServices(context).areLocationPermissionsGranted()) {
+//                            Log.i(TAG, "Permissions finally granted, so starting Ambient if GPS isn't already enabled");
+//                            // Start Ambient
+//                            if (LocationServices.getLocationServices(context).isGPSEnabled()) {
+//                                LocationServices.getLocationServices(context).toggleGPS(false);
+//                            }
+//                        } else {
+//                            // Restart Handler
+//                            Log.i(TAG, "Permissions not granted yet... let's try again in 30 seconds");
+//                            permsHandler.postDelayed(this, 1000 * 30);
+//                        }
+//                    }
+//                };
+//                permsHandler.postDelayed(runnable, 1000 * 10);
+//            }
+//
+//            // Manage Timer Flush
+//            timer = new Timer();
+//            timer.schedule(new FlushEventsTimerTask(), flushDelayInitialInMillis, flushDelayInMillis);
+//        } else {
+//            Log.d(TAG, "Shutting Telemetry Down");
+//            // Shut It Down
+//            events.removeAllElements();
+//            context.stopService(new Intent(context, TelemetryService.class));
+//
+//            if (timer != null) {
+//                timer.cancel();
+//                timer = null;
+//            }
+//        }
+//
+//        // Persist
+//        this.telemetryEnabled = telemetryEnabled;
+//        SharedPreferences prefs = context.getSharedPreferences(MapboxConstants.MAPBOX_SHARED_PREFERENCES_FILE, Context.MODE_PRIVATE);
+//        SharedPreferences.Editor editor = prefs.edit();
+//        editor.putBoolean(MapboxConstants.MAPBOX_SHARED_PREFERENCE_KEY_TELEMETRY_ENABLED, telemetryEnabled);
+//        editor.apply();
+//        editor.commit();
     }
 
     /**

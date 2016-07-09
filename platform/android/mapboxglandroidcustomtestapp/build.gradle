@@ -1,5 +1,24 @@
 apply plugin: 'com.android.application'
 
+task accessToken {
+    def tokenFile = new File("MapboxGLAndroidCustomTestApp/src/main/res/values/developer-config.xml")
+    if (!tokenFile.exists()) {
+        String tokenFileContents = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<resources>\n" +
+                "    <string name=\"mapbox_access_token\">" + "$System.env.MAPBOX_ACCESS_TOKEN" + "</string>\n" +
+                "</resources>"
+
+        if (tokenFileContents == null) {
+            throw new InvalidUserDataException("You must set the MAPBOX_ACCESS_TOKEN environment variable.")
+        }
+        tokenFile.write(tokenFileContents)
+    }
+}
+
+gradle.projectsEvaluated {
+    preBuild.dependsOn('accessToken')
+}
+
 android {
     compileSdkVersion 24
     buildToolsVersion "24.0.0"
@@ -20,6 +39,10 @@ android {
 }
 
 dependencies {
+    compile(project(':MapboxGLAndroidSDK')) {
+        transitive = true
+    }
+
     compile fileTree(dir: 'libs', include: ['*.jar'])
     testCompile 'junit:junit:4.12'
     compile 'com.android.support:appcompat-v7:24.0.0'
