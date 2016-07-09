@@ -1,2 +1,2 @@
-include ':MapboxGLAndroidSDK'
+include ':MapboxGLAndroidSDK', ':MapboxGLAndroidCustomTestApp'
 include ':MapboxGLAndroidSDKTestApp'
