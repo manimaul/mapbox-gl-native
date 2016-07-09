@@ -961,11 +961,13 @@ public class MapView extends FrameLayout {
         return mNativeMapView.latLngForPixel(point);
     }
 
-    PointF toScreenLocation(@NonNull LatLng location) {
+    PointF toScreenLocation(@NonNull LatLng location, @Nullable PointF reUse) {
+        reUse = reUse == null ? new PointF() : reUse;
         if (mDestroyed || location == null) {
-            return new PointF();
+            reUse.set(0f, 0f);
+            return reUse;
         }
-        PointF pointF = mNativeMapView.pixelForLatLng(location);
+        PointF pointF = mNativeMapView.pixelForLatLng(location, reUse);
         pointF.set(pointF.x * mScreenDensity, pointF.y * mScreenDensity);
         return pointF;
     }

@@ -86,17 +86,7 @@ public class Projection {
      * @return A Point representing the screen location in screen pixels.
      */
     public PointF toScreenLocation(LatLng location) {
-        return mMapView.toScreenLocation(location);
-    }
-
-    /**
-     * Calculates a zoom level based on minimum scale and current scale from MapView
-     *
-     * @param minScale The minimum scale to calculate the zoom level.
-     * @return zoom level that fits the MapView.
-     */
-    public double calculateZoom(float minScale) {
-        return Math.log(mMapView.getScale() * minScale) / Math.log(2);
+        return mMapView.toScreenLocation(location, new PointF());
     }
 
     /**
@@ -110,5 +100,15 @@ public class Projection {
     @NonNull
     public PointF toScreenLocation(@NonNull LatLng location, @Nullable PointF reuse) {
         return mMapView.toScreenLocation(location, reuse);
+    }
+
+    /**
+     * Calculates a zoom level based on minimum scale and current scale from MapView
+     *
+     * @param minScale The minimum scale to calculate the zoom level.
+     * @return zoom level that fits the MapView.
+     */
+    public double calculateZoom(float minScale) {
+        return Math.log(mMapView.getScale() * minScale) / Math.log(2);
     }
 }

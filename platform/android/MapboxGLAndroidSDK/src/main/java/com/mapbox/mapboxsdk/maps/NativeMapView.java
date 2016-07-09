@@ -2,6 +2,7 @@ package com.mapbox.mapboxsdk.maps;
 
 import android.app.ActivityManager;
 import android.content.Context;
+import android.graphics.Point;
 import android.graphics.PointF;
 import android.graphics.RectF;
 import android.os.Build;
@@ -434,12 +435,8 @@ final class NativeMapView {
         return nativeLatLngForProjectedMeters(mNativeMapViewPtr, projectedMeters.getNorthing(), projectedMeters.getEasting());
     }
 
-    public void pixelForLatLng(LatLng latLng, PointF point) {
-        nativePixelForLatLng(mNativeMapViewPtr, latLng, point);
-    }
-
-    public PointF pixelForLatLng(LatLng latLng) {
-        return nativePixelForLatLng(mNativeMapViewPtr, latLng.getLatitude(), latLng.getLongitude());
+    public PointF pixelForLatLng(LatLng latLng, PointF point) {
+        return nativePixelForLatLng(mNativeMapViewPtr, latLng.getLatitude(), latLng.getLongitude(), point);
     }
 
     public LatLng latLngForPixel(PointF pixel) {
@@ -636,9 +633,7 @@ final class NativeMapView {
 
     private native LatLng nativeLatLngForProjectedMeters(long nativeMapViewPtr, double northing, double easting);
 
-    private native void nativePixelForLatLng(long nativeMapViewPtr, LatLng latLng, PointF point);
-
-    private native PointF nativePixelForLatLng(long nativeMapViewPtr, double lat, double lon);
+    private native PointF nativePixelForLatLng(long nativeMapViewPtr, double lat, double lon, PointF point);
 
     private native LatLng nativeLatLngForPixel(long nativeMapViewPtr, PointF pixel);
 
