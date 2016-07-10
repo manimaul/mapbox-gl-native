@@ -8,7 +8,6 @@ import android.view.MotionEvent;
 import android.view.View;
 
 import com.mapbox.mapboxsdk.geometry.LatLng;
-import com.mapbox.mapboxsdk.geometry.LatLngBounds;
 import com.mapbox.mapboxsdk.geometry.VisibleRegion;
 
 import java.util.ArrayList;
@@ -22,8 +21,8 @@ final class MapOverlayDispatch extends View {
     //region FIELDS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     private List<Overlay> mOverlayList = new ArrayList<>();
-    private LatLng mWgsCenter = new LatLng();
-    private VisibleRegion mVisibleRegion = new VisibleRegion(new LatLng(), new LatLng(), new LatLng(), new LatLng(), new LatLngBounds(0,0,0,0));
+    private LatLng mWgsCenter = null;
+    private VisibleRegion mVisibleRegion = null;
     private final Rect mMapPixelBounds = new Rect();
     private float mBearing = 0;
     private float mZoom = 0;
@@ -76,7 +75,7 @@ final class MapOverlayDispatch extends View {
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         mAttached = false;
-        onOverlayDettached();
+        onOverlayDetached();
     }
 
     //endregion
@@ -89,7 +88,7 @@ final class MapOverlayDispatch extends View {
         }
     }
 
-    private void onOverlayDettached() {
+    private void onOverlayDetached() {
         for (int i = 0; i < mOverlayList.size(); i++) {
             mOverlayList.get(i).onOverlayDetached();
         }
@@ -135,7 +134,7 @@ final class MapOverlayDispatch extends View {
     }
 
     void update(final VisibleRegion visibleRegion, final LatLng wgsCenter, float bearing, float zoom) {
-        mWgsCenter.set(wgsCenter);
+        mWgsCenter = wgsCenter;
         mVisibleRegion = visibleRegion;
         mBearing = bearing;
         mZoom = zoom;

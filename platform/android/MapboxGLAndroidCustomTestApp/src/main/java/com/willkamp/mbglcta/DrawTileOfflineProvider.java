@@ -17,11 +17,11 @@ public class DrawTileOfflineProvider implements OfflineProvider {
 
     public static final String TAG = DrawTileOfflineProvider.class.getSimpleName();
 
-    private final Paint blackPaint = new Paint();
+    private final Paint _blackPaint = new Paint();
 
     public DrawTileOfflineProvider() {
-        blackPaint.setColor(Color.BLACK);
-        blackPaint.setStrokeWidth(3F);
+        _blackPaint.setColor(Color.BLACK);
+        _blackPaint.setStrokeWidth(3F);
     }
 
     @Override
@@ -29,11 +29,11 @@ public class DrawTileOfflineProvider implements OfflineProvider {
         final Bitmap bitmap = Bitmap.createBitmap(256, 256, Bitmap.Config.ARGB_8888);
         final Canvas canvas = new Canvas(bitmap);
         canvas.drawColor(Color.YELLOW);
-        canvas.drawLine(  0,   0, 256,   0, blackPaint);
-        canvas.drawLine(256,   0, 256, 256, blackPaint);
-        canvas.drawLine(256, 256,   0, 256, blackPaint);
+        canvas.drawLine(  0,   0, 256,   0, _blackPaint);
+        canvas.drawLine(256,   0, 256, 256, _blackPaint);
+        canvas.drawLine(256, 256,   0, 256, _blackPaint);
         String tileStr = String.format(Locale.US, "%d, %d, %d", z, x, y);
-        canvas.drawText(tileStr, 0, 128, blackPaint);
+        canvas.drawText(tileStr, 0, 128, _blackPaint);
         ByteArrayOutputStream os = new ByteArrayOutputStream();
         bitmap.compress(Bitmap.CompressFormat.PNG, 0, os);
         bitmap.recycle();

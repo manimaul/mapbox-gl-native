@@ -1,13 +1,11 @@
 package com.willkamp.mbglcta;
 
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 
 import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
-import com.mapbox.mapboxsdk.provider.OfflineProvider;
-import com.mapbox.mapboxsdk.provider.OfflineProviderCallback;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -62,5 +60,6 @@ public class MainActivity extends AppCompatActivity {
 
     public void setMapBoxMap(MapboxMap mapBoxMap) {
         _mapBoxMap = mapBoxMap;
+        _mapBoxMap.addOverlay(new InfoOverlayView(this));
     }
 }

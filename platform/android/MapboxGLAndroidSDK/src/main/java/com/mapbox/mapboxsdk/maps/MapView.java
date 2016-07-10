@@ -1390,23 +1390,6 @@ public class MapView extends FrameLayout {
 
     private class SurfaceCallback implements SurfaceHolder.Callback {
 
-        private final LatLng mWgsCenter = new LatLng();
-        private final VisibleRegion mWgsVisibleRegion;
-        {
-            LatLngBounds.Builder builder = new LatLngBounds.Builder();
-
-            LatLng topLeft = new LatLng();
-            LatLng topRight = new LatLng();
-            LatLng bottomRight = new LatLng();
-            LatLng bottomLeft = new LatLng();
-
-            builder.include(topLeft)
-                    .include(topRight)
-                    .include(bottomRight)
-                    .include(bottomLeft);
-            mWgsVisibleRegion = new VisibleRegion(topLeft, topRight, bottomLeft, bottomRight, builder.build());
-        }
-
         private Surface mSurface;
 
         @Override
@@ -1686,6 +1669,8 @@ public class MapView extends FrameLayout {
             List<Marker> selectedMarkers = mMapboxMap.getSelectedMarkers();
 
             PointF tapPoint = new PointF(e.getX(), e.getY());
+            mMapOverlayDispatch.onOverlaySingleTapConfirmed(fromScreenLocation(tapPoint));
+
             float toleranceSides = 4 * mScreenDensity;
             float toleranceTopBottom = 10 * mScreenDensity;
             RectF tapRect = new RectF(tapPoint.x - mAverageIconWidth / 2 - toleranceSides,
@@ -1757,8 +1742,9 @@ public class MapView extends FrameLayout {
         @Override
         public void onLongPress(MotionEvent e) {
             MapboxMap.OnMapLongClickListener listener = mMapboxMap.getOnMapLongClickListener();
+            LatLng point = fromScreenLocation(new PointF(e.getX(), e.getY()));
+            mMapOverlayDispatch.onOverlayLongPress(point);
             if (listener != null && !mQuickZoom) {
-                LatLng point = fromScreenLocation(new PointF(e.getX(), e.getY()));
                 listener.onMapLongClick(point);
             }
         }
@@ -2434,10 +2420,33 @@ public class MapView extends FrameLayout {
         }
     }
 
+    private final LatLng mWgsCenter = new LatLng();
+    private final VisibleRegion mWgsVisibleRegion;
+    {
+        LatLngBounds.Builder builder = new LatLngBounds.Builder();
+
+        LatLng topLeft = new LatLng();
+        LatLng topRight = new LatLng();
+        LatLng bottomRight = new LatLng();
+        LatLng bottomLeft = new LatLng();
+
+        builder.include(topLeft)
+                .include(topRight)
+                .include(bottomRight)
+                .include(bottomLeft);
+        mWgsVisibleRegion = new VisibleRegion(topLeft, topRight, bottomLeft, bottomRight, builder.build());
+    }
+
     // Called when the map view transformation has changed
     // Called via JNI from NativeMapView
     // Forward to any listeners
     protected void onMapChanged(int mapChange) {
+
+        mNativeMapView.updateMapBounds(mWgsVisibleRegion, mWgsCenter);
+        if (mWgsCenter.isValid()) {
+            mMapOverlayDispatch.update(mWgsVisibleRegion, mWgsCenter, (float) getDirection(), (float) getZoom());
+        }
+
         if (mOnMapChangedListener != null) {
             OnMapChangedListener listener;
             final Iterator<OnMapChangedListener> iterator = mOnMapChangedListener.iterator();
