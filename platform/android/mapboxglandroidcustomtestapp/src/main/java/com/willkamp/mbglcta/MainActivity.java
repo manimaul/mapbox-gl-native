@@ -6,6 +6,8 @@ import android.os.Bundle;
 import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
+import com.mapbox.mapboxsdk.provider.OfflineProvider;
+import com.mapbox.mapboxsdk.provider.OfflineProviderCallback;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -17,7 +19,9 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         _mapView = (MapView) findViewById(R.id.mapView);
+        _mapView.setOfflineProvider(new DrawTileOfflineProvider());
         _mapView.onCreate(savedInstanceState);
+
         _mapView.getMapAsync(new OnMapReadyCallback() {
             @Override
             public void onMapReady(MapboxMap mapboxMap) {
