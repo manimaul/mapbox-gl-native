@@ -869,7 +869,7 @@ public class MapView extends FrameLayout {
         OfflineProviderManager offlineProviderManager = OfflineProviderManager.getInstance();
         String style = offlineProviderManager.registerProvider(provider);
         if (style != null) {
-            mStyleUrl = offlineProviderManager.getStyleDataUrl();
+            //mStyleUrl = offlineProviderManager.getStyleDataUrl();
             mNativeMapView.setStyleJson(style);
         }
     }
@@ -955,7 +955,8 @@ public class MapView extends FrameLayout {
         if (mDestroyed || location == null) {
             return new PointF();
         }
-        PointF pointF = mNativeMapView.pixelForLatLng(location);
+        PointF pointF = new PointF();
+        mNativeMapView.pixelForLatLng(location, pointF);
         pointF.set(pointF.x * mScreenDensity, pointF.y * mScreenDensity);
         return pointF;
     }
@@ -1732,12 +1733,10 @@ public class MapView extends FrameLayout {
 
         @Override
         public boolean onSingleTapConfirmed(MotionEvent e) {
-            // Open / Close InfoWindow
-            PointF tapPoint = new PointF(e.getX(), e.getY());
-            mMapOverlayDispatch.onOverlaySingleTapConfirmed(fromScreenLocation(tapPoint));
-
             List<Marker> selectedMarkers = mMapboxMap.getSelectedMarkers();
 
+            PointF tapPoint = new PointF(e.getX(), e.getY());
+            mMapOverlayDispatch.onOverlaySingleTapConfirmed(fromScreenLocation(tapPoint));
             float toleranceSides = 4 * mScreenDensity;
             float toleranceTopBottom = 10 * mScreenDensity;
             RectF tapRect = new RectF(tapPoint.x - mAverageIconWidth / 2 - toleranceSides,

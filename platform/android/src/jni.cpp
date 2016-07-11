@@ -1129,7 +1129,7 @@ void nativePixelForLatLng(JNIEnv *env, jni::jobject* obj, jlong nativeMapViewPtr
     jdouble latitude = jni::GetField<jdouble>(*env, latLng, *latLngLatitudeId);
     jdouble longitude = jni::GetField<jdouble>(*env, latLng, *latLngLongitudeId);
 
-    mbgl::vec2<double> pixel = nativeMapView->getMap().pixelForLatLng(mbgl::LatLng(latitude, longitude));
+    mbgl::ScreenCoordinate pixel = nativeMapView->getMap().pixelForLatLng(mbgl::LatLng(latitude, longitude));
 
     jni::SetField<jfloat>(*env, pointF, *pointFXId, static_cast<jfloat>(pixel.x));
     jni::SetField<jfloat>(*env, pointF, *pointFYId, static_cast<jfloat>(pixel.y));
@@ -1810,7 +1810,6 @@ extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     visibleRegionNearLeftId = &jni::GetFieldID(env, *visibleRegionClass, "nearLeft","Lcom/mapbox/mapboxsdk/geometry/LatLng;");
     visibleRegionNearRightId = &jni::GetFieldID(env, *visibleRegionClass, "nearRight","Lcom/mapbox/mapboxsdk/geometry/LatLng;");
     visibleRegionLatLngBoundsId = &jni::GetFieldID(env, *visibleRegionClass, "latLngBounds", "Lcom/mapbox/mapboxsdk/geometry/LatLngBounds;");
-
 
     iconClass = &jni::FindClass(env, "com/mapbox/mapboxsdk/annotations/Icon");
     iconClass = jni::NewGlobalRef(env, iconClass).release();
