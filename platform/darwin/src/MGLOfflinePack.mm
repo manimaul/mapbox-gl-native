@@ -5,7 +5,6 @@
 #import "MGLTilePyramidOfflineRegion.h"
 
 #include <mbgl/storage/default_file_source.hpp>
-#include <mbgl/util/string.hpp>
 
 /**
  Assert that the current offline pack is valid.
@@ -154,6 +153,8 @@ private:
     MGLOfflinePackProgress progress;
     progress.countOfResourcesCompleted = status.completedResourceCount;
     progress.countOfBytesCompleted = status.completedResourceSize;
+    progress.countOfTilesCompleted = status.completedTileCount;
+    progress.countOfTileBytesCompleted = status.completedTileSize;
     progress.countOfResourcesExpected = status.requiredResourceCount;
     progress.maximumResourcesExpected = status.requiredResourceCountIsPrecise ? status.requiredResourceCount : UINT64_MAX;
     self.progress = progress;
@@ -203,17 +204,3 @@ void MBGLOfflineRegionObserver::mapboxTileCountLimitExceeded(uint64_t limit) {
         [pack.delegate offlinePack:pack didReceiveMaximumAllowedMapboxTiles:limit];
     });
 }
-
-@implementation NSValue (MGLOfflinePackAdditions)
-
-+ (NSValue *)valueWithMGLOfflinePackProgress:(MGLOfflinePackProgress)progress {
-    return [NSValue value:&progress withObjCType:@encode(MGLOfflinePackProgress)];
-}
-
-- (MGLOfflinePackProgress)MGLOfflinePackProgressValue {
-    MGLOfflinePackProgress progress;
-    [self getValue:&progress];
-    return progress;
-}
-
-@end

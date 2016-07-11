@@ -1,5 +1,6 @@
 #include <mbgl/annotation/annotation_manager.hpp>
 #include <mbgl/annotation/annotation_tile.hpp>
+#include <mbgl/source/source.hpp>
 #include <mbgl/style/style.hpp>
 #include <mbgl/layer/symbol_layer.hpp>
 
@@ -48,14 +49,29 @@ AnnotationManager::addShapeAnnotations(const std::vector<ShapeAnnotation>& shape
     return annotationIDs;
 }
 
-void AnnotationManager::updatePointAnnotation(const AnnotationID& id, const PointAnnotation& point, const uint8_t) {
+Update AnnotationManager::updatePointAnnotation(const AnnotationID& id, const PointAnnotation& point, const uint8_t) {
     auto foundAnnotation = pointAnnotations.find(id);
-    if (foundAnnotation != pointAnnotations.end()) {
-        auto updatedAnnotation = std::make_shared<PointAnnotationImpl>(id, point);
-        pointTree.remove(foundAnnotation->second);
-        pointTree.insert(updatedAnnotation);
-        foundAnnotation->second = updatedAnnotation;
+    if (foundAnnotation == pointAnnotations.end()) {
+        return Update::Nothing;
     }
+
+    Update result = Update::Nothing;
+    const PointAnnotation& existing = foundAnnotation->second->point;
+
+    if (existing.position != point.position) {
+        result |= Update::AnnotationData;
+    }
+
+    if (existing.icon != point.icon) {
+        result |= Update::AnnotationData | Update::AnnotationStyle;
+    }
+
+    auto updatedAnnotation = std::make_shared<PointAnnotationImpl>(id, point);
+    pointTree.remove(foundAnnotation->second);
+    pointTree.insert(updatedAnnotation);
+    foundAnnotation->second = updatedAnnotation;
+
+    return result;
 }
 
 void AnnotationManager::removeAnnotations(const AnnotationIDs& ids) {
@@ -81,7 +97,7 @@ AnnotationIDs AnnotationManager::getPointAnnotationsInBounds(const LatLngBounds&
     return result;
 }
 
-std::unique_ptr<AnnotationTile> AnnotationManager::getTile(const TileID& tileID) {
+std::unique_ptr<AnnotationTile> AnnotationManager::getTile(const CanonicalTileID& tileID) {
     if (pointAnnotations.empty() && shapeAnnotations.empty())
         return nullptr;
 
@@ -116,8 +132,8 @@ void AnnotationManager::updateStyle(Style& style) {
         layer->id = PointLayerID;
         layer->source = SourceID;
         layer->sourceLayer = PointLayerID;
-        layer->layout.icon.image = std::string("{sprite}");
-        layer->layout.icon.allowOverlap = true;
+        layer->layout.iconImage = std::string("{sprite}");
+        layer->layout.iconAllowOverlap = true;
         layer->spriteAtlas = &spriteAtlas;
 
         style.addLayer(std::move(layer));
@@ -134,15 +150,17 @@ void AnnotationManager::updateStyle(Style& style) {
     }
 
     obsoleteShapeAnnotationLayers.clear();
+}
 
+void AnnotationManager::updateData() {
     for (auto& monitor : monitors) {
-        monitor->update(getTile(monitor->tileID));
+        monitor->update(getTile(monitor->tileID.canonical));
     }
 }
 
 void AnnotationManager::addTileMonitor(AnnotationTileMonitor& monitor) {
     monitors.insert(&monitor);
-    monitor.update(getTile(monitor.tileID));
+    monitor.update(getTile(monitor.tileID.canonical));
 }
 
 void AnnotationManager::removeTileMonitor(AnnotationTileMonitor& monitor) {

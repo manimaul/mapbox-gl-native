@@ -1,40 +1,37 @@
-#ifndef MBGL_RENDERER_FRAME_HISTORY
-#define MBGL_RENDERER_FRAME_HISTORY
+#pragma once
 
-#include <deque>
-#include <cassert>
-#include <cmath>
+#include <array>
 
 #include <mbgl/platform/platform.hpp>
+#include <mbgl/gl/gl_object_store.hpp>
 #include <mbgl/util/chrono.hpp>
 
 namespace mbgl {
 
-struct FrameSnapshot {
-    explicit inline FrameSnapshot(TimePoint now_, float z_) : now(now_), z(z_) {}
-    const TimePoint now;
-    float z;
-};
-
-struct FadeProperties {
-    float fadedist;
-    float minfadezoom;
-    float maxfadezoom;
-    float bump;
-};
-
 class FrameHistory {
 public:
-    // Record frame history that will be used to calculate fading params
-    void record(TimePoint now, float zoom);
+    FrameHistory();
+    void record(const TimePoint&, float zoom, const Duration&);
 
-    bool needsAnimation(const Duration& duration) const;
-    FadeProperties getFadeProperties(TimePoint now, const Duration& duration);
+    bool needsAnimation(const Duration&) const;
+    void bind(gl::GLObjectStore&);
+    void upload(gl::GLObjectStore&);
 
-public:
-    std::deque<FrameSnapshot> history;
+private:
+    const int width = 256;
+    const int height = 1;
+
+    std::array<TimePoint, 256> changeTimes;
+    std::array<uint8_t, 256> changeOpacities;
+    std::array<uint8_t, 256> opacities;
+
+    int16_t previousZoomIndex = 0;
+    TimePoint previousTime = TimePoint::min();
+    TimePoint time = TimePoint::min();
+    bool firstFrame = true;
+    bool changed = true;
+
+    gl::TextureHolder texture;
 };
 
 } // namespace mbgl
-
-#endif

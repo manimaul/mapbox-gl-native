@@ -1,11 +1,10 @@
-#include "../fixtures/util.hpp"
+#include <mbgl/test/util.hpp>
+#include <mbgl/test/fixture_log_observer.hpp>
 
 #include <mbgl/style/style_parser.hpp>
 #include <mbgl/util/io.hpp>
 
 #include <rapidjson/document.h>
-
-#include "../fixtures/fixture_log_observer.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -121,7 +120,7 @@ TEST(StyleParser, FontStacks) {
     parser.parse(util::read_file("test/fixtures/style_parser/font_stacks.json"));
     auto result = parser.fontStacks();
     ASSERT_EQ(3, result.size());
-    ASSERT_EQ("a", result[0]);
-    ASSERT_EQ("a,b", result[1]);
-    ASSERT_EQ("a,b,c", result[2]);
+    ASSERT_EQ(FontStack({"a"}), result[0]);
+    ASSERT_EQ(FontStack({"a", "b"}), result[1]);
+    ASSERT_EQ(FontStack({"a", "b", "c"}), result[2]);
 }

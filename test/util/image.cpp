@@ -1,4 +1,4 @@
-#include "../fixtures/util.hpp"
+#include <mbgl/test/util.hpp>
 
 #include <mbgl/util/premultiply.hpp>
 #include <mbgl/util/image.hpp>
@@ -78,13 +78,13 @@ TEST(Image, JPEGTile) {
     EXPECT_EQ(256, image.height);
 }
 
-#if !defined(__ANDROID__) && !defined(__APPLE__)
+#if !defined(__ANDROID__) && !defined(__APPLE__) && !defined(QT_IMAGE_DECODERS)
 TEST(Image, WebPTile) {
     PremultipliedImage image = decodeImage(util::read_file("test/fixtures/image/tile.webp"));
     EXPECT_EQ(256, image.width);
     EXPECT_EQ(256, image.height);
 }
-#endif // !defined(__ANDROID__) && !defined(__APPLE__)
+#endif // !defined(__ANDROID__) && !defined(__APPLE__) && !defined(QT_IMAGE_DECODERS)
 
 TEST(Image, Premultiply) {
     UnassociatedImage rgba { 1, 1 };

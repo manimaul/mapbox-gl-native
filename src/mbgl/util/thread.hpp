@@ -1,5 +1,4 @@
-#ifndef MBGL_UTIL_THREAD
-#define MBGL_UTIL_THREAD
+#pragma once
 
 #include <future>
 #include <thread>
@@ -7,9 +6,12 @@
 #include <utility>
 #include <functional>
 
+#include <mbgl/util/atomic.hpp>
 #include <mbgl/util/run_loop.hpp>
 #include <mbgl/util/thread_context.hpp>
 #include <mbgl/platform/platform.hpp>
+
+#include <pthread.h>
 
 namespace mbgl {
 namespace util {
@@ -37,7 +39,7 @@ public:
 
     // Invoke object->fn(args...) in the runloop thread, then invoke callback(result) in the current thread.
     template <typename Fn, class Cb, class... Args>
-    std::unique_ptr<WorkRequest>
+    std::unique_ptr<AsyncRequest>
     invokeWithCallback(Fn fn, Cb&& callback, Args&&... args) {
         return loop->invokeWithCallback(bind(fn), callback, std::forward<Args>(args)...);
     }
@@ -74,7 +76,7 @@ private:
     }
 
     template <typename P, std::size_t... I>
-    void run(ThreadContext, P&& params, std::index_sequence<I...>);
+    void run(P&& params, std::index_sequence<I...>);
 
     std::promise<void> running;
     std::promise<void> joinable;
@@ -93,17 +95,19 @@ Thread<Object>::Thread(const ThreadContext& context, Args&&... args) {
     std::tuple<Args...> params = std::forward_as_tuple(::std::forward<Args>(args)...);
 
     thread = std::thread([&] {
-        #if defined( __APPLE__)
+#if defined(__APPLE__)
         pthread_setname_np(context.name.c_str());
-        #elif defined(__linux__)
+#elif defined(__GLIBC__) && defined(__GLIBC_PREREQ)
+#if __GLIBC_PREREQ(2, 12)
         pthread_setname_np(pthread_self(), context.name.c_str());
-        #endif
+#endif
+#endif
 
         if (context.priority == ThreadPriority::Low) {
             platform::makeThreadLowPriority();
         }
 
-        run(context, std::move(params), std::index_sequence_for<Args...>{});
+        run(std::move(params), std::index_sequence_for<Args...>{});
     });
 
     running.get_future().get();
@@ -111,9 +115,7 @@ Thread<Object>::Thread(const ThreadContext& context, Args&&... args) {
 
 template <class Object>
 template <typename P, std::size_t... I>
-void Thread<Object>::run(ThreadContext context, P&& params, std::index_sequence<I...>) {
-    ThreadContext::Set(&context);
-
+void Thread<Object>::run(P&& params, std::index_sequence<I...>) {
     RunLoop loop_(RunLoop::Type::New);
     loop = &loop_;
 
@@ -125,8 +127,6 @@ void Thread<Object>::run(ThreadContext context, P&& params, std::index_sequence<
 
     loop = nullptr;
     object = nullptr;
-
-    ThreadContext::Set(nullptr);
 
     joinable.get_future().get();
 }
@@ -140,5 +140,3 @@ Thread<Object>::~Thread() {
 
 } // namespace util
 } // namespace mbgl
-
-#endif

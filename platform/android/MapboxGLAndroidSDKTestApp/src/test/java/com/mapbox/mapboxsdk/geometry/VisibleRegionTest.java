@@ -1,5 +1,9 @@
 package com.mapbox.mapboxsdk.geometry;
 
+import android.os.Parcelable;
+
+import com.mapbox.mapboxsdk.utils.MockParcel;
+
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -81,4 +85,10 @@ public class VisibleRegionTest {
                 , region.toString());
     }
 
+    @Test
+    public void testParcelable() {
+        VisibleRegion region = new VisibleRegion(FAR_LEFT, FAR_RIGHT, NEAR_LEFT, NEAR_RIGHT, BOUNDS);
+        Parcelable parcel = MockParcel.obtain(region);
+        assertEquals("parcel should match initial object", region, parcel);
+    }
 }

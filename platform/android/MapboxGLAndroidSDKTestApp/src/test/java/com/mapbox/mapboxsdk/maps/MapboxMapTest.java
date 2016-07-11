@@ -2,7 +2,9 @@ package com.mapbox.mapboxsdk.maps;
 
 import android.graphics.Color;
 import android.graphics.Point;
+import android.graphics.PointF;
 
+import com.mapbox.mapboxsdk.annotations.BaseMarkerOptions;
 import com.mapbox.mapboxsdk.annotations.Marker;
 import com.mapbox.mapboxsdk.annotations.MarkerOptions;
 import com.mapbox.mapboxsdk.annotations.Polygon;
@@ -12,6 +14,7 @@ import com.mapbox.mapboxsdk.annotations.PolylineOptions;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.geometry.LatLng;
+import com.mapbox.mapboxsdk.geometry.LatLngBounds;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -26,6 +29,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -197,7 +201,7 @@ public class MapboxMapTest {
         CameraPosition position = new CameraPosition.Builder().bearing(1).tilt(2).zoom(3).target(new LatLng(4, 5)).build();
         mMapboxMap.moveCamera(CameraUpdateFactory.newCameraPosition(position));
         mMapboxMap.setPadding(0, 0, 0, 0);
-        verify(mOnCameraChangeListener, times(2)).onCameraChange(position);
+        verify(mOnCameraChangeListener, times(1)).onCameraChange(position);
     }
 
     //
@@ -372,6 +376,58 @@ public class MapboxMapTest {
     }
 
     //
+    // Camera - LatLngBounds
+    //
+    @Test
+    public void testLatLngBounds() {
+        LatLng la = new LatLng(34.053940, -118.242622);
+        LatLng ny = new LatLng(40.712730, -74.005953);
+        LatLng centroid = new LatLng(
+                (la.getLatitude() + ny.getLatitude()) / 2,
+                (la.getLongitude() + ny.getLongitude()) / 2);
+
+        Projection projection = mock(Projection.class);
+        when(projection.toScreenLocation(la)).thenReturn(new PointF(20, 20));
+        when(projection.toScreenLocation(ny)).thenReturn(new PointF(100, 100));
+        when(projection.fromScreenLocation(any(PointF.class))).thenReturn(centroid);
+
+        UiSettings uiSettings = mock(UiSettings.class);
+        when(uiSettings.getHeight()).thenReturn(1000f);
+
+        mMapboxMap.setProjection(projection);
+        mMapboxMap.setUiSettings(uiSettings);
+
+        LatLngBounds bounds = new LatLngBounds.Builder().include(la).include(ny).build();
+        mMapboxMap.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, 1));
+
+        assertEquals("LatLng should be same", centroid, mMapboxMap.getCameraPosition().target);
+    }
+
+
+    //
+    // CameraPositionUpdate - NPX target
+    //
+    @Test
+    public void testCamerePositionUpdateNullTarget() {
+        LatLng latLng = new LatLng(1, 1);
+        mMapboxMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+        mMapboxMap.moveCamera(CameraUpdateFactory.newLatLng(null));
+        assertEquals("LatLng should be same", latLng, mMapboxMap.getCameraPosition().target);
+    }
+
+    //
+    // Camera - ScrollBy
+    //
+    @Test
+    public void testScrollBy() {
+        LatLng latLng = new LatLng(1, 1);
+        mMapboxMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+        mMapboxMap.moveCamera(CameraUpdateFactory.scrollBy(0, 0));
+        assertEquals("LatLng should be same", latLng, mMapboxMap.getCameraPosition().target);
+        mMapboxMap.moveCamera(CameraUpdateFactory.scrollBy(12, 12));
+    }
+
+    //
     // Camera - Zoom
     //
 
@@ -523,7 +579,7 @@ public class MapboxMapTest {
 
     @Test
     public void testAddMarkers() {
-        List<MarkerOptions> markerList = new ArrayList<>();
+        List<BaseMarkerOptions> markerList = new ArrayList<>();
         MarkerOptions markerOptions1 = new MarkerOptions().title("a");
         MarkerOptions markerOptions2 = new MarkerOptions().title("b");
         markerList.add(markerOptions1);
@@ -536,14 +592,14 @@ public class MapboxMapTest {
 
     @Test
     public void testAddMarkersEmpty() {
-        List<MarkerOptions> markerList = new ArrayList<>();
+        List<BaseMarkerOptions> markerList = new ArrayList<>();
         mMapboxMap.addMarkers(markerList);
         assertEquals("Markers size should be 0", 0, mMapboxMap.getMarkers().size());
     }
 
     @Test
     public void testAddMarkersSingleMarker() {
-        List<MarkerOptions> markerList = new ArrayList<>();
+        List<BaseMarkerOptions> markerList = new ArrayList<>();
         MarkerOptions markerOptions = new MarkerOptions().title("a");
         markerList.add(markerOptions);
         mMapboxMap.addMarkers(markerList);
@@ -686,7 +742,7 @@ public class MapboxMapTest {
 
     @Test
     public void testRemoveAnnotations() {
-        List<MarkerOptions> markerList = new ArrayList<>();
+        List<BaseMarkerOptions> markerList = new ArrayList<>();
         MarkerOptions markerOptions1 = new MarkerOptions().title("a");
         MarkerOptions markerOptions2 = new MarkerOptions().title("b");
         markerList.add(markerOptions1);
@@ -697,8 +753,20 @@ public class MapboxMapTest {
     }
 
     @Test
+    public void testClear() {
+        List<BaseMarkerOptions> markerList = new ArrayList<>();
+        MarkerOptions markerOptions1 = new MarkerOptions().title("a");
+        MarkerOptions markerOptions2 = new MarkerOptions().title("b");
+        markerList.add(markerOptions1);
+        markerList.add(markerOptions2);
+        mMapboxMap.addMarkers(markerList);
+        mMapboxMap.clear();
+        assertTrue("Annotations should be empty", mMapboxMap.getAnnotations().isEmpty());
+    }
+
+    @Test
     public void testRemoveAnnotationsByList() {
-        List<MarkerOptions> markerList = new ArrayList<>();
+        List<BaseMarkerOptions> markerList = new ArrayList<>();
         MarkerOptions markerOptions1 = new MarkerOptions().title("a");
         MarkerOptions markerOptions2 = new MarkerOptions().title("b");
         markerList.add(markerOptions1);

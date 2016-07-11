@@ -1,23 +1,34 @@
-#ifndef MBGL_UTIL_GEO
-#define MBGL_UTIL_GEO
+#pragma once
 
-#include <mbgl/util/vec.hpp>
+#include <mbgl/math/wrap.hpp>
 #include <mbgl/util/constants.hpp>
+
+#include <mapbox/geometry/point.hpp>
+#include <mapbox/geometry/point_arithmetic.hpp>
+#include <mapbox/geometry/line_string.hpp>
+#include <mapbox/geometry/box.hpp>
 
 #include <cmath>
 
 namespace mbgl {
 
-class TileID;
+class CanonicalTileID;
+class UnwrappedTileID;
 
-using ScreenCoordinate = vec2<double>;
+using ScreenCoordinate = mapbox::geometry::point<double>;
+using ScreenLineString = mapbox::geometry::line_string<double>;
+using ScreenBox        = mapbox::geometry::box<double>;
 
 class LatLng {
 public:
+    struct null {};
+
     double latitude;
     double longitude;
 
     enum WrapMode : bool { Unwrapped, Wrapped };
+
+    LatLng(null) : latitude(std::numeric_limits<double>::quiet_NaN()), longitude(latitude) {}
 
     LatLng(double lat = 0, double lon = 0, WrapMode mode = Unwrapped)
         : latitude(lat), longitude(lon) { if (mode == Wrapped) wrap(); }
@@ -25,18 +36,16 @@ public:
     LatLng wrapped() const { return { latitude, longitude, Wrapped }; }
 
     void wrap() {
-        if (longitude < -util::LONGITUDE_MAX) longitude = util::LONGITUDE_MAX + std::fmod(longitude + util::LONGITUDE_MAX, util::DEGREES_MAX);
-        if (longitude > util::LONGITUDE_MAX) longitude = -util::LONGITUDE_MAX + std::fmod(longitude + util::LONGITUDE_MAX, util::DEGREES_MAX);
+        longitude = util::wrap(longitude, -util::LONGITUDE_MAX, util::LONGITUDE_MAX);
     }
 
-    // If we pass through the antimeridian, we update the start coordinate to make sure
-    // the end coordinate is always wrapped.
+    // If the distance from start to end longitudes is between half and full
+    // world, unwrap the start longitude to ensure the shortest path is taken.
     void unwrapForShortestPath(const LatLng& end) {
-        if (end.longitude < -util::LONGITUDE_MAX) {
-            longitude += util::DEGREES_MAX;
-        } else if (end.longitude > util::LONGITUDE_MAX) {
-            longitude -= util::DEGREES_MAX;
-        }
+        const double delta = std::abs(end.longitude - longitude);
+        if (delta < util::LONGITUDE_MAX || delta > util::DEGREES_MAX) return;
+        if (longitude > 0 && end.longitude < 0) longitude -= util::DEGREES_MAX;
+        else if (longitude < 0 && end.longitude > 0) longitude += util::DEGREES_MAX;
     }
 
     explicit operator bool() const {
@@ -44,9 +53,8 @@ public:
     }
 
     // Constructs a LatLng object with the top left position of the specified tile.
-    LatLng(const TileID& id);
-
-    ScreenCoordinate project() const;
+    LatLng(const CanonicalTileID& id);
+    LatLng(const UnwrappedTileID& id);
 };
 
 inline bool operator==(const LatLng& a, const LatLng& b) {
@@ -97,7 +105,7 @@ public:
     }
 
     // Constructs a LatLngBounds object with the tile's exact boundaries.
-    LatLngBounds(const TileID&);
+    LatLngBounds(const CanonicalTileID&);
 
     double south() const { return sw.latitude; }
     double west()  const { return sw.longitude; }
@@ -164,19 +172,6 @@ inline bool operator!=(const LatLngBounds& a, const LatLngBounds& b) {
     return !(a == b);
 }
 
-class MetersBounds {
-public:
-    ProjectedMeters sw;
-    ProjectedMeters ne;
-
-    MetersBounds(const ProjectedMeters& sw_, const ProjectedMeters& ne_)
-        : sw(sw_), ne(ne_) {}
-
-    explicit operator bool() const {
-        return sw && ne;
-    }
-};
-
 // Determines the orientation of the map.
 enum class NorthOrientation : uint8_t {
     Upwards, // Default
@@ -220,5 +215,3 @@ public:
 };
 
 } // namespace mbgl
-
-#endif

@@ -8,6 +8,7 @@
 #include <mbgl/style/style.hpp>
 #include <mbgl/layer/line_layer.hpp>
 #include <mbgl/layer/fill_layer.hpp>
+#include <mbgl/math/clamp.hpp>
 
 namespace mbgl {
 
@@ -30,12 +31,12 @@ void ShapeAnnotationImpl::updateStyle(Style& style) {
         type = geojsonvt::ProjectedFeatureType::LineString;
 
         std::unique_ptr<LineLayer> layer = std::make_unique<LineLayer>();
-        layer->layout.join = JoinType::Round;
+        layer->layout.lineJoin = LineJoinType::Round;
 
         const LineAnnotationProperties& properties = shape.properties.get<LineAnnotationProperties>();
-        layer->paint.opacity = properties.opacity;
-        layer->paint.width = properties.width;
-        layer->paint.color = properties.color;
+        layer->paint.lineOpacity = properties.opacity;
+        layer->paint.lineWidth = properties.width;
+        layer->paint.lineColor = properties.color;
 
         layer->id = layerID;
         layer->source = AnnotationManager::SourceID;
@@ -49,9 +50,9 @@ void ShapeAnnotationImpl::updateStyle(Style& style) {
         std::unique_ptr<FillLayer> layer = std::make_unique<FillLayer>();
 
         const FillAnnotationProperties& properties = shape.properties.get<FillAnnotationProperties>();
-        layer->paint.opacity = properties.opacity;
-        layer->paint.color = properties.color;
-        layer->paint.outlineColor = properties.outlineColor;
+        layer->paint.fillOpacity = properties.opacity;
+        layer->paint.fillColor = properties.color;
+        layer->paint.fillOutlineColor = properties.outlineColor;
 
         layer->id = layerID;
         layer->source = AnnotationManager::SourceID;
@@ -79,19 +80,19 @@ void ShapeAnnotationImpl::updateStyle(Style& style) {
     }
 }
 
-void ShapeAnnotationImpl::updateTile(const TileID& tileID, AnnotationTile& tile) {
+void ShapeAnnotationImpl::updateTile(const CanonicalTileID& tileID, AnnotationTile& tile) {
     static const double baseTolerance = 4;
 
     if (!shapeTiler) {
         const uint64_t maxAmountOfTiles = 1 << maxZoom;
-        const double tolerance = baseTolerance / (maxAmountOfTiles * GeometryTileFeature::defaultExtent);
+        const double tolerance = baseTolerance / (maxAmountOfTiles * util::EXTENT);
 
         geojsonvt::ProjectedRings rings;
         std::vector<geojsonvt::LonLat> points;
 
         for (size_t i = 0; i < shape.segments[0].size(); ++i) { // first segment for now (no holes)
-            const double constraintedLatitude = ::fmin(::fmax(shape.segments[0][i].latitude, -util::LATITUDE_MAX), util::LATITUDE_MAX);
-            points.push_back(geojsonvt::LonLat(shape.segments[0][i].longitude, constraintedLatitude));
+            const double constrainedLatitude = util::clamp(shape.segments[0][i].latitude, -util::LATITUDE_MAX, util::LATITUDE_MAX);
+            points.push_back(geojsonvt::LonLat(shape.segments[0][i].longitude, constrainedLatitude));
         }
 
         if (type == geojsonvt::ProjectedFeatureType::Polygon &&
@@ -107,7 +108,8 @@ void ShapeAnnotationImpl::updateTile(const TileID& tileID, AnnotationTile& tile)
 
         mapbox::geojsonvt::Options options;
         options.maxZoom = maxZoom;
-        options.buffer = 128u;
+        options.buffer = 255u;
+        options.extent = util::EXTENT;
         options.tolerance = baseTolerance;
         shapeTiler = std::make_unique<mapbox::geojsonvt::GeoJSONVT>(features, options);
     }

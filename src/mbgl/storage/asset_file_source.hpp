@@ -1,5 +1,4 @@
-#ifndef MBGL_STORAGE_ASSET_FILE_SOURCE
-#define MBGL_STORAGE_ASSET_FILE_SOURCE
+#pragma once
 
 #include <mbgl/storage/file_source.hpp>
 
@@ -14,7 +13,7 @@ public:
     AssetFileSource(const std::string& assetRoot);
     ~AssetFileSource() override;
 
-    std::unique_ptr<FileRequest> request(const Resource&, Callback) override;
+    std::unique_ptr<AsyncRequest> request(const Resource&, Callback) override;
 
 private:
     class Impl;
@@ -22,5 +21,3 @@ private:
 };
 
 } // namespace mbgl
-
-#endif // MBGL_STORAGE_ASSET_FILE_SOURCE

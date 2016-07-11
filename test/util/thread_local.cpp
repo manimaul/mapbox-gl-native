@@ -2,7 +2,7 @@
 #include <mbgl/util/thread.hpp>
 #include <mbgl/util/thread_local.hpp>
 
-#include "../fixtures/util.hpp"
+#include <mbgl/test/util.hpp>
 
 using namespace mbgl::util;
 
@@ -37,7 +37,7 @@ TEST(ThreadLocalStorage, Basic) {
     int number2 = 2;
     int number3 = 3;
 
-    ThreadContext context = {"Test", ThreadType::Map, ThreadPriority::Regular};
+    ThreadContext context = {"Test"};
 
     Thread<TestThread> thread1(context, &number1);
     Thread<TestThread> thread2(context, &number2);
@@ -83,7 +83,7 @@ TEST(ThreadLocalStorage, AutoReclaim) {
     DtorCounter* dtorCounter1 = new DtorCounter{ &counter };
     DtorCounter* dtorCounter2 = new DtorCounter{ &counter };
 
-    ThreadContext context = {"Test", ThreadType::Map, ThreadPriority::Regular};
+    ThreadContext context = {"Test"};
 
     auto thread1 = std::make_unique<Thread<TestThreadReclaim>>(context, dtorCounter1);
     auto thread2 = std::make_unique<Thread<TestThreadReclaim>>(context, dtorCounter2);

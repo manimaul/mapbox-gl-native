@@ -1,13 +1,14 @@
 package com.mapbox.mapboxsdk.maps;
 
-import android.support.annotation.FloatRange;
+import android.graphics.PointF;
+import android.support.annotation.ColorInt;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.annotation.UiThread;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 
-import com.mapbox.mapboxsdk.constants.MapboxConstants;
+import com.mapbox.mapboxsdk.maps.widgets.MyLocationViewSettings;
 
 /**
  * Settings for the user interface of a MapboxMap. To obtain this interface, call getUiSettings().
@@ -20,11 +21,23 @@ public class UiSettings {
     private ViewSettings logoSettings;
     private ViewSettings attributionSettings;
 
-    private boolean rotateGesturesEnabled;
-    private boolean tiltGesturesEnabled;
-    private boolean zoomGesturesEnabled;
+    private boolean rotateGesturesEnabled = true;
+    private boolean rotateGestureChangeAllowed = true;
+
+    private boolean tiltGesturesEnabled = true;
+    private boolean tiltGestureChangeAllowed = true;
+
+    private boolean zoomGesturesEnabled = true;
+    private boolean zoomGestureChangeAllowed = true;
+
+    private boolean scrollGesturesEnabled = true;
+    private boolean scrollGestureChangeAllowed = true;
+
     private boolean zoomControlsEnabled;
-    private boolean scrollGesturesEnabled;
+
+    private boolean deselectMarkersOnTap = true;
+
+    private PointF focalPoint;
 
     UiSettings(@NonNull MapView mapView) {
         this.mapView = mapView;
@@ -232,11 +245,11 @@ public class UiSettings {
 
     /**
      * <p>
-     * Enables or disables the Mapbox logo.
+     * Enables or disables the attribution.
      * </p>
-     * By default, the compass is enabled.
+     * By default, the attribution is enabled.
      *
-     * @param enabled True to enable the logo; false to disable the logo.
+     * @param enabled True to enable the attribution; false to disable the attribution.
      */
     public void setAttributionEnabled(boolean enabled) {
         attributionSettings.setEnabled(enabled);
@@ -244,9 +257,9 @@ public class UiSettings {
     }
 
     /**
-     * Returns whether the logo is enabled.
+     * Returns whether the attribution is enabled.
      *
-     * @return True if the logo is enabled; false if the logo is disabled.
+     * @return True if the attribution is enabled; false if the attribution is disabled.
      */
     public boolean isAttributionEnabled() {
         return attributionSettings.isEnabled();
@@ -254,10 +267,9 @@ public class UiSettings {
 
     /**
      * <p>
-     * Sets the gravity of the logo view. Use this to change the corner of the map view that the
-     * Mapbox logo is displayed in.
+     * Sets the gravity of the attribution.
      * </p>
-     * By default, the logo is in the bottom left corner.
+     * By default, the attribution is in the bottom left corner next to the Mapbox logo.
      *
      * @param gravity One of the values from {@link Gravity}.
      * @see Gravity
@@ -277,8 +289,7 @@ public class UiSettings {
     }
 
     /**
-     * Sets the margins of the logo view. Use this to change the distance of the Mapbox logo from the
-     * map view edge.
+     * Sets the margins of the attribution view.
      *
      * @param left   The left margin in pixels.
      * @param top    The top margin in pixels.
@@ -291,7 +302,29 @@ public class UiSettings {
     }
 
     /**
-     * Returns the left side margin of the logo
+     * <p>
+     * Sets the tint of the attribution view. Use this to change the color of the attribution.
+     * </p>
+     * By default, the logo is tinted with the primary color of your theme.
+     *
+     * @param tintColor Color to tint the attribution.
+     */
+    public void setAttributionTintColor(@ColorInt int tintColor) {
+        attributionSettings.setTintColor(tintColor);
+        mapView.setAtttibutionTintColor(tintColor);
+    }
+
+    /**
+     * Returns the tint color value of the attribution view.
+     *
+     * @return The tint color
+     */
+    public int getAttributionTintColor() {
+        return attributionSettings.getTintColor();
+    }
+
+    /**
+     * Returns the left side margin of the attribution view.
      *
      * @return The left margin in pixels
      */
@@ -300,7 +333,7 @@ public class UiSettings {
     }
 
     /**
-     * Returns the top side margin of the logo
+     * Returns the top side margin of the attribution view.
      *
      * @return The top margin in pixels
      */
@@ -309,7 +342,7 @@ public class UiSettings {
     }
 
     /**
-     * Returns the right side margin of the logo
+     * Returns the right side margin of the attribution view.
      *
      * @return The right margin in pixels
      */
@@ -339,7 +372,9 @@ public class UiSettings {
      * @param rotateGesturesEnabled If true, rotating is enabled.
      */
     public void setRotateGesturesEnabled(boolean rotateGesturesEnabled) {
-        this.rotateGesturesEnabled = rotateGesturesEnabled;
+        if (rotateGestureChangeAllowed) {
+            this.rotateGesturesEnabled = rotateGesturesEnabled;
+        }
     }
 
     /**
@@ -349,6 +384,14 @@ public class UiSettings {
      */
     public boolean isRotateGesturesEnabled() {
         return rotateGesturesEnabled;
+    }
+
+    void setRotateGestureChangeAllowed(boolean rotateGestureChangeAllowed) {
+        this.rotateGestureChangeAllowed = rotateGestureChangeAllowed;
+    }
+
+    boolean isRotateGestureChangeAllowed() {
+        return rotateGestureChangeAllowed;
     }
 
     /**
@@ -364,7 +407,9 @@ public class UiSettings {
      * @param tiltGesturesEnabled If true, tilting is enabled.
      */
     public void setTiltGesturesEnabled(boolean tiltGesturesEnabled) {
-        this.tiltGesturesEnabled = tiltGesturesEnabled;
+        if (tiltGestureChangeAllowed) {
+            this.tiltGesturesEnabled = tiltGesturesEnabled;
+        }
     }
 
     /**
@@ -374,6 +419,14 @@ public class UiSettings {
      */
     public boolean isTiltGesturesEnabled() {
         return tiltGesturesEnabled;
+    }
+
+    void setTiltGestureChangeAllowed(boolean tiltGestureChangeAllowed) {
+        this.tiltGestureChangeAllowed = tiltGestureChangeAllowed;
+    }
+
+    boolean isTiltGestureChangeAllowed() {
+        return tiltGestureChangeAllowed;
     }
 
     /**
@@ -389,7 +442,9 @@ public class UiSettings {
      * @param zoomGesturesEnabled If true, zooming is enabled.
      */
     public void setZoomGesturesEnabled(boolean zoomGesturesEnabled) {
-        this.zoomGesturesEnabled = zoomGesturesEnabled;
+        if (zoomGestureChangeAllowed) {
+            this.zoomGesturesEnabled = zoomGesturesEnabled;
+        }
     }
 
     /**
@@ -399,6 +454,14 @@ public class UiSettings {
      */
     public boolean isZoomGesturesEnabled() {
         return zoomGesturesEnabled;
+    }
+
+    void setZoomGestureChangeAllowed(boolean zoomGestureChangeAllowed) {
+        this.zoomGestureChangeAllowed = zoomGestureChangeAllowed;
+    }
+
+    boolean isZoomGestureChangeAllowed() {
+        return zoomGestureChangeAllowed;
     }
 
     /**
@@ -427,6 +490,26 @@ public class UiSettings {
     }
 
     /**
+     * Gets whether the markers are automatically deselected (and therefore, their infowindows
+     * closed) when a map tap is detected.
+
+     * @return If true, markers are deselected on a map tap.
+     */
+    public boolean isDeselectMarkersOnTap() {
+        return deselectMarkersOnTap;
+    }
+
+    /**
+     * Sets whether the markers are automatically deselected (and therefore, their infowindows
+     * closed) when a map tap is detected.
+     *
+     * @param deselectMarkersOnTap
+     */
+    public void setDeselectMarkersOnTap(boolean deselectMarkersOnTap) {
+        this.deselectMarkersOnTap = deselectMarkersOnTap;
+    }
+
+    /**
      * <p>
      * Changes whether the user may scroll around the map.
      * </p>
@@ -439,7 +522,9 @@ public class UiSettings {
      * @param scrollGesturesEnabled If true, scrolling is enabled.
      */
     public void setScrollGesturesEnabled(boolean scrollGesturesEnabled) {
-        this.scrollGesturesEnabled = scrollGesturesEnabled;
+        if (scrollGestureChangeAllowed) {
+            this.scrollGesturesEnabled = scrollGesturesEnabled;
+        }
     }
 
     /**
@@ -449,6 +534,14 @@ public class UiSettings {
      */
     public boolean isScrollGesturesEnabled() {
         return scrollGesturesEnabled;
+    }
+
+    void setScrollGestureChangeAllowed(boolean scrollGestureChangeAllowed) {
+        this.scrollGestureChangeAllowed = scrollGestureChangeAllowed;
+    }
+
+    boolean isScrollGestureChangeAllowed() {
+        return scrollGestureChangeAllowed;
     }
 
     /**
@@ -472,6 +565,25 @@ public class UiSettings {
         setRotateGesturesEnabled(enabled);
         setTiltGesturesEnabled(enabled);
         setZoomGesturesEnabled(enabled);
+    }
+
+    /**
+     * Sets the focal point used as center for a gesture
+     *
+     * @param focalPoint the focal point to be used.
+     */
+    public void setFocalPoint(@Nullable PointF focalPoint) {
+        this.focalPoint = focalPoint;
+        mapView.setFocalPoint(focalPoint);
+    }
+
+    /**
+     * Returns the gesture focal point
+     *
+     * @return  The focal point
+     */
+    public PointF getFocalPoint() {
+        return focalPoint;
     }
 
     /**

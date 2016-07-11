@@ -196,8 +196,7 @@ void OfflineDownload::activateDownload() {
 }
 
 void OfflineDownload::deactivateDownload() {
-    workRequests.clear();
-    fileRequests.clear();
+    requests.clear();
 }
 
 void OfflineDownload::ensureTiles(SourceType type, uint16_t tileSize, const SourceInfo& info) {
@@ -209,9 +208,9 @@ void OfflineDownload::ensureTiles(SourceType type, uint16_t tileSize, const Sour
 void OfflineDownload::ensureResource(const Resource& resource, std::function<void (Response)> callback) {
     status.requiredResourceCount++;
 
-    auto workRequestsIt = workRequests.insert(workRequests.begin(), nullptr);
+    auto workRequestsIt = requests.insert(requests.begin(), nullptr);
     *workRequestsIt = util::RunLoop::Get()->invokeCancellable([=] () {
-        workRequests.erase(workRequestsIt);
+        requests.erase(workRequestsIt);
 
         optional<std::pair<Response, uint64_t>> offlineResponse = offlineDatabase.getRegionResource(id, resource);
         if (offlineResponse) {
@@ -221,6 +220,10 @@ void OfflineDownload::ensureResource(const Resource& resource, std::function<voi
 
             status.completedResourceCount++;
             status.completedResourceSize += offlineResponse->second;
+            if (resource.kind == Resource::Kind::Tile) {
+                status.completedTileSize += offlineResponse->second;
+            }
+            
             observer->statusChanged(status);
             
             if (status.complete()) {
@@ -234,21 +237,25 @@ void OfflineDownload::ensureResource(const Resource& resource, std::function<voi
             return;
         }
 
-        auto fileRequestsIt = fileRequests.insert(fileRequests.begin(), nullptr);
+        auto fileRequestsIt = requests.insert(requests.begin(), nullptr);
         *fileRequestsIt = onlineFileSource.request(resource, [=] (Response onlineResponse) {
             if (onlineResponse.error) {
                 observer->responseError(*onlineResponse.error);
                 return;
             }
 
-            fileRequests.erase(fileRequestsIt);
+            requests.erase(fileRequestsIt);
 
             if (callback) {
                 callback(onlineResponse);
             }
 
             status.completedResourceCount++;
-            status.completedResourceSize += offlineDatabase.putRegionResource(id, resource, onlineResponse);
+            uint64_t resourceSize = offlineDatabase.putRegionResource(id, resource, onlineResponse);
+            status.completedResourceSize += resourceSize;
+            if (resource.kind == Resource::Kind::Tile) {
+                status.completedTileSize += resourceSize;
+            }
 
             observer->statusChanged(status);
             

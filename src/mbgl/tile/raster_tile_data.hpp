@@ -1,5 +1,4 @@
-#ifndef MBGL_MAP_RASTER_TILE_DATA
-#define MBGL_MAP_RASTER_TILE_DATA
+#pragma once
 
 #include <mbgl/tile/tile_data.hpp>
 #include <mbgl/renderer/raster_bucket.hpp>
@@ -7,14 +6,13 @@
 namespace mbgl {
 
 class FileSource;
-class FileRequest;
+class AsyncRequest;
 class StyleLayer;
-class WorkRequest;
 namespace gl { class TexturePool; }
 
 class RasterTileData : public TileData {
 public:
-    RasterTileData(const TileID&,
+    RasterTileData(const OverscaledTileID&,
                    float pixelRatio,
                    const std::string& urlTemplate,
                    gl::TexturePool&,
@@ -29,11 +27,9 @@ public:
 private:
     gl::TexturePool& texturePool;
     Worker& worker;
-    std::unique_ptr<FileRequest> req;
+    std::unique_ptr<AsyncRequest> req;
     std::unique_ptr<Bucket> bucket;
-    std::unique_ptr<WorkRequest> workRequest;
+    std::unique_ptr<AsyncRequest> workRequest;
 };
 
 } // namespace mbgl
-
-#endif

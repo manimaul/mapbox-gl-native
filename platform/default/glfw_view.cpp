@@ -2,6 +2,7 @@
 #include <mbgl/annotation/point_annotation.hpp>
 #include <mbgl/annotation/shape_annotation.hpp>
 #include <mbgl/sprite/sprite_image.hpp>
+#include <mbgl/style/property_transition.hpp>
 #include <mbgl/gl/gl.hpp>
 #include <mbgl/gl/gl_values.hpp>
 #include <mbgl/gl/gl_helper.hpp>
@@ -9,6 +10,7 @@
 #include <mbgl/platform/platform.hpp>
 #include <mbgl/util/string.hpp>
 #include <mbgl/util/chrono.hpp>
+#include <mbgl/map/camera.hpp>
 
 #include <cassert>
 #include <cstdlib>
@@ -94,6 +96,8 @@ GLFWView::GLFWView(bool fullscreen_, bool benchmark_)
     printf("- Press `N` to reset north\n");
     printf("- Press `R` to toggle any available `night` style class\n");
     printf("- Press `Z` to cycle through north orientations\n");
+    printf("- Prezz `X` to cycle through the viewport modes\n");
+    printf("- Press `A` to cycle through Mapbox offices in the world + dateline monument\n");
     printf("\n");
     printf("- Press `1` through `6` to add increasing numbers of point annotations for testing\n");
     printf("- Press `7` through `0` to add increasing numbers of shape annotations for testing\n");
@@ -137,20 +141,17 @@ void GLFWView::onKey(GLFWwindow *window, int key, int /*scancode*/, int action, 
             if (!mods)
                 view->map->resetPosition();
             break;
-        case GLFW_KEY_C:
-            view->toggleClipMasks();
-            break;
         case GLFW_KEY_S:
             if (view->changeStyleCallback)
                 view->changeStyleCallback();
             break;
         case GLFW_KEY_R:
             if (!mods) {
-                view->map->setDefaultTransitionDuration(mbgl::Milliseconds(300));
+                static const mbgl::PropertyTransition transition { { mbgl::Milliseconds(300) } };
                 if (view->map->hasClass("night")) {
-                    view->map->removeClass("night");
+                    view->map->removeClass("night", transition);
                 } else {
-                    view->map->addClass("night");
+                    view->map->addClass("night", transition);
                 }
             }
             break;
@@ -166,6 +167,26 @@ void GLFWView::onKey(GLFWwindow *window, int key, int /*scancode*/, int action, 
             break;
         case GLFW_KEY_P: {
             view->addRandomCustomPointAnnotations(1);
+        } break;
+        case GLFW_KEY_A: {
+            // XXX Fix precision loss in flyTo:
+            // https://github.com/mapbox/mapbox-gl-native/issues/4298
+            static const std::vector<mbgl::LatLng> places = {
+                mbgl::LatLng { -16.796665, -179.999983 },   // Dateline monument
+                mbgl::LatLng { 12.9810542, 77.6345551 },    // Mapbox Bengaluru, India
+                mbgl::LatLng { -13.15607,-74.21773 },       // Mapbox Peru
+                mbgl::LatLng { 37.77572, -122.4158818 },    // Mapbox SF, USA
+                mbgl::LatLng { 38.91318,-77.03255 },        // Mapbox DC, USA
+            };
+            static size_t nextPlace = 0;
+            mbgl::CameraOptions cameraOptions;
+            cameraOptions.center = places[nextPlace++];
+            cameraOptions.zoom = 20;
+            cameraOptions.pitch = 30;
+
+            mbgl::AnimationOptions animationOptions(mbgl::Seconds(10));
+            view->map->flyTo(cameraOptions, animationOptions);
+            nextPlace = nextPlace % places.size();
         } break;
         }
     }
@@ -188,13 +209,9 @@ void GLFWView::onKey(GLFWwindow *window, int key, int /*scancode*/, int action, 
 }
 
 mbgl::LatLng GLFWView::makeRandomPoint() const {
-    const auto nw = map->latLngForPixel({ 0, 0 });
-    const auto se = map->latLngForPixel({ double(width), double(height) });
-
-    const double lon = nw.longitude + (se.longitude - nw.longitude) * (double(std::rand()) / RAND_MAX);
-    const double lat = se.latitude + (nw.latitude - se.latitude) * (double(std::rand()) / RAND_MAX);
-
-    return { lat, lon };
+    const double x = width * double(std::rand()) / RAND_MAX;
+    const double y = height * double(std::rand()) / RAND_MAX;
+    return map->latLngForPixel({ x, y });
 }
 
 std::shared_ptr<const mbgl::SpriteImage>
@@ -234,11 +251,6 @@ void GLFWView::nextOrientation() {
         case NO::Downwards: map->setNorthOrientation(NO::Leftwards); break;
         default: map->setNorthOrientation(NO::Upwards); break;
     }
-}
-
-void GLFWView::toggleClipMasks() {
-    showClipMasks = !showClipMasks;
-    map->update(mbgl::Update::Repaint);
 }
 
 void GLFWView::addRandomCustomPointAnnotations(int count) {
@@ -326,7 +338,7 @@ void GLFWView::onScroll(GLFWwindow *window, double /*xOffset*/, double yOffset) 
         scale = 1.0 / scale;
     }
 
-    view->map->scaleBy(scale, { view->lastX, view->lastY });
+    view->map->scaleBy(scale, mbgl::ScreenCoordinate { view->lastX, view->lastY });
 }
 
 void GLFWView::onWindowResize(GLFWwindow *window, int width, int height) {
@@ -363,9 +375,9 @@ void GLFWView::onMouseClick(GLFWwindow *window, int button, int action, int modi
             double now = glfwGetTime();
             if (now - view->lastClick < 0.4 /* ms */) {
                 if (modifiers & GLFW_MOD_SHIFT) {
-                    view->map->scaleBy(0.5, { view->lastX, view->lastY }, mbgl::Milliseconds(500));
+                    view->map->scaleBy(0.5, mbgl::ScreenCoordinate { view->lastX, view->lastY }, mbgl::Milliseconds(500));
                 } else {
-                    view->map->scaleBy(2.0, { view->lastX, view->lastY }, mbgl::Milliseconds(500));
+                    view->map->scaleBy(2.0, mbgl::ScreenCoordinate { view->lastX, view->lastY }, mbgl::Milliseconds(500));
                 }
             }
             view->lastClick = now;
@@ -396,18 +408,39 @@ void GLFWView::onMouseMove(GLFWwindow *window, double x, double y) {
 }
 
 void GLFWView::run() {
-    while (!glfwWindowShouldClose(window)) {
-        glfwWaitEvents();
-        const bool dirty = !clean.test_and_set();
+    auto callback = [&] {
+        if (glfwWindowShouldClose(window)) {
+            runLoop.stop();
+            return;
+        }
+
+        glfwPollEvents();
+
         if (dirty) {
             const double started = glfwGetTime();
-            map->renderSync();
+
+            glfwMakeContextCurrent(window);
+            glViewport(0, 0, fbWidth, fbHeight);
+
+            map->render();
+
+            glfwSwapBuffers(window);
+
             report(1000 * (glfwGetTime() - started));
             if (benchmark) {
                 map->update(mbgl::Update::Repaint);
             }
+
+            dirty = false;
         }
-    }
+    };
+
+    frameTick.start(mbgl::Duration::zero(), mbgl::Milliseconds(1000 / 60), callback);
+#if defined(__APPLE__)
+    while (!glfwWindowShouldClose(window)) runLoop.run();
+#else
+    runLoop.run();
+#endif
 }
 
 float GLFWView::getPixelRatio() const {
@@ -430,68 +463,9 @@ void GLFWView::deactivate() {
     glfwMakeContextCurrent(nullptr);
 }
 
-void GLFWView::notify() {
-    glfwPostEmptyEvent();
-}
-
 void GLFWView::invalidate() {
-    clean.clear();
+    dirty = true;
     glfwPostEmptyEvent();
-}
-
-void GLFWView::beforeRender() {
-    // This is called from the map thread but `width` and `height`
-    // can be accessed with no race because the main thread is blocked
-    // when we render. This will be more straightforward when we move
-    // rendering to the main thread.
-    glViewport(0, 0, fbWidth, fbHeight);
-}
-
-void GLFWView::afterRender() {
-    if (showClipMasks) {
-        renderClipMasks();
-    }
-
-    glfwSwapBuffers(window);
-}
-
-void GLFWView::renderClipMasks() {
-    // Read the stencil buffer
-    auto pixels = std::make_unique<uint8_t[]>(fbWidth * fbHeight);
-    glReadPixels(0,                // GLint x
-                 0,                // GLint y
-                 fbWidth,          // GLsizei width
-                 fbHeight,         // GLsizei height
-                 GL_STENCIL_INDEX, // GLenum format
-                 GL_UNSIGNED_BYTE, // GLenum type
-                 pixels.get()      // GLvoid * data
-                 );
-
-    // Scale the Stencil buffer to cover the entire color space.
-    auto it = pixels.get();
-    auto end = it + fbWidth * fbHeight;
-    const auto factor = 255.0f / *std::max_element(it, end);
-    for (; it != end; ++it) {
-        *it *= factor;
-    }
-
-    using namespace mbgl::gl;
-    Preserve<PixelZoom> pixelZoom;
-    Preserve<RasterPos> rasterPos;
-    Preserve<StencilTest> stencilTest;
-    Preserve<DepthTest> depthTest;
-    Preserve<Program> program;
-    Preserve<ColorMask> colorMask;
-
-    MBGL_CHECK_ERROR(glPixelZoom(1.0f, 1.0f));
-    MBGL_CHECK_ERROR(glRasterPos2f(-1.0f, -1.0f));
-    MBGL_CHECK_ERROR(glDisable(GL_STENCIL_TEST));
-    MBGL_CHECK_ERROR(glDisable(GL_DEPTH_TEST));
-    MBGL_CHECK_ERROR(glUseProgram(0));
-    MBGL_CHECK_ERROR(glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE));
-    MBGL_CHECK_ERROR(glWindowPos2i(0, 0));
-
-    MBGL_CHECK_ERROR(glDrawPixels(fbWidth, fbHeight, GL_LUMINANCE, GL_UNSIGNED_BYTE, pixels.get()));
 }
 
 void GLFWView::report(float duration) {

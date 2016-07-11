@@ -8,6 +8,7 @@ import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.ServiceInfo;
 import android.content.res.Configuration;
 import android.location.Location;
 import android.net.ConnectivityManager;
@@ -17,6 +18,7 @@ import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.os.BatteryManager;
 import android.os.Build;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
@@ -26,6 +28,7 @@ import android.view.WindowManager;
 import com.mapbox.mapboxsdk.BuildConfig;
 import com.mapbox.mapboxsdk.constants.GeoConstants;
 import com.mapbox.mapboxsdk.constants.MapboxConstants;
+import com.mapbox.mapboxsdk.exceptions.TelemetryServiceNotConfiguredException;
 import com.mapbox.mapboxsdk.location.LocationServices;
 import com.mapbox.mapboxsdk.utils.MathUtils;
 import org.json.JSONArray;
@@ -36,7 +39,6 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Hashtable;
 import java.util.List;
-import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
@@ -47,6 +49,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import okhttp3.internal.Util;
 
 /**
  * Singleton control center for managing Telemetry Data.
@@ -58,11 +61,12 @@ public class MapboxEventManager {
 
     private static MapboxEventManager mapboxEventManager = null;
 
+    private boolean initialized = false;
     private boolean telemetryEnabled;
 
     private final Vector<Hashtable<String, Object>> events = new Vector<>();
     private static final MediaType JSON  = MediaType.parse("application/json; charset=utf-8");
-    private static SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.US);
+    private static SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", MapboxConstants.MAPBOX_LOCALE);
 
     private Context context = null;
     private String accessToken = null;
@@ -81,7 +85,7 @@ public class MapboxEventManager {
     private long mapboxSessionIdLastSet = 0;
     private static long hourInMillis = 1000 * 60 * 60;
     private static long flushDelayInitialInMillis = 1000 * 10;  // 10 Seconds
-    private static long flushDelayInMillis = 1000 * 60 * 2;  // 2 Minutes
+    private static long flushDelayInMillis = 1000 * 60 * 3;  // 3 Minutes
     private static final int SESSION_ID_ROTATION_HOURS = 24;
 
     private static MessageDigest messageDigest = null;
@@ -97,15 +101,25 @@ public class MapboxEventManager {
 
     /**
      * Internal setup of MapboxEventsManager.  It needs to be called once before @link MapboxEventManager#getMapboxEventManager
-     * <p/>
+     *
      * This allows for a cleaner getMapboxEventManager() that doesn't require context and accessToken
      *
      * @param context     The context associated with MapView
      * @param accessToken The accessToken to load MapView
      */
     public void initialize(@NonNull Context context, @NonNull String accessToken) {
+
+        Log.i(TAG, "Telemetry initialize() called...");
+
+        if (initialized) {
+            Log.i(TAG, "Mapbox Telemetry has already been initialized.");
+            return;
+        }
+
         this.context = context.getApplicationContext();
         this.accessToken = accessToken;
+
+        validateTelemetryServiceConfigured();
 
         // Setup Message Digest
         try {
@@ -114,9 +128,13 @@ public class MapboxEventManager {
             Log.w(TAG, "Error getting Encryption Algorithm: " + e);
         }
 
+        // Create Initial Session Id
+        rotateSessionId();
+
         SharedPreferences prefs = context.getSharedPreferences(MapboxConstants.MAPBOX_SHARED_PREFERENCES_FILE, Context.MODE_PRIVATE);
 
         // Determine if Telemetry Should Be Enabled
+        Log.i(TAG, "Right before Telemetry set enabled in initialized()");
         setTelemetryEnabled(prefs.getBoolean(MapboxConstants.MAPBOX_SHARED_PREFERENCE_KEY_TELEMETRY_ENABLED, true));
 
         // Load / Create Vendor Id
@@ -131,9 +149,6 @@ public class MapboxEventManager {
             editor.apply();
             editor.commit();
         }
-
-        // Create Initial Session Id
-        rotateSessionId();
 
         // Get DisplayMetrics Setup
         displayMetrics = new DisplayMetrics();
@@ -160,6 +175,8 @@ public class MapboxEventManager {
             // Build User Agent
             if (TextUtils.equals(userAgent, BuildConfig.MAPBOX_EVENTS_USER_AGENT_BASE) && !TextUtils.isEmpty(appName) && !TextUtils.isEmpty(versionName)) {
                 userAgent = appName + "/" + versionName + "/" + versionCode + " " + userAgent;
+                // Ensure that only ASCII characters are sent
+                userAgent = Util.toHumanReadableAscii(userAgent);
             }
 
         } catch (Exception e) {
@@ -169,6 +186,8 @@ public class MapboxEventManager {
         // Register for battery updates
         IntentFilter iFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
         batteryStatus = context.registerReceiver(null, iFilter);
+
+        initialized = true;
     }
 
     /**
@@ -181,6 +200,24 @@ public class MapboxEventManager {
             mapboxEventManager = new MapboxEventManager();
         }
         return mapboxEventManager;
+    }
+
+    // Checks that TelemetryService has been configured by developer
+    private void validateTelemetryServiceConfigured() {
+        try {
+            // Check Implementing app's AndroidManifest.xml
+            PackageInfo packageInfo = context.getPackageManager().getPackageInfo(context.getPackageName(), PackageManager.GET_SERVICES);
+            if (packageInfo.services != null) {
+                for (ServiceInfo service : packageInfo.services) {
+                    if (TextUtils.equals("com.mapbox.mapboxsdk.telemetry.TelemetryService", service.name)) {
+                        return;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.w(MapboxConstants.TAG, "Error checking for Telemetry Service Config: " + e);
+        }
+        throw new TelemetryServiceNotConfiguredException();
     }
 
     public static String generateCreateDate() {
@@ -196,6 +233,7 @@ public class MapboxEventManager {
      * @param telemetryEnabled True to start telemetry, false to stop it
      */
     public void setTelemetryEnabled(boolean telemetryEnabled) {
+        Log.i(TAG, "setTelemetryEnabled(); this.telemetryEnabled = " + this.telemetryEnabled + "; telemetryEnabled = " + telemetryEnabled);
         if (this.telemetryEnabled == telemetryEnabled) {
             Log.d(TAG, "No need to start / stop telemetry as it's already in that state.");
             return;
@@ -207,8 +245,33 @@ public class MapboxEventManager {
             context.startService(new Intent(context, TelemetryService.class));
 
             // Make sure Ambient Mode is started at a minimum
-            if (LocationServices.getLocationServices(context).isGPSEnabled()) {
-                LocationServices.getLocationServices(context).toggleGPS(false);
+            if (LocationServices.getLocationServices(context).areLocationPermissionsGranted()) {
+                Log.i(TAG, "Permissions are good, see if GPS is enabled and if not then setup Ambient.");
+                if (LocationServices.getLocationServices(context).isGPSEnabled()) {
+                    LocationServices.getLocationServices(context).toggleGPS(false);
+                }
+            } else {
+                // Start timer that checks for Permissions
+                Log.i(TAG, "Permissions are not good.  Need to do some looping to check on stuff.");
+
+                final Handler permsHandler = new Handler();
+                Runnable runnable = new Runnable() {
+                    @Override
+                    public void run() {
+                        if (LocationServices.getLocationServices(context).areLocationPermissionsGranted()) {
+                            Log.i(TAG, "Permissions finally granted, so starting Ambient if GPS isn't already enabled");
+                            // Start Ambient
+                            if (LocationServices.getLocationServices(context).isGPSEnabled()) {
+                                LocationServices.getLocationServices(context).toggleGPS(false);
+                            }
+                        } else {
+                            // Restart Handler
+                            Log.i(TAG, "Permissions not granted yet... let's try again in 30 seconds");
+                            permsHandler.postDelayed(this, 1000 * 30);
+                        }
+                    }
+                };
+                permsHandler.postDelayed(runnable, 1000 * 10);
             }
 
             // Manage Timer Flush
@@ -250,6 +313,16 @@ public class MapboxEventManager {
      * @param location Location event
      */
     public void addLocationEvent(Location location) {
+
+        // NaN and Infinite checks to prevent JSON errors at send to server time
+        if (Double.isNaN(location.getLatitude()) ||  Double.isNaN(location.getLongitude()) ||  Double.isNaN(location.getAltitude())) {
+            return;
+        }
+
+        if (Double.isInfinite(location.getLatitude()) ||  Double.isInfinite(location.getLongitude()) ||  Double.isInfinite(location.getAltitude())) {
+            return;
+        }
+
         // Add Location even to queue
         Hashtable<String, Object> event = new Hashtable<>();
         event.put(MapboxEvent.ATTRIBUTE_EVENT, MapboxEvent.TYPE_LOCATION);
@@ -381,7 +454,7 @@ public class MapboxEventManager {
      */
     private void rotateSessionId() {
         long now = System.currentTimeMillis();
-        if (now - mapboxSessionIdLastSet > (SESSION_ID_ROTATION_HOURS * hourInMillis)) {
+        if ((TextUtils.isEmpty(mapboxSessionId)) || (now - mapboxSessionIdLastSet > (SESSION_ID_ROTATION_HOURS * hourInMillis))) {
             mapboxSessionId = UUID.randomUUID().toString();
             mapboxSessionIdLastSet = System.currentTimeMillis();
         }
@@ -524,7 +597,7 @@ public class MapboxEventManager {
         @Override
         protected Void doInBackground(Void... voids) {
 
-             if (events.size() < 1) {
+             if (events.isEmpty()) {
                 Log.d(TAG, "No events in the queue to send so returning.");
                 return null;
             }
@@ -533,7 +606,10 @@ public class MapboxEventManager {
             ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
             NetworkInfo networkInfo = cm.getActiveNetworkInfo();
             if (networkInfo == null || !networkInfo.isConnected()) {
-                Log.w(TAG, "Not connected to network, so returning without attempting to send events");
+                Log.w(TAG, "Not connected to network, so empty events cache and return without attempting to send events");
+                // Make sure that events don't pile up when Offline
+                // and thus impact available memory over time.
+                events.removeAllElements();
                 return null;
             }
 
@@ -620,19 +696,20 @@ public class MapboxEventManager {
                         .add("cloudfront-staging.tilestream.net", "sha256/sPbNCVpVasMJxps3IqFfLTRKkVnRCLrTlZVc5kspqlkw=")
                         .add("cloudfront-staging.tilestream.net", "sha256/h6801m+z8v3zbgkRHpq6L29Esgfzhj89C1SyUCOQmqU=")
                         // Prod - Geotrust
-                        .add("api.mapbox.com", "sha256/svaiYM/ZVIfxC+CMDe4kj1KsviQmzyZ9To8nQqUJwFI=")
-                        .add("api.mapbox.com", "sha256/owrR9U9FWDWtrFF+myoRIu75JwU4sJwzvhCNLZoY37g=")
-                        .add("api.mapbox.com", "sha256/SQVGZiOrQXi+kqxcvWWE96HhfydlLVqFr4lQTqI5qqo=")
+                        .add("events.mapbox.com", "sha256/BhynraKizavqoC5U26qgYuxLZst6pCu9J5stfL6RSYY=")
+                        .add("events.mapbox.com", "sha256/owrR9U9FWDWtrFF+myoRIu75JwU4sJwzvhCNLZoY37g=")
+                        .add("events.mapbox.com", "sha256/SQVGZiOrQXi+kqxcvWWE96HhfydlLVqFr4lQTqI5qqo=")
                         // Prod - DigiCert
-                        .add("api.mapbox.com", "sha256/JL+uwAwpA2U1UVl/AFdZy1ZnvkZJ1P1hRfmfPaPVSLU=")
-                        .add("api.mapbox.com", "sha256/RRM1dGqnDFsCJXBTHky16vi1obOlCgFFn/yOhI/y+ho=")
-                        .add("api.mapbox.com", "sha256/WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18=")
+                        .add("events.mapbox.com", "sha256/Tb0uHZ/KQjWh8N9+CZFLc4zx36LONQ55l6laDi1qtT4=")
+                        .add("events.mapbox.com", "sha256/RRM1dGqnDFsCJXBTHky16vi1obOlCgFFn/yOhI/y+ho=")
+                        .add("events.mapbox.com", "sha256/WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18=")
                         .build();
 
                 OkHttpClient client = new OkHttpClient.Builder().certificatePinner(certificatePinner).build();
                 RequestBody body = RequestBody.create(JSON, jsonArray.toString());
 
                 String url = eventsURL + "/events/v2?access_token=" + accessToken;
+//                Log.d(TAG, "Events URL = " + url);
 
                 Request request = new Request.Builder()
                         .url(url)
@@ -642,12 +719,13 @@ public class MapboxEventManager {
                 Response response = client.newCall(request).execute();
                 Log.d(TAG, "response code = " + response.code() + " for events " + events.size());
 
-                // Reset Events
-                // ============
-                events.removeAllElements();
             } catch (Exception e) {
                 Log.e(TAG, "FlushTheEventsTask borked: " + e);
                 e.printStackTrace();
+            } finally {
+                // Reset Events
+                // ============
+                events.removeAllElements();
             }
 
             return null;

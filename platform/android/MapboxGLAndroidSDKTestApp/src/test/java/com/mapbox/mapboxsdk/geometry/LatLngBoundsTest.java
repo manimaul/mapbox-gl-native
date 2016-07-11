@@ -1,6 +1,9 @@
 package com.mapbox.mapboxsdk.geometry;
 
+import android.os.Parcelable;
+
 import com.mapbox.mapboxsdk.exceptions.InvalidLatLngBoundsException;
+import com.mapbox.mapboxsdk.utils.MockParcel;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -168,5 +171,13 @@ public class LatLngBoundsTest {
                         .build());
     }
 
-
+    @Test
+    public void testParcelable() {
+        LatLngBounds latLngBounds = new LatLngBounds.Builder()
+                .include(new LatLng(10, 10))
+                .include(new LatLng(9, 8))
+                .build();
+        Parcelable parcel = MockParcel.obtain(latLngBounds);
+        assertEquals("Parcel should match original object", parcel, latLngBounds);
+    }
 }
