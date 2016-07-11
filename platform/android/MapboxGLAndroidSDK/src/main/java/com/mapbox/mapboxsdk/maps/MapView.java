@@ -580,10 +580,10 @@ public class MapView extends FrameLayout {
         mNativeMapView.update();
         mMyLocationView.onResume();
 
-        if (mStyleUrl == null) {
-            // user has failed to supply a style url
-            setStyleUrl(Style.MAPBOX_STREETS);
-        }
+//        if (mStyleUrl == null) {
+//            // user has failed to supply a style url
+//            setStyleUrl(Style.MAPBOX_STREETS);
+//        }
     }
 
     void setFocalPoint(PointF focalPoint) {
@@ -2443,9 +2443,7 @@ public class MapView extends FrameLayout {
     protected void onMapChanged(int mapChange) {
 
         mNativeMapView.updateMapBounds(mWgsVisibleRegion, mWgsCenter);
-        if (mWgsCenter.isValid()) {
-            mMapOverlayDispatch.update(mWgsVisibleRegion, mWgsCenter, (float) getDirection(), (float) getZoom());
-        }
+        mMapOverlayDispatch.update(mWgsVisibleRegion, mWgsCenter, (float) getDirection(), (float) getZoom());
 
         if (mOnMapChangedListener != null) {
             OnMapChangedListener listener;
