@@ -119,7 +119,7 @@ public class MapboxEventManager {
         this.context = context.getApplicationContext();
         this.accessToken = accessToken;
 
-        validateTelemetryServiceConfigured();
+        //validateTelemetryServiceConfigured();
 
         // Setup Message Digest
         try {
@@ -135,7 +135,7 @@ public class MapboxEventManager {
 
         // Determine if Telemetry Should Be Enabled
         Log.i(TAG, "Right before Telemetry set enabled in initialized()");
-        setTelemetryEnabled(prefs.getBoolean(MapboxConstants.MAPBOX_SHARED_PREFERENCE_KEY_TELEMETRY_ENABLED, true));
+        //setTelemetryEnabled(prefs.getBoolean(MapboxConstants.MAPBOX_SHARED_PREFERENCE_KEY_TELEMETRY_ENABLED, true));
 
         // Load / Create Vendor Id
         if (prefs.contains(MapboxConstants.MAPBOX_SHARED_PREFERENCE_KEY_VENDORID)) {
