@@ -93,9 +93,8 @@ android: android-lib
 	cd platform/android && ./gradlew --parallel --max-workers=$(JOBS) assemble$(BUILDTYPE)
 
 # Builds all android architectures for distribution.
-apackage: android-lib-arm-v5 android-lib-arm-v7 android-lib-arm-v8
-apackage: android-lib-x86 android-lib-x86-64
-apackage: android-lib-mips
+apackage: android-lib-arm-v5 android-lib-arm-v7
+apackage: android-lib-x86
 	cd platform/android && ./gradlew --parallel-threads=$(JOBS) assemble$(BUILDTYPE)
 
 # Builds the Node.js library
