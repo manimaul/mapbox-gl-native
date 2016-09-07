@@ -17,7 +17,7 @@ repositories {
 }
 
 ext {
-    supportLibVersion = '23.1.1'
+    supportLibVersion = '24.2.0'
 }
 
 dependencies {
@@ -27,6 +27,8 @@ dependencies {
     compile 'com.squareup.okhttp3:okhttp:3.2.0'
     compile 'com.mapzen.android:lost:1.0.1'
     compile 'com.google.code.gson:gson:2.6.2'
+    compile 'io.reactivex:rxjava:1.1.6'
+    compile 'io.reactivex:rxandroid:1.2.1'
 
     // Unit testing dependencies.
     testCompile 'junit:junit:4.12'
@@ -34,12 +36,12 @@ dependencies {
 }
 
 android {
-    compileSdkVersion Integer.parseInt(project.ANDROID_BUILD_SDK_VERSION)
-    buildToolsVersion project.ANDROID_BUILD_TOOLS_VERSION
+    compileSdkVersion 24
+    buildToolsVersion "24.0.2"
 
     defaultConfig {
-        minSdkVersion Integer.parseInt(project.ANDROID_MIN_SDK)
-        targetSdkVersion Integer.parseInt(project.ANDROID_BUILD_TARGET_SDK_VERSION)
+        minSdkVersion 19
+        targetSdkVersion 24
     }
 
     sourceSets {
