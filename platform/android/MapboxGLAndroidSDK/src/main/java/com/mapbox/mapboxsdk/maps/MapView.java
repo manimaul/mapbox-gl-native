@@ -765,7 +765,7 @@ public class MapView extends FrameLayout {
         if (mDestroyed) {
             return;
         }
-        OfflineProviderManager.getInstance().unRegisterProvider();
+        OfflineProviderManager.getInstance(getResources()).unRegisterProvider();
         mStyleUrl = url;
         mNativeMapView.setStyleUrl(url);
     }
@@ -805,7 +805,7 @@ public class MapView extends FrameLayout {
 
     @UiThread
     public void setOfflineProvider(OfflineProvider provider) {
-        OfflineProviderManager offlineProviderManager = OfflineProviderManager.getInstance();
+        OfflineProviderManager offlineProviderManager = OfflineProviderManager.getInstance(getResources());
         String style = offlineProviderManager.registerProvider(provider);
         if (style != null) {
             mStyleUrl = offlineProviderManager.getStyleDataUrl();

@@ -1,5 +1,6 @@
 package com.mapbox.mapboxsdk.http;
 
+import android.net.Uri;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -48,8 +49,9 @@ public class HTTPRequest implements Callback {
     private HTTPRequest(long nativePtr, String resourceUrl, String userAgent, String etag, String modified) {
         mNativePtr = nativePtr;
         mResourceUrl = resourceUrl;
-        if (mOfflineProviderManager.willHandleUrl(resourceUrl)) {
-            mOfflineProviderManager.handleRequest(this, resourceUrl);
+        Uri resourceUri = Uri.parse(resourceUrl);
+        if (mOfflineProviderManager.willHandleUrl(resourceUri)) {
+            mOfflineProviderManager.handleRequest(this, resourceUri);
             return;
         }
         try {
