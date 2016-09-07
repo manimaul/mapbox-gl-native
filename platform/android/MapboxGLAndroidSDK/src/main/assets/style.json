@@ -128,6 +128,12 @@
       },
       "source-layer": "marine_area",
       "interactive": true
+    },
+    {
+      "id": "offlinePngTile",
+      "type": "raster",
+      "source": "RasterOffline",
+      "source-layer": "mapbox_offline_full"
     }
   ],
   "draft": false

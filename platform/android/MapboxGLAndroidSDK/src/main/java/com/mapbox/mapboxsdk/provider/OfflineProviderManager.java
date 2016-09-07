@@ -1,7 +1,9 @@
 package com.mapbox.mapboxsdk.provider;
 
 import android.content.res.Resources;
+import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
+import android.support.annotation.Nullable;
 import android.support.annotation.VisibleForTesting;
 import android.util.Log;
 
@@ -24,6 +26,7 @@ public class OfflineProviderManager {
     @VisibleForTesting
     OfflineProvider mProvider = null;
     private final Resources mResources;
+    private final SQLiteDatabase mDatabase;
 
     //endregion
 
@@ -35,19 +38,21 @@ public class OfflineProviderManager {
 
     //region CONSTRUCTOR ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+    @Nullable
     public static OfflineProviderManager getInstance() {
         return sInstance;
     }
 
-    public static OfflineProviderManager getInstance(Resources resources) {
+    public static OfflineProviderManager getInstance(Resources resources, SQLiteDatabase database) {
         if (sInstance == null) {
-            sInstance = new OfflineProviderManager(resources);
+            sInstance = new OfflineProviderManager(resources, database);
         }
         return sInstance;
     }
 
-    private OfflineProviderManager(Resources resources) {
+    private OfflineProviderManager(Resources resources, SQLiteDatabase database) {
         mResources = resources;
+        mDatabase = database;
     }
 
     //endregion
@@ -94,16 +99,8 @@ public class OfflineProviderManager {
                         }
                     });
                 } else {
-                    mProvider.startFetchForVectorTile(z, x, y, new OfflineProviderCallback() {
-                        @Override
-                        public void onResult(boolean success, byte[] result) {
-                            if (success) {
-                                httpRequest.onOfflineResponse(result);
-                            } else {
-                                httpRequest.onOfflineFailure();
-                            }
-                        }
-                    });
+                    // todo: provide data
+                    httpRequest.onOfflineResponse(new byte[0]);
                 }
                 break;
             }

@@ -36,7 +36,6 @@ public class HTTPRequest implements Callback {
     private ReentrantLock mLock = new ReentrantLock();
 
     private long mNativePtr = 0;
-    private final OfflineProviderManager mOfflineProviderManager = OfflineProviderManager.getInstance();
     private final String mResourceUrl;
 
     private Call mCall;
@@ -49,9 +48,10 @@ public class HTTPRequest implements Callback {
     private HTTPRequest(long nativePtr, String resourceUrl, String userAgent, String etag, String modified) {
         mNativePtr = nativePtr;
         mResourceUrl = resourceUrl;
+        OfflineProviderManager offlineProviderManager = OfflineProviderManager.getInstance();
         Uri resourceUri = Uri.parse(resourceUrl);
-        if (mOfflineProviderManager.willHandleUrl(resourceUri)) {
-            mOfflineProviderManager.handleRequest(this, resourceUri);
+        if (offlineProviderManager != null && offlineProviderManager.willHandleUrl(resourceUri)) {
+            offlineProviderManager.handleRequest(this, resourceUri);
             return;
         }
         try {
@@ -71,7 +71,10 @@ public class HTTPRequest implements Callback {
 
     public void cancel() {
         if (mCall == null) {
-            mOfflineProviderManager.cancelRequest(this);
+            OfflineProviderManager offlineProviderManager = OfflineProviderManager.getInstance();
+            if (offlineProviderManager != null) {
+                offlineProviderManager.cancelRequest(this);
+            }
         } else {
             mCall.cancel();
         }

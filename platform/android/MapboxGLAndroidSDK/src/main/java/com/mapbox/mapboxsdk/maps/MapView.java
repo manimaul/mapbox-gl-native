@@ -12,6 +12,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.PointF;
@@ -21,6 +22,7 @@ import android.location.Location;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.CallSuper;
 import android.support.annotation.FloatRange;
@@ -78,6 +80,7 @@ import com.mapbox.mapboxsdk.geometry.VisibleRegion;
 import com.mapbox.mapboxsdk.layers.CustomLayer;
 import com.mapbox.mapboxsdk.maps.widgets.CompassView;
 import com.mapbox.mapboxsdk.maps.widgets.UserLocationView;
+import com.mapbox.mapboxsdk.offline.BaseMapVectorDataDb;
 import com.mapbox.mapboxsdk.provider.OfflineProvider;
 import com.mapbox.mapboxsdk.provider.OfflineProviderManager;
 import com.mapbox.mapboxsdk.telemetry.MapboxEvent;
@@ -92,6 +95,10 @@ import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+
+import rx.Observable;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.functions.Func1;
 
 /**
  * <p>
@@ -111,6 +118,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  */
 public class MapView extends FrameLayout {
 
+    private BaseMapVectorDataDb mBaseMapVectorDataDb;
     private MapboxMap mMapboxMap;
     private List<Icon> mIcons;
 
@@ -172,6 +180,7 @@ public class MapView extends FrameLayout {
     }
 
     private void initialize(@NonNull Context context, @NonNull MapboxMapOptions options) {
+        mBaseMapVectorDataDb = new BaseMapVectorDataDb(context);
         mInitialLoad = true;
         mOnMapReadyCallbackList = new ArrayList<>();
         mOnMapChangedListener = new CopyOnWriteArrayList<>();
@@ -765,7 +774,10 @@ public class MapView extends FrameLayout {
         if (mDestroyed) {
             return;
         }
-        OfflineProviderManager.getInstance(getResources()).unRegisterProvider();
+        OfflineProviderManager offlineProviderManager = OfflineProviderManager.getInstance();
+        if (offlineProviderManager != null) {
+            offlineProviderManager.unRegisterProvider();
+        }
         mStyleUrl = url;
         mNativeMapView.setStyleUrl(url);
     }
@@ -803,14 +815,25 @@ public class MapView extends FrameLayout {
         return mStyleUrl;
     }
 
-    @UiThread
-    public void setOfflineProvider(OfflineProvider provider) {
-        OfflineProviderManager offlineProviderManager = OfflineProviderManager.getInstance(getResources());
-        String style = offlineProviderManager.registerProvider(provider);
-        if (style != null) {
-            mStyleUrl = offlineProviderManager.getStyleDataUrl();
-            mNativeMapView.setStyleJson(style);
-        }
+    public Observable<OfflineRegistrar> getOfflineRegistrar() {
+        return mBaseMapVectorDataDb.getDatabase()
+                .subscribeOn(AndroidSchedulers.mainThread())
+                .map(new Func1<SQLiteDatabase, OfflineRegistrar>() {
+            @Override
+            public OfflineRegistrar call(final SQLiteDatabase database) {
+                return new OfflineRegistrar() {
+                    OfflineProviderManager offlineProviderManager = OfflineProviderManager.getInstance(getResources(), database);
+                    @Override
+                    public void setOfflineProvider(OfflineProvider provider) {
+                        String style = offlineProviderManager.registerProvider(provider);
+                        if (style != null) {
+                            mStyleUrl = offlineProviderManager.getStyleDataUrl();
+                            mNativeMapView.setStyleJson(style);
+                        }
+                    }
+                };
+            }
+        });
     }
 
     @UiThread

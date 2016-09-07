@@ -1,13 +1,7 @@
 package com.mapbox.mapboxsdk.provider;
 
-import com.mapbox.mapboxsdk.http.HTTPRequest;
-
 import org.junit.Before;
-import org.junit.Test;
 
-import java.util.UUID;
-
-import static junit.framework.Assert.*;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
@@ -19,7 +13,7 @@ public class OfflineProviderManagerTest {
 
     @Before
     public void setup() {
-        _offlineProviderManager = OfflineProviderManager.getInstance();
+        _offlineProviderManager = OfflineProviderManager.getInstance(getResources(), database);
     }
 
 //    @Test

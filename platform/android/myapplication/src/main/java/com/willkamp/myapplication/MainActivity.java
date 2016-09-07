@@ -7,9 +7,13 @@ import android.view.View;
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
+import com.mapbox.mapboxsdk.maps.OfflineRegistrar;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 import com.mapbox.mapboxsdk.provider.OfflineProvider;
 import com.mapbox.mapboxsdk.provider.OfflineProviderCallback;
+
+import rx.Observer;
+import rx.android.schedulers.AndroidSchedulers;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -48,15 +52,25 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         mMapView = (MapView) findViewById(R.id.mainMapView);
-        mMapView.setOfflineProvider(new OfflineProvider() {
+        mMapView.getOfflineRegistrar().observeOn(AndroidSchedulers.mainThread()).subscribe(new Observer<OfflineRegistrar>() {
             @Override
-            public void startFetchForRasterTile(int z, int x, int y, OfflineProviderCallback callback) {
-                callback.onResult(true, new byte[0]);
+            public void onCompleted() {
+
             }
 
             @Override
-            public void startFetchForVectorTile(int z, int x, int y, OfflineProviderCallback callback) {
-                callback.onResult(true, new byte[0]);
+            public void onError(Throwable e) {
+
+            }
+
+            @Override
+            public void onNext(OfflineRegistrar offlineRegistrar) {
+                offlineRegistrar.setOfflineProvider(new OfflineProvider() {
+                    @Override
+                    public void startFetchForRasterTile(int z, int x, int y, OfflineProviderCallback callback) {
+                        callback.onResult(true, new byte[0]);
+                    }
+                });
             }
         });
         mMapView.setAccessToken(getString(R.string.mapbox_access_token));
