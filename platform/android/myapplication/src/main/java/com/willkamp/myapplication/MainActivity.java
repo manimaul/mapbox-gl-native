@@ -52,7 +52,9 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         mMapView = (MapView) findViewById(R.id.mainMapView);
-        mMapView.getOfflineRegistrar().observeOn(AndroidSchedulers.mainThread()).subscribe(new Observer<OfflineRegistrar>() {
+        mMapView.getOfflineRegistrar()
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Observer<OfflineRegistrar>() {
             @Override
             public void onCompleted() {
 
@@ -114,7 +116,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void zoomIn(View view) {
-        mMapboxMap.moveCamera(CameraUpdateFactory.zoomIn());
+        if (mMapboxMap != null) {
+            mMapboxMap.moveCamera(CameraUpdateFactory.zoomIn());
+        }
     }
 
     public void zoomOut(View view) {

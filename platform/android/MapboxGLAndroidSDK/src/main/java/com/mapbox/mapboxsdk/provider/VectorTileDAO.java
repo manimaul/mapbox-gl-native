@@ -1,9 +1,7 @@
 package com.mapbox.mapboxsdk.provider;
 
-import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.support.annotation.Nullable;
 import android.util.Log;
 
 import com.vividsolutions.jts.geom.Geometry;
@@ -80,32 +78,6 @@ public class VectorTileDAO {
         return records;
     }
 
-    @Nullable
-    private byte[] getCachedTile(String zxy) {
-        byte[] retVal = null;
-        final String table = "tile_cache";
-        final String[] columns = { "vt" };
-        final String selection = "zxy=?";
-        final String[] selectionArgs = { zxy };
-        final String groupBy = null;
-        final String having = null;
-        final String orderBy = null;
-        Cursor cursor = mDatabase.query(table, columns, selection, selectionArgs, groupBy, having, orderBy);
-        if (cursor.moveToFirst()) {
-            retVal = cursor.getBlob(0);
-        }
-        cursor.close();
-        return retVal;
-    }
-
-    private void cacheTile(String zxy, byte[] vectorTile) {
-        final String table = "tile_cache";
-        final ContentValues contentValues = new ContentValues(2);
-        contentValues.put("vt", vectorTile);
-        contentValues.put("zxy", zxy);
-        mDatabase.insert(table, null, contentValues);
-    }
-
     private boolean isFullTile(String zxy) {
         final String table = "base_geometries_full";
         final String[] columns = { "rowid" };
@@ -122,13 +94,7 @@ public class VectorTileDAO {
 
     private byte[] getVectorTile(int tile_z, int tile_x, int tile_y, Target target) {
         String zxy = String.format(Locale.US, "%s/%s/%s", tile_z, tile_x, tile_y);
-        byte[] vectorTile = null;
-        if (target == null) {
-            vectorTile = getCachedTile(zxy);
-        }
-        if (vectorTile != null) {
-            return vectorTile;
-        } else if (isFullTile(zxy)) {
+        if (isFullTile(zxy)) {
             return sFullTile;
         }
         if (target == null) {
@@ -148,16 +114,15 @@ public class VectorTileDAO {
                 GeometryRecord record = records[i];
                 Geometry intersecting = record.getGeometry().intersection(target.polygon);
                 if (!intersecting.isEmpty()) {
+                    Geometry tileGeometry = transformer.transform(intersecting);
                     attributes.clear();
                     attributes.put("name", record.getLabel());
-                    encoder.addFeature(record.getLayerName(), attributes, transformer.transform(intersecting));
+                    encoder.addFeature(record.getLayerName(), attributes, tileGeometry);
                     count++;
                 }
             }
             if (count > 0) {
-                vectorTile = encoder.encode();
-                cacheTile(zxy, vectorTile);
-                return vectorTile;
+                return encoder.encode();
             } else {
                 return sEmptyTile;
             }

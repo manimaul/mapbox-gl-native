@@ -46,7 +46,7 @@ public class TileCoordinateTransformer extends GeometryTransformer {
     protected CoordinateSequence transformCoordinates(CoordinateSequence coords, Geometry parent) {
         CoordinateSequence newCoords = copy(coords);
         for (int i = 0; i < newCoords.size(); i++) {
-            TileSystem.latLngToTileBoundedXy(newCoords.getCoordinate(i), z, x, y);
+            TileSystem.latLngToTileBoundedXy(newCoords.getCoordinate(i), z, x, y, 256);
         }
         return newCoords;
     }

@@ -1,8 +1,5 @@
 package com.mapbox.mapboxsdk.provider;
 
-import android.graphics.Point;
-import android.graphics.PointF;
-import android.graphics.RectF;
 import android.util.Log;
 
 import com.vividsolutions.jts.geom.Coordinate;
@@ -14,45 +11,49 @@ import java.util.Locale;
 
 public class TileSystem {
 
-    public static final String TAG = TileSystem.class.getSimpleName();
-    private static final WKTReader sWktReader = new WKTReader();
-    private static final int TILE_SIZE = 4096;
-    private static final double EARTH_RADIUS = 6378137.;
-    private static final double EARTH_CIRCUMFERENCE = 2. * Math.PI * EARTH_RADIUS;  // at equator;
-    private static final double ORIGIN_SHIFT = EARTH_CIRCUMFERENCE / 2.d;  // 20037508.342789244;
-    private static final double MIN_LAT_Y = -85.05112878;
-    private static final double MAX_LAT_Y = 85.05112878;
-    private static final double MIN_LNG_X = -180.;
-    private static final double MAX_LNG_X = 180.;
-    private static final double INCHES_PER_METER = 39.3701;
-    private static final double MAX_ZOOM_LEVEL = 23;
+    static final String TAG = TileSystem.class.getSimpleName();
+    static final WKTReader sWktReader = new WKTReader();
+    static final int TILE_SIZE = 4096;
+    static final double MIN_LAT_Y = -85.05112878;
+    static final double MAX_LAT_Y = 85.05112878;
+    static final double MIN_LNG_X = -180.;
+    static final double MAX_LNG_X = 180.;
 
-    public static void latLngToTileBoundedXy(Coordinate lngLat, int z, int x, int y) {
-        Coordinate p = latLngToPixel(lngLat, z);
-        p.x = p.x - x * TILE_SIZE;
-        p.y = p.y - y * TILE_SIZE;
+    public static void latLngToTileBoundedXy(Coordinate coordinate, int z, int x, int y) {
+        latLngToTileBoundedXy(coordinate, z, x, y, TILE_SIZE);
     }
 
-    private static Coordinate latLngToPixel(Coordinate lngLat, int z) {
+    public static void latLngToTileBoundedXy(Coordinate coordinate, int z, int x, int y, int tileSize) {
+        Pixel pixel = latLngToPixel(coordinate, z);
+        coordinate.x = pixel.x - x * TILE_SIZE;
+        coordinate.y = (pixel.y - y * TILE_SIZE) - y;
+        if (tileSize != TILE_SIZE) {
+            double scale = (double) tileSize / TILE_SIZE;
+            coordinate.x = Math.round(coordinate.x * scale);
+            coordinate.y = Math.round(coordinate.y * scale);
+        }
+    }
+
+    static Pixel latLngToPixel(Coordinate lngLat, int z) {
         double lat_y = clip(lngLat.y, MIN_LAT_Y, MAX_LAT_Y);
         double lng_x = clip(lngLat.x, MIN_LNG_X, MAX_LNG_X);
-        double x = (lng_x + 180.) / 360.;
+        double x = (lng_x + 180.d) / 360.d;
         double sin_lat = Math.sin(lat_y * Math.PI / 180.d);
         double y = .5d - Math.log((1.d + sin_lat) / (1.d - sin_lat)) / (4.d * Math.PI);
         double m_size = mapSize(z);
-        int px = (int) clip(x * m_size + .5d, 0.d, m_size - 1.d);
-        int py = (int) clip(y * m_size + .5d, 0.d, m_size - 1.d);
-        return new Coordinate(px, py);
+        long px = (long) clip(x * m_size + .5d, 0.d, m_size - 1.d);
+        long py = (long) clip(y * m_size + .5d, 0.d, m_size - 1.d);
+        return new Pixel(px, py);
     }
 
     public static Polygon tileClipPolygon(int z, int x, int y) {
-        RectF rect = zxyToLngLatBounds(z, x, y);
+        LatLngBounds rect = zxyToLngLatBounds(z, x, y);
         String wkt = String.format(Locale.US, "POLYGON ((%f %f, %f %f, %f %f, %f %f, %f %f))",
-                rect.left, rect.top,
-                rect.right, rect.top,
-                rect.right, rect.bottom,
-                rect.left, rect.bottom,
-                rect.left, rect.top);
+                rect.westX, rect.northY,
+                rect.eastX, rect.northY,
+                rect.eastX, rect.southY,
+                rect.westX, rect.southY,
+                rect.westX, rect.northY);
         try {
             return (Polygon) sWktReader.read(wkt);
         } catch (ParseException e) {
@@ -61,44 +62,74 @@ public class TileSystem {
         return null;
     }
 
-    private static RectF zxyToLngLatBounds(int z, int x, int y) {
-        final Point p = pixel(x, y);
-        final PointF tl = pixelToLngLat(p, z);
+    static LatLngBounds zxyToLngLatBounds(int z, int x, int y) {
+        final Pixel p = pixel(x, y);
+        final LatLng tl = pixelToLngLat(p, z);
         p.x = p.x + TILE_SIZE;
-        final PointF tr = pixelToLngLat(p, z);
+        final LatLng tr = pixelToLngLat(p, z);
         p.y = p.y + TILE_SIZE;
-        final PointF br = pixelToLngLat(p, z);
+        final LatLng br = pixelToLngLat(p, z);
         p.x = p.x - TILE_SIZE;
-        final PointF bl = pixelToLngLat(p, z);
-        final float left = Math.min(tl.x, bl.x);
-        final float top = Math.max(tl.y, tr.y);
-        final float right = Math.max(tr.x, br.x);
-        final float bottom = Math.min(br.y, bl.y);
-        return new RectF(left, top, right, bottom);
-    }
-
-    public static float clip(float num, float min, float max) {
-        return Math.min(Math.max(num, min), max);
+        final LatLng bl = pixelToLngLat(p, z);
+        final double left = Math.min(tl.lngX, bl.lngX);
+        final double top = Math.max(tl.latY, tr.latY);
+        final double right = Math.max(tr.lngX, br.lngX);
+        final double bottom = Math.min(br.latY, bl.latY);
+        return new LatLngBounds(left, bottom, right, top);
     }
 
     public static double clip(double num, double min, double max) {
         return Math.min(Math.max(num, min), max);
     }
 
-    private static PointF pixelToLngLat(Point pixel, int z) {
-        float m_size = mapSize(z);
-        float xf = (clip(pixel.x, 0f, TILE_SIZE - 1) / m_size) - .5f;
-        float yf = .5f - (clip(pixel.y, 0f, m_size - 1) / m_size);
-        float lat = (float) (90.d - 360.d * Math.atan(-yf * 2d * Math.PI) / Math.PI);
-        float lng = (float) 360.d * xf;
-        return new PointF(lng, lat);
+    static LatLng pixelToLngLat(Pixel pixel, int z) {
+        double m_size = mapSize(z);
+        double x = (clip(pixel.x, 0f, m_size - 1) / m_size) - .5f;
+        double yf = .5f - (clip(pixel.y, 0f, m_size - 1) / m_size);
+        double lat = (90.d - 360.d * Math.atan(Math.exp(-yf * 2d * Math.PI)) / Math.PI);
+        double lng = (360.d * x);
+        return new LatLng(lng, lat);
     }
 
-    private static Point pixel(int x, int y) {
-        return new Point(x * TILE_SIZE, y * TILE_SIZE);
+    private static Pixel pixel(int x, int y) {
+        return new Pixel(x * TILE_SIZE, y * TILE_SIZE);
     }
 
-    private static float mapSize(int z) {
+    private static int mapSize(int z) {
         return TILE_SIZE << z;
+    }
+
+    static class Pixel {
+        long x;
+        long y;
+
+        public Pixel(long x, long y) {
+            this.x = x;
+            this.y = y;
+        }
+    }
+
+    static class LatLng {
+        double lngX;
+        double latY;
+
+        public LatLng(double lngX, double latY) {
+            this.lngX = lngX;
+            this.latY = latY;
+        }
+    }
+
+    static class LatLngBounds {
+        double westX;
+        double southY;
+        double eastX;
+        double northY;
+
+        public LatLngBounds(double westX, double southY, double eastX, double northY) {
+            this.westX = westX;
+            this.southY = southY;
+            this.eastX = eastX;
+            this.northY = northY;
+        }
     }
 }
