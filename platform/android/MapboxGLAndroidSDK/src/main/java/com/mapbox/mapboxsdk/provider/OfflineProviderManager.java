@@ -26,7 +26,7 @@ public class OfflineProviderManager {
     @VisibleForTesting
     OfflineProvider mProvider = null;
     private final Resources mResources;
-    private final SQLiteDatabase mDatabase;
+    private final VectorTileDAO mVectorTileDAO;
 
     //endregion
 
@@ -52,7 +52,7 @@ public class OfflineProviderManager {
 
     private OfflineProviderManager(Resources resources, SQLiteDatabase database) {
         mResources = resources;
-        mDatabase = database;
+        mVectorTileDAO = new VectorTileDAO(database);
     }
 
     //endregion
@@ -99,8 +99,7 @@ public class OfflineProviderManager {
                         }
                     });
                 } else {
-                    // todo: provide data
-                    httpRequest.onOfflineResponse(new byte[0]);
+                    httpRequest.onOfflineResponse(mVectorTileDAO.getVectorTile(z, x, y));
                 }
                 break;
             }

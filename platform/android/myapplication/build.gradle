@@ -19,6 +19,13 @@ android {
     }
 }
 
+repositories {
+    mavenCentral()
+    maven {
+        url "https://github.com/ElectronicChartCentre/ecc-mvn-repo/raw/master/releases"
+    }
+}
+
 dependencies {
     compile(project(':MapboxGLAndroidSDK')) {
         transitive = true
