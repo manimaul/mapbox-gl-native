@@ -1,17 +1,18 @@
 package com.mapbox.mapboxsdk.http;
 
 import android.net.Uri;
+import android.support.annotation.Nullable;
 import android.text.TextUtils;
 import android.util.Log;
 
 import com.mapbox.mapboxsdk.constants.MapboxConstants;
-import com.mapbox.mapboxsdk.provider.OfflineProviderManager;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.ProtocolException;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import javax.net.ssl.SSLException;
@@ -23,36 +24,52 @@ import okhttp3.Request;
 import okhttp3.Response;
 
 public class HTTPRequest implements Callback {
-    
-    private static OkHttpClient mClient = new OkHttpClient();
-    private final String LOG_TAG = HTTPRequest.class.getName();
 
+    //region CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    private static final String LOG_TAG = HTTPRequest.class.getName();
+    private static final OkHttpClient OK_HTTP_CLIENT = new OkHttpClient();
     private static final int CONNECTION_ERROR = 0;
     private static final int TEMPORARY_ERROR = 1;
     private static final int PERMANENT_ERROR = 2;
 
-    // Reentrancy is not needed, but "Lock" is an
-    // abstract class.
-    private ReentrantLock mLock = new ReentrantLock();
+    public static final int OFFLINE_RESPONSE_CODE = 200;
+    public static final int OFFLINE_FAILURE_CODE = 404;
+    public static final String OFFLINE_FAILURE_MESSAGE = "";
+    public static final String OFFLINE_RESPONSE_ETAG = "OK";
+    public static final String OFFLINE_RESPONSE_MODIFIED = "";
+    public static final String OFFLINE_RESPONSE_CACHE_CONTROL = "no-cache, no-store";
+    public static final String OFFLINE_RESPONSE_CACHE_EXPIRES = "";
 
+    //endregion
+
+    //region FIELDS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    // Reentrant is not needed, but "Lock" is an abstract class.
+    private Lock mLock = new ReentrantLock();
     private long mNativePtr = 0;
-    private final String mResourceUrl;
-
+    private final Uri mResourceUrl;
     private Call mCall;
-    private Request mRequest;
+    private static OfflineInterceptor sOfflineInterceptor;
 
-    private native void nativeOnFailure(int type, String message);
+    //endregion
 
-    private native void nativeOnResponse(int code, String etag, String modified, String cacheControl, String expires, byte[] body);
+    //region INJECTED DEPENDENCIES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //endregion
+
+    //region INJECTED VIEWS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //endregion
+
+    //region CONSTRUCTOR ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     private HTTPRequest(long nativePtr, String resourceUrl, String userAgent, String etag, String modified) {
         mNativePtr = nativePtr;
-        mResourceUrl = resourceUrl;
-        OfflineProviderManager offlineProviderManager = OfflineProviderManager.getInstance();
-        Uri resourceUri = Uri.parse(resourceUrl);
-        if (offlineProviderManager != null && offlineProviderManager.willHandleUrl(resourceUri)) {
-            offlineProviderManager.handleRequest(this, resourceUri);
-            return;
+        mResourceUrl = Uri.parse(resourceUrl);
+        if (sOfflineInterceptor != null) {
+            if (mResourceUrl.getHost().equals(sOfflineInterceptor.host())) {
+                sOfflineInterceptor.handleRequest(mResourceUrl, new InterceptorCallback());
+                return;
+            }
         }
         try {
             Request.Builder builder = new Request.Builder().url(resourceUrl).tag(resourceUrl.toLowerCase(MapboxConstants.MAPBOX_LOCALE)).addHeader("User-Agent", userAgent);
@@ -61,68 +78,23 @@ public class HTTPRequest implements Callback {
             } else if (modified.length() > 0) {
                 builder = builder.addHeader("If-Modified-Since", modified);
             }
-            mRequest = builder.build();
-            mCall = mClient.newCall(mRequest);
+            Request request = builder.build();
+            mCall = OK_HTTP_CLIENT.newCall(request);
             mCall.enqueue(this);
         } catch (Exception e) {
             onFailure(e);
         }
     }
 
-    public void cancel() {
-        if (mCall == null) {
-            OfflineProviderManager offlineProviderManager = OfflineProviderManager.getInstance();
-            if (offlineProviderManager != null) {
-                offlineProviderManager.cancelRequest(this);
-            }
-        } else {
-            mCall.cancel();
-        }
+    //endregion
 
-        // TODO: We need a lock here because we can try
-        // to cancel at the same time the request is getting
-        // answered on the OkHTTP thread. We could get rid of
-        // this lock by using Runnable when we move Android
-        // implementation of mbgl::RunLoop to Looper.
-        mLock.lock();
-        mNativePtr = 0;
-        mLock.unlock();
-    }
+    //region PRIVATE METHODS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    @Override
-    public void onResponse(Call call, Response response) throws IOException {
-        if (response.isSuccessful()) {
-            Log.v(LOG_TAG, String.format("[HTTP] Request was successful (code = %d).", response.code()));
-        } else {
-            // We don't want to call this unsuccessful because a 304 isn't really an error
-            String message = !TextUtils.isEmpty(response.message()) ? response.message() : "No additional information";
-            Log.d(LOG_TAG, String.format(
-                    "[HTTP] Request with response code = %d: %s",
-                    response.code(), message));
-        }
+    @SuppressWarnings("JniMissingFunction")
+    private native void nativeOnFailure(int type, String message);
 
-        byte[] body;
-        try {
-            body = response.body().bytes();
-        } catch (IOException e) {
-            onFailure(e);
-            //throw e;
-            return;
-        } finally {
-            response.body().close();
-        }
-
-        mLock.lock();
-        if (mNativePtr != 0) {
-            nativeOnResponse(response.code(), response.header("ETag"), response.header("Last-Modified"), response.header("Cache-Control"), response.header("Expires"), body);
-        }
-        mLock.unlock();
-    }
-
-    @Override
-    public void onFailure(Call call, IOException e) {
-        onFailure(e);
-    }
+    @SuppressWarnings("JniMissingFunction")
+    private native void nativeOnResponse(int code, String etag, String modified, String cacheControl, String expires, byte[] body);
 
     private void onFailure(Exception e) {
         Log.w(LOG_TAG, String.format("[HTTP] Request could not be executed: %s", e.getMessage()));
@@ -143,29 +115,111 @@ public class HTTPRequest implements Callback {
         mLock.unlock();
     }
 
-    public String getResourceUrl() {
-        return mResourceUrl;
-    }
-
-    public static final int OFFLINE_RESPONSE_CODE = 200;
-    public static final int OFFLINE_FAILURE_CODE = 404;
-    public static final String OFFLINE_FAILURE_MESSAGE = "";
-    public static final String OFFLINE_RESPONSE_ETAG = "OK";
-    public static final String OFFLINE_RESPONSE_MODIFIED = "";
-    public static final String OFFLINE_RESPONSE_CACHE_CONTROL = "no-cache, no-store";
-    public static final String OFFLINE_RESPONSE_CACHE_EXPIRES = "";
-
     public void onOfflineResponse(byte[] body) {
-        nativeOnResponse(OFFLINE_RESPONSE_CODE,
-                OFFLINE_RESPONSE_ETAG,
-                OFFLINE_RESPONSE_MODIFIED,
-                OFFLINE_RESPONSE_CACHE_CONTROL,
-                OFFLINE_RESPONSE_CACHE_EXPIRES,
-                body);
+        mLock.lock();
+        if (mNativePtr != 0) {
+            nativeOnResponse(OFFLINE_RESPONSE_CODE,
+                    OFFLINE_RESPONSE_ETAG,
+                    OFFLINE_RESPONSE_MODIFIED,
+                    OFFLINE_RESPONSE_CACHE_CONTROL,
+                    OFFLINE_RESPONSE_CACHE_EXPIRES,
+                    body);
+        }
+        mLock.unlock();
     }
 
     public void onOfflineFailure() {
-        nativeOnFailure(OFFLINE_FAILURE_CODE, OFFLINE_FAILURE_MESSAGE);
+        mLock.lock();
+        if (mNativePtr != 0) {
+            nativeOnFailure(OFFLINE_FAILURE_CODE, OFFLINE_FAILURE_MESSAGE);
+        }
+        mLock.unlock();
     }
+
+    //endregion
+
+    //region PUBLIC METHODS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    public void cancel() {
+        if (mCall == null) {
+            if (sOfflineInterceptor != null) {
+                sOfflineInterceptor.cancel(mResourceUrl);
+            }
+        } else {
+            mCall.cancel();
+        }
+
+        // We need a lock here because we can try to cancel at the same time the request is getting
+        // answered on the OkHTTP thread. We could get rid of this lock by using Runnable when we
+        // move Android implementation of mbgl::RunLoop to Looper.
+        mLock.lock();
+        mNativePtr = 0;
+        mLock.unlock();
+    }
+
+    //endregion
+
+    //region ACCESSORS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    public static void setOfflineInterceptor(@Nullable OfflineInterceptor offlineInterceptor) {
+        sOfflineInterceptor = offlineInterceptor;
+    }
+
+    //endregion
+
+    //region {Callback) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    @Override
+    public void onResponse(Call call, Response response) throws IOException {
+        if (response.isSuccessful()) {
+            Log.v(LOG_TAG, String.format("[HTTP] Request was successful (code = %d).", response.code()));
+        } else {
+            // We don't want to call this unsuccessful because a 304 isn't really an error
+            String message = !TextUtils.isEmpty(response.message()) ? response.message() : "No additional information";
+            Log.d(LOG_TAG, String.format(
+                    "[HTTP] Request with response code = %d: %s",
+                    response.code(), message));
+        }
+
+        byte[] body;
+        try {
+            body = response.body().bytes();
+        } catch (IOException e) {
+            onFailure(e);
+            return;
+        } finally {
+            response.body().close();
+        }
+
+        mLock.lock();
+        if (mNativePtr != 0) {
+            nativeOnResponse(response.code(), response.header("ETag"), response.header("Last-Modified"),
+                    response.header("Cache-Control"), response.header("Expires"), body);
+        }
+        mLock.unlock();
+    }
+
+    @Override
+    public void onFailure(Call call, IOException e) {
+        onFailure(e);
+    }
+
+    //endregion
+
+    //region INNER CLASSES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    private class InterceptorCallback implements OfflineInterceptorCallback {
+
+        @Override
+        public void onResult(boolean success, byte[] result) {
+            if (success) {
+                onOfflineResponse(result);
+            } else {
+                onOfflineFailure();
+            }
+        }
+    }
+
+    //endregion
 
 }

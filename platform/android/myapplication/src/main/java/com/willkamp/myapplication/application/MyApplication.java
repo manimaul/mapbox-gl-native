@@ -1,17 +1,16 @@
-package com.mapbox.mapboxsdk.provider;
+package com.willkamp.myapplication.application;
 
-import com.vividsolutions.jts.geom.CoordinateSequence;
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.util.GeometryTransformer;
+import android.app.Application;
+import android.content.Context;
 
-public class TileCoordinateTransformer extends GeometryTransformer {
+public class MyApplication extends Application {
 
     //region CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //endregion
 
     //region FIELDS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    private final int z, x, y;
+    private static Context sAppContext;
 
     //endregion
 
@@ -22,13 +21,6 @@ public class TileCoordinateTransformer extends GeometryTransformer {
     //endregion
 
     //region CONSTRUCTOR ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    public TileCoordinateTransformer(int z, int x, int y) {
-        this.z = z;
-        this.x = x;
-        this.y = y;
-    }
-
     //endregion
 
     //region PRIVATE METHODS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -38,17 +30,20 @@ public class TileCoordinateTransformer extends GeometryTransformer {
     //endregion
 
     //region ACCESSORS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    public static Context getAppContext() {
+        return sAppContext;
+    }
+
     //endregion
 
-    //region {GeometryTransformer} ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //region {Application} ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     @Override
-    protected CoordinateSequence transformCoordinates(CoordinateSequence coords, Geometry parent) {
-        CoordinateSequence newCoords = copy(coords);
-        for (int i = 0; i < newCoords.size(); i++) {
-            TileSystem.latLngToTileBoundedXy(newCoords.getCoordinate(i), z, x, y);
-        }
-        return newCoords;
+    public void onCreate() {
+        super.onCreate();
+        sAppContext = getApplicationContext();
+        registerActivityLifecycleCallbacks(ApplicationLifeCycle.INSTANCE);
     }
 
     //endregion

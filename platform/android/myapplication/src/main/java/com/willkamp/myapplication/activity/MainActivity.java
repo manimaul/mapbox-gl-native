@@ -1,23 +1,29 @@
-package com.willkamp.myapplication;
+package com.willkamp.myapplication.activity;
 
-import android.support.v7.app.AppCompatActivity;
+import android.net.Uri;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
+import com.mapbox.mapboxsdk.http.OfflineInterceptor;
+import com.mapbox.mapboxsdk.http.OfflineInterceptorCallback;
 import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
-import com.mapbox.mapboxsdk.maps.OfflineRegistrar;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
-import com.mapbox.mapboxsdk.provider.OfflineProvider;
-import com.mapbox.mapboxsdk.provider.OfflineProviderCallback;
+import com.willkamp.myapplication.R;
+import com.willkamp.myapplication.utility.AssetReader;
+import com.willkamp.myapplication.vectortiles.VectorTileDao;
 
-import rx.Observer;
-import rx.android.schedulers.AndroidSchedulers;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
     //region CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    private static final String TAG = MainActivity.class.getSimpleName();
+
     //endregion
 
     //region FIELDS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -52,27 +58,50 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         mMapView = (MapView) findViewById(R.id.mainMapView);
-        mMapView.getOfflineRegistrar()
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Observer<OfflineRegistrar>() {
+        mMapView.setStyleUrl("http://localhost/style.json", new OfflineInterceptor() {
             @Override
-            public void onCompleted() {
-
+            public void cancel(Uri uri) {
+                Log.d(TAG, "cancel() " + uri);
             }
 
             @Override
-            public void onError(Throwable e) {
-
-            }
-
-            @Override
-            public void onNext(OfflineRegistrar offlineRegistrar) {
-                offlineRegistrar.setOfflineProvider(new OfflineProvider() {
-                    @Override
-                    public void startFetchForRasterTile(int z, int x, int y, OfflineProviderCallback callback) {
-                        callback.onResult(true, new byte[0]);
+            public void handleRequest(Uri uri, OfflineInterceptorCallback callback) {
+                Log.d(TAG, "handleRequest() " + uri);
+                switch (uri.getPath()) {
+                    case "/style.json": {
+                        callback.onResult(true, AssetReader.readAssetByteArray(getResources(), "style.json"));
+                        break;
                     }
-                });
+                    case "/raster_data_source_v8.json": {
+                        callback.onResult(true, AssetReader.readAssetByteArray(getResources(), "raster_data_source_v8.json"));
+                        break;
+                    }
+                    case "/vector_data_source_v8.json": {
+                        callback.onResult(true, AssetReader.readAssetByteArray(getResources(), "vector_data_source_v8.json"));
+                        break;
+                    }
+                    default: {
+                        List<String> segments = uri.getPathSegments();
+                        if (segments.size() == 4) {
+                            int z = Integer.parseInt(segments.get(1));
+                            int x = Integer.parseInt(segments.get(2));
+                            int y = Integer.parseInt(segments.get(3));
+                            if ("raster".equals(segments.get(0))) {
+                                callback.onResult(true, new byte[0]);
+                            } else {
+                                callback.onResult(true, VectorTileDao.INSTANCE.getVectorTile(z, x, y));
+                            }
+                        } else {
+                            callback.onResult(false, new byte[0]);
+                        }
+                        break;
+                    }
+                }
+            }
+
+            @Override
+            public String host() {
+                return "localhost";
             }
         });
         mMapView.setAccessToken(getString(R.string.mapbox_access_token));

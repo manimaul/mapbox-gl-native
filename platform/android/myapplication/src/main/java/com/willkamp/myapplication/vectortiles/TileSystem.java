@@ -1,4 +1,4 @@
-package com.mapbox.mapboxsdk.provider;
+package com.willkamp.myapplication.vectortiles;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.GeometryFactory;

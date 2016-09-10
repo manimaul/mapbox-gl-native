@@ -1,4 +1,4 @@
-package com.mapbox.mapboxsdk.provider;
+package com.willkamp.myapplication.utility;
 
 import android.content.res.AssetManager;
 import android.content.res.Resources;
@@ -23,16 +23,15 @@ public class AssetReader {
         if (data != null) {
             return new String(data);
         }
-        return null;
+        return "";
     }
 
     @Nullable
     public static byte[] readAssetByteArray(Resources resources, String asset) {
-        byte[] data = null;
-        try {
-            AssetManager assetManager = resources.getAssets();
-            InputStream is = assetManager.open(asset);
-            ByteArrayOutputStream os = new ByteArrayOutputStream();
+        byte[] data;
+        AssetManager assetManager = resources.getAssets();
+        try (InputStream is = assetManager.open(asset);
+             ByteArrayOutputStream os = new ByteArrayOutputStream()) {
             byte[] buffer = new byte[1024];
             int read = is.read(buffer);
             while (read != -1) {
@@ -40,9 +39,9 @@ public class AssetReader {
                 read = is.read(buffer);
             }
             data = os.toByteArray();
-            is.close();
-            os.close();
-        } catch (IOException ignored) {}
+        } catch (IOException ignored) {
+            data = new byte[0];
+        }
         return data;
     }
 

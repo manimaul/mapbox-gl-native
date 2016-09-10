@@ -1,22 +1,17 @@
-package com.mapbox.mapboxsdk.provider;
+package com.willkamp.myapplication.vectortiles;
 
+import com.vividsolutions.jts.geom.CoordinateSequence;
 import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.io.ParseException;
-import com.vividsolutions.jts.io.WKBReader;
+import com.vividsolutions.jts.geom.util.GeometryTransformer;
 
-public class GeometryRecord {
+public class TileCoordinateTransformer extends GeometryTransformer {
 
     //region CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //endregion
 
     //region FIELDS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    private final String mSourceFile;
-    private Geometry mGeometry;
-    private final String mLayerName;
-    private final String mLabel;
-
-    private static final WKBReader sReader = new WKBReader();
+    private final int z, x, y;
 
     //endregion
 
@@ -28,14 +23,10 @@ public class GeometryRecord {
 
     //region CONSTRUCTOR ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    public GeometryRecord(String sourceFile,
-                          byte[] wkb,
-                          String layerName,
-                          String label) throws ParseException {
-        mSourceFile = sourceFile;
-        mGeometry = sReader.read(wkb);
-        mLayerName = layerName;
-        mLabel = label;
+    public TileCoordinateTransformer(int z, int x, int y) {
+        this.z = z;
+        this.x = x;
+        this.y = y;
     }
 
     //endregion
@@ -47,25 +38,22 @@ public class GeometryRecord {
     //endregion
 
     //region ACCESSORS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //endregion
 
-    public String getSourceFile() {
-        return mSourceFile;
-    }
+    //region {GeometryTransformer} ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    public Geometry getGeometry() {
-        return mGeometry;
-    }
-
-    public String getLayerName() {
-        return mLayerName;
-    }
-
-    public String getLabel() {
-        return mLabel;
+    @Override
+    protected CoordinateSequence transformCoordinates(CoordinateSequence coords, Geometry parent) {
+        CoordinateSequence newCoords = copy(coords);
+        for (int i = 0; i < newCoords.size(); i++) {
+            TileSystem.latLngToTileBoundedXy(newCoords.getCoordinate(i), z, x, y);
+        }
+        return newCoords;
     }
 
     //endregion
 
     //region INNER CLASSES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //endregion
+
 }

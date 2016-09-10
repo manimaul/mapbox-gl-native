@@ -1,6 +1,7 @@
-package com.mapbox.mapboxsdk.provider;
+package com.willkamp.myapplication;
 
 import com.vividsolutions.jts.geom.Coordinate;
+import com.willkamp.myapplication.vectortiles.TileSystem;
 
 import org.junit.Test;
 
@@ -51,14 +52,14 @@ public class TileSystemTest {
         coordinate.x = 180;
         coordinate.y = -90;
         pixel = TileSystem.latLngToPixel(coordinate, 0);
-        assertEquals(TileSystem.TILE_SIZE, pixel.x, 0);
-        assertEquals(TileSystem.TILE_SIZE, pixel.y, 0);
+        assertEquals(TileSystem.TILE_SIZE, pixel.x, 1);
+        assertEquals(TileSystem.TILE_SIZE, pixel.y, 1);
 
         coordinate.x = 0;
         coordinate.y = 0;
         pixel = TileSystem.latLngToPixel(coordinate, 0);
-        assertEquals(TileSystem.TILE_SIZE / 2, pixel.x, 0);
-        assertEquals(TileSystem.TILE_SIZE / 2, pixel.y, 0);
+        assertEquals(TileSystem.TILE_SIZE / 2, pixel.x, 1);
+        assertEquals(TileSystem.TILE_SIZE / 2, pixel.y, 1);
     }
 
     @Test
@@ -73,14 +74,14 @@ public class TileSystemTest {
         coordinate.x = 180;
         coordinate.y = -90;
         pixel = TileSystem.latLngToPixel(coordinate, 0);
-        assertEquals(TileSystem.TILE_SIZE, pixel.x, 0);
-        assertEquals(TileSystem.TILE_SIZE, pixel.y, 0);
+        assertEquals(TileSystem.TILE_SIZE, pixel.x, 1);
+        assertEquals(TileSystem.TILE_SIZE, pixel.y, 1);
 
         coordinate.x = 0;
         coordinate.y = 0;
         pixel = TileSystem.latLngToPixel(coordinate, 0);
-        assertEquals(TileSystem.TILE_SIZE / 2, pixel.x, 0);
-        assertEquals(TileSystem.TILE_SIZE / 2, pixel.y, 0);
+        assertEquals(TileSystem.TILE_SIZE / 2, pixel.x, 1);
+        assertEquals(TileSystem.TILE_SIZE / 2, pixel.y, 1);
     }
 
     @Test
