@@ -8,7 +8,6 @@ import android.view.View;
 
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.http.OfflineInterceptor;
-import com.mapbox.mapboxsdk.http.OfflineInterceptorCallback;
 import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
@@ -17,6 +16,8 @@ import com.willkamp.myapplication.utility.AssetReader;
 import com.willkamp.myapplication.vectortiles.VectorTileDao;
 
 import java.util.List;
+
+import rx.Observable;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -65,20 +66,17 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void handleRequest(Uri uri, OfflineInterceptorCallback callback) {
+            public Observable<byte[]> handleRequest(Uri uri) {
                 Log.d(TAG, "handleRequest() " + uri);
                 switch (uri.getPath()) {
                     case "/style.json": {
-                        callback.onResult(true, AssetReader.readAssetByteArray(getResources(), "style.json"));
-                        break;
+                        return Observable.just(AssetReader.readAssetByteArray(getResources(), "style.json"));
                     }
                     case "/raster_data_source_v8.json": {
-                        callback.onResult(true, AssetReader.readAssetByteArray(getResources(), "raster_data_source_v8.json"));
-                        break;
+                        return Observable.just(AssetReader.readAssetByteArray(getResources(), "raster_data_source_v8.json"));
                     }
                     case "/vector_data_source_v8.json": {
-                        callback.onResult(true, AssetReader.readAssetByteArray(getResources(), "vector_data_source_v8.json"));
-                        break;
+                        return Observable.just(AssetReader.readAssetByteArray(getResources(), "vector_data_source_v8.json"));
                     }
                     default: {
                         List<String> segments = uri.getPathSegments();
@@ -87,14 +85,13 @@ public class MainActivity extends AppCompatActivity {
                             int x = Integer.parseInt(segments.get(2));
                             int y = Integer.parseInt(segments.get(3));
                             if ("raster".equals(segments.get(0))) {
-                                callback.onResult(true, new byte[0]);
+                                return Observable.just(new byte[0]);
                             } else {
-                                callback.onResult(true, VectorTileDao.INSTANCE.getVectorTile(z, x, y));
+                                return VectorTileDao.INSTANCE.getVectorTileObservable(z, x, y);
                             }
                         } else {
-                            callback.onResult(false, new byte[0]);
+                            return Observable.just(new byte[0]);
                         }
-                        break;
                     }
                 }
             }

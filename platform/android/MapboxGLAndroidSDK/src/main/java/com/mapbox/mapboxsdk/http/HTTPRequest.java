@@ -22,6 +22,8 @@ import okhttp3.Callback;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import rx.Observable;
+import rx.Subscriber;
 
 public class HTTPRequest implements Callback {
 
@@ -67,7 +69,31 @@ public class HTTPRequest implements Callback {
         mResourceUrl = Uri.parse(resourceUrl);
         if (sOfflineInterceptor != null) {
             if (mResourceUrl.getHost().equals(sOfflineInterceptor.host())) {
-                sOfflineInterceptor.handleRequest(mResourceUrl, new InterceptorCallback());
+                Log.d(LOG_TAG, "HTTPRequest thread " + Thread.currentThread().getId() + Thread.currentThread().getName());
+                Observable<byte[]> responseObservable = sOfflineInterceptor.handleRequest(mResourceUrl);
+                if (responseObservable != null) {
+                    responseObservable.subscribe(new Subscriber<byte[]>() {
+                        @Override
+                        public void onCompleted() {
+
+                        }
+
+                        @Override
+                        public void onError(Throwable e) {
+                            // Log.e(LOG_TAG, "HTTPRequest onError() thread " + Thread.currentThread().getId() + Thread.currentThread().getName(), e);
+                            onOfflineFailure();
+                        }
+
+                        @Override
+                        public void onNext(byte[] bytes) {
+                            // Log.d(LOG_TAG, "HTTPRequest onNext() thread " + Thread.currentThread().getId() + Thread.currentThread().getName());
+                            onOfflineResponse(bytes);
+                            unsubscribe(); // We're only expecting 1 response
+                        }
+                    });
+                } else {
+                    onOfflineFailure();
+                }
                 return;
             }
         }
@@ -207,19 +233,6 @@ public class HTTPRequest implements Callback {
     //endregion
 
     //region INNER CLASSES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    private class InterceptorCallback implements OfflineInterceptorCallback {
-
-        @Override
-        public void onResult(boolean success, byte[] result) {
-            if (success) {
-                onOfflineResponse(result);
-            } else {
-                onOfflineFailure();
-            }
-        }
-    }
-
     //endregion
 
 }

@@ -807,27 +807,6 @@ public class MapView extends FrameLayout {
         return mStyleUrl;
     }
 
-//    public Observable<OfflineRegistrar> getOfflineRegistrar() {
-//        return mBaseMapVectorDataDb.getDatabase()
-//                .subscribeOn(AndroidSchedulers.mainThread())
-//                .map(new Func1<SQLiteDatabase, OfflineRegistrar>() {
-//            @Override
-//            public OfflineRegistrar call(final SQLiteDatabase database) {
-//                return new OfflineRegistrar() {
-//                    OfflineProviderManager offlineProviderManager = OfflineProviderManager.getInstance(getResources(), database);
-//                    @Override
-//                    public void setOfflineProvider(OfflineProvider provider) {
-//                        String style = offlineProviderManager.registerProvider(provider);
-//                        if (style != null) {
-//                            mStyleUrl = offlineProviderManager.getStyleDataUrl();
-//                            mNativeMapView.setStyleJson(style);
-//                        }
-//                    }
-//                };
-//            }
-//        });
-//    }
-
     @UiThread
     void addOverlay(Overlay overlay) {
         mMapOverlayDispatch.addOverlay(overlay);
