@@ -84,6 +84,23 @@ public class TileSystemTest {
     }
 
     @Test
+    public void test_latLngToPixel_314() {
+        Coordinate coordinate = new Coordinate();
+        coordinate.x = -90;
+        coordinate.y = 0;
+        TileSystem.Pixel pixel = TileSystem.latLngToPixel(coordinate, 3);
+        assertEquals(TileSystem.TILE_SIZE * 2, pixel.x, 0);
+        assertEquals(TileSystem.TILE_SIZE * 4, pixel.y, 0);
+
+        coordinate = new Coordinate();
+        coordinate.x = -90;
+        coordinate.y = -22.5;
+        pixel = TileSystem.latLngToPixel(coordinate, 3);
+        assertEquals(TileSystem.TILE_SIZE * 2, pixel.x, 0);
+        assertEquals(TileSystem.TILE_SIZE * 5, pixel.y, 0);
+    }
+
+    @Test
     public void test_pixelToLngLat_z1() {
         TileSystem.Pixel p = new TileSystem.Pixel(8192, 4096);
         TileSystem.LatLng latLng = TileSystem.pixelToLngLat(p, 1);

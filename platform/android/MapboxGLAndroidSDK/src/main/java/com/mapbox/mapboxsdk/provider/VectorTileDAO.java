@@ -107,7 +107,7 @@ public class VectorTileDAO {
         Map<String, String> attributes = new HashMap<>();
         GeometryRecord[] records = getGeometryRecords(zxy);
         if (records.length > 0) {
-            VectorTileEncoder encoder = new VectorTileEncoder();
+            VectorTileEncoder encoder = new VectorTileEncoder(TileSystem.TILE_SIZE, 8, false);
             TileCoordinateTransformer transformer = new TileCoordinateTransformer(target.z, target.x, target.y);
             int count = 0;
             for (int i = 0; i < records.length; i++) {

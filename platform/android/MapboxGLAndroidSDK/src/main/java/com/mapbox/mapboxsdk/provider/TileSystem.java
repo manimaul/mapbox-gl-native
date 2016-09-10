@@ -1,18 +1,12 @@
 package com.mapbox.mapboxsdk.provider;
 
-import android.util.Log;
-
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Polygon;
-import com.vividsolutions.jts.io.ParseException;
-import com.vividsolutions.jts.io.WKTReader;
-
-import java.util.Locale;
 
 public class TileSystem {
 
-    static final String TAG = TileSystem.class.getSimpleName();
-    static final WKTReader sWktReader = new WKTReader();
+    static final GeometryFactory GEOMETRY_FACTORY = new GeometryFactory();
     static final int TILE_SIZE = 4096;
     static final double MIN_LAT_Y = -85.05112878;
     static final double MAX_LAT_Y = 85.05112878;
@@ -20,18 +14,9 @@ public class TileSystem {
     static final double MAX_LNG_X = 180.;
 
     public static void latLngToTileBoundedXy(Coordinate coordinate, int z, int x, int y) {
-        latLngToTileBoundedXy(coordinate, z, x, y, TILE_SIZE);
-    }
-
-    public static void latLngToTileBoundedXy(Coordinate coordinate, int z, int x, int y, int tileSize) {
         Pixel pixel = latLngToPixel(coordinate, z);
         coordinate.x = pixel.x - x * TILE_SIZE;
         coordinate.y = (pixel.y - y * TILE_SIZE) - y;
-        if (tileSize != TILE_SIZE) {
-            double scale = (double) tileSize / TILE_SIZE;
-            coordinate.x = Math.round(coordinate.x * scale);
-            coordinate.y = Math.round(coordinate.y * scale);
-        }
     }
 
     static Pixel latLngToPixel(Coordinate lngLat, int z) {
@@ -48,18 +33,13 @@ public class TileSystem {
 
     public static Polygon tileClipPolygon(int z, int x, int y) {
         LatLngBounds rect = zxyToLngLatBounds(z, x, y);
-        String wkt = String.format(Locale.US, "POLYGON ((%f %f, %f %f, %f %f, %f %f, %f %f))",
-                rect.westX, rect.northY,
-                rect.eastX, rect.northY,
-                rect.eastX, rect.southY,
-                rect.westX, rect.southY,
-                rect.westX, rect.northY);
-        try {
-            return (Polygon) sWktReader.read(wkt);
-        } catch (ParseException e) {
-            Log.e(TAG, "", e);
-        }
-        return null;
+        Coordinate[] coordinates = new Coordinate[5];
+        coordinates[0] = new Coordinate(rect.westX, rect.northY);
+        coordinates[1] = new Coordinate(rect.eastX, rect.northY);
+        coordinates[2] = new Coordinate(rect.eastX, rect.southY);
+        coordinates[3] = new Coordinate(rect.westX, rect.southY);
+        coordinates[4] = new Coordinate(rect.westX, rect.northY);
+        return GEOMETRY_FACTORY.createPolygon(coordinates);
     }
 
     static LatLngBounds zxyToLngLatBounds(int z, int x, int y) {
