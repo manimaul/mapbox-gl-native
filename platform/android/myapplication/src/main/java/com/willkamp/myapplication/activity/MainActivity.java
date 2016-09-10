@@ -37,6 +37,7 @@ public class MainActivity extends AppCompatActivity {
 
     private MapView mMapView;
     private MapboxMap mMapboxMap;
+    private byte[] mBlankTile;
 
     //endregion
 
@@ -58,6 +59,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        mBlankTile = AssetReader.readAssetByteArray(getResources(), "blank.png");
         mMapView = (MapView) findViewById(R.id.mainMapView);
         mMapView.setStyleUrl("http://localhost/style.json", new OfflineInterceptor() {
             @Override
@@ -85,7 +87,7 @@ public class MainActivity extends AppCompatActivity {
                             int x = Integer.parseInt(segments.get(2));
                             int y = Integer.parseInt(segments.get(3));
                             if ("raster".equals(segments.get(0))) {
-                                return Observable.just(new byte[0]);
+                                return Observable.just(mBlankTile);
                             } else {
                                 return VectorTileDao.INSTANCE.getVectorTileObservable(z, x, y);
                             }
