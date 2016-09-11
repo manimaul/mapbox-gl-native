@@ -8,6 +8,9 @@
 # Build files
 build/
 *.so
+*.o
+*.a
+*.stamp
 *.apk
 
 # JNI
