@@ -40,8 +40,9 @@ public enum ApplicationLifeCycle implements Application.ActivityLifecycleCallbac
     //region ACCESSORS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     /**
-     * @return an observable that emits application life cycle events.
-     * Note: The last occurring event will be re-emitted upon subscription.
+     * @return an observable that emits application life cycle {@link Event}s.
+     *
+     * Note: The last occurring {@link Event} will be re-emitted upon subscription.
      */
     public static Observable<Event> getEventsObservable() {
         return INSTANCE.mEventSubject.asObservable();

@@ -1,5 +1,6 @@
 package com.willkamp.myapplication.activity;
 
+import android.content.res.Resources;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -13,8 +14,8 @@ import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 import com.willkamp.myapplication.R;
+import com.willkamp.myapplication.tiles.VectorTileDao;
 import com.willkamp.myapplication.utility.AssetReader;
-import com.willkamp.myapplication.vectortiles.VectorTileDao;
 
 import java.util.List;
 
@@ -38,7 +39,6 @@ public class MainActivity extends AppCompatActivity {
 
     private MapView mMapView;
     private MapboxMap mMapboxMap;
-    private byte[] mBlankTile;
 
     //endregion
 
@@ -59,53 +59,11 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        MapboxAccountManager.start(this, "pk.eyJ1IjoibWFuaW1hdWwiLCJhIjoiN0UwQVM2NCJ9.3j7MEA8DVkd0N8D1GWww1A");
         setContentView(R.layout.activity_main);
-        mBlankTile = AssetReader.readAssetByteArray(getResources(), "blank.png");
-        MapboxAccountManager.start(this, "pk.");
         mMapView = (MapView) findViewById(R.id.mainMapView);
-        mMapView.setStyleUrl("http://localhost/style.json", new OfflineInterceptor() {
-            @Override
-            public void cancel(Uri uri) {
-                Log.d(TAG, "cancel() " + uri);
-            }
-
-            @Override
-            public Observable<byte[]> handleRequest(Uri uri) {
-                Log.d(TAG, "handleRequest() " + uri);
-                switch (uri.getPath()) {
-                    case "/style.json": {
-                        return Observable.just(AssetReader.readAssetByteArray(getResources(), "style.json"));
-                    }
-                    case "/raster_data_source_v8.json": {
-                        return Observable.just(AssetReader.readAssetByteArray(getResources(), "raster_data_source_v8.json"));
-                    }
-                    case "/vector_data_source_v8.json": {
-                        return Observable.just(AssetReader.readAssetByteArray(getResources(), "vector_data_source_v8.json"));
-                    }
-                    default: {
-                        List<String> segments = uri.getPathSegments();
-                        if (segments.size() == 4) {
-                            int z = Integer.parseInt(segments.get(1));
-                            int x = Integer.parseInt(segments.get(2));
-                            int y = Integer.parseInt(segments.get(3));
-                            if ("raster".equals(segments.get(0))) {
-                                return Observable.just(mBlankTile);
-                            } else {
-                                return VectorTileDao.INSTANCE.getVectorTileObservable(z, x, y);
-                            }
-                        } else {
-                            return Observable.just(new byte[0]);
-                        }
-                    }
-                }
-            }
-
-            @Override
-            public String host() {
-                return "localhost";
-            }
-        });
         mMapView.onCreate(savedInstanceState);
+        mMapView.setStyleUrl("http://localhost/style.json", new Interceptor(getResources()));
         mMapView.getMapAsync(new OnMapReadyCallback() {
             @Override
             public void onMapReady(MapboxMap mapboxMap) {
@@ -159,6 +117,59 @@ public class MainActivity extends AppCompatActivity {
     //endregion
 
     //region INNER CLASSES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    private static class Interceptor implements OfflineInterceptor {
+
+        private final Resources mResources;
+        private final byte[] mBlankTile;
+
+        private Interceptor(Resources resources) {
+            mResources = resources;
+            mBlankTile = AssetReader.readAssetByteArray(mResources, "blank.png");
+        }
+
+        @Override
+        public void cancel(Uri uri) {
+            Log.d(TAG, "cancel() " + uri);
+        }
+
+        @Override
+        public Observable<byte[]> handleRequest(Uri uri) {
+            Log.d(TAG, "handleRequest() " + uri);
+            switch (uri.getPath()) {
+                case "/style.json": {
+                    return Observable.just(AssetReader.readAssetByteArray(mResources, "style.json"));
+                }
+                case "/raster_data_source_v8.json": {
+                    return Observable.just(AssetReader.readAssetByteArray(mResources, "raster_data_source_v8.json"));
+                }
+                case "/vector_data_source_v8.json": {
+                    return Observable.just(AssetReader.readAssetByteArray(mResources, "vector_data_source_v8.json"));
+                }
+                default: {
+                    List<String> segments = uri.getPathSegments();
+                    if (segments.size() == 4) {
+                        int z = Integer.parseInt(segments.get(1));
+                        int x = Integer.parseInt(segments.get(2));
+                        int y = Integer.parseInt(segments.get(3));
+                        if ("raster".equals(segments.get(0))) {
+                            return Observable.just(mBlankTile);
+                        } else {
+                            return VectorTileDao.INSTANCE.getVectorTileObservable(z, x, y);
+                        }
+                    } else {
+                        return Observable.just(new byte[0]);
+                    }
+                }
+            }
+        }
+
+        @Override
+        public String host() {
+            return "localhost";
+        }
+    }
+
     //endregion
 
 }

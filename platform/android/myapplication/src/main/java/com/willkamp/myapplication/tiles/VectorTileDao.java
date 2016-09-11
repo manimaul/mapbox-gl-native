@@ -1,11 +1,9 @@
-package com.willkamp.myapplication.vectortiles;
+package com.willkamp.myapplication.tiles;
 
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Handler;
-import android.os.HandlerThread;
-import android.os.Looper;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
@@ -16,6 +14,7 @@ import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.io.ParseException;
 import com.willkamp.myapplication.application.ApplicationLifeCycle;
 import com.willkamp.myapplication.application.MyApplication;
+import com.willkamp.myapplication.utility.HandlerFactory;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -25,7 +24,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.UUID;
 
 import no.ecc.vectortile.VectorTileEncoder;
 import rx.Observable;
@@ -51,7 +49,7 @@ public enum VectorTileDao {
     //region FIELDS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     private Context mContext;
-    private final Handler mHandler = provideHandlerOwnThread();
+    private final Handler mHandler = HandlerFactory.provideHandlerOwnThread();
     private final Scheduler mScheduler = AndroidSchedulers.from(mHandler.getLooper());
     private SQLiteDatabase mDatabase;
 
@@ -120,13 +118,6 @@ public enum VectorTileDao {
 
     private static File dbFile(Context context) {
         return new File(context.getFilesDir(), DATABASE_NAME);
-    }
-
-    private static Handler provideHandlerOwnThread() {
-        HandlerThread handlerThread = new HandlerThread(UUID.randomUUID().toString());
-        handlerThread.start();
-        Looper looper = handlerThread.getLooper();
-        return new Handler(looper);
     }
 
     private Observable<SQLiteDatabase> getDatabase() {
@@ -259,9 +250,6 @@ public enum VectorTileDao {
     //endregion
 
     //region PUBLIC METHODS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //endregion
-
-    //region ACCESSORS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     public Observable<Void> getIsDatabaseReadyObservable() {
         return Observable.create(new Observable.OnSubscribe<Void>() {
@@ -300,6 +288,9 @@ public enum VectorTileDao {
         }).subscribeOn(mScheduler).asObservable();
     }
 
+    //endregion
+
+    //region ACCESSORS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //endregion
 
     //region INNER CLASSES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

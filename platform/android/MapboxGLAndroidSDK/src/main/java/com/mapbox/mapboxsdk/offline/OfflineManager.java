@@ -1,8 +1,6 @@
 package com.mapbox.mapboxsdk.offline;
 
 import android.content.Context;
-import android.content.pm.ApplicationInfo;
-import android.content.pm.PackageManager;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
@@ -10,7 +8,6 @@ import android.support.annotation.NonNull;
 import android.util.Log;
 
 import com.mapbox.mapboxsdk.MapboxAccountManager;
-import com.mapbox.mapboxsdk.constants.MapboxConstants;
 
 import java.io.File;
 
@@ -108,38 +105,7 @@ public class OfflineManager {
     }
 
     public static String getDatabasePath(Context context) {
-        // Default value
-        boolean setStorageExternal = MapboxConstants.DEFAULT_SET_STORAGE_EXTERNAL;
-
-        try {
-            // Try getting a custom value from the app Manifest
-            ApplicationInfo appInfo = context.getPackageManager().getApplicationInfo(
-                    context.getPackageName(), PackageManager.GET_META_DATA);
-            setStorageExternal = appInfo.metaData.getBoolean(
-                    MapboxConstants.KEY_META_DATA_SET_STORAGE_EXTERNAL,
-                    MapboxConstants.DEFAULT_SET_STORAGE_EXTERNAL);
-        } catch (PackageManager.NameNotFoundException e) {
-            Log.e(LOG_TAG, "Failed to read the package metadata: " + e.getMessage());
-        } catch (Exception e) {
-            Log.e(LOG_TAG, "Failed to read the storage key: " + e.getMessage());
-        }
-
-        String databasePath = null;
-        if (setStorageExternal && isExternalStorageReadable()) {
-            try {
-                // Try getting the external storage path
-                databasePath = context.getExternalFilesDir(null).getAbsolutePath();
-            } catch (NullPointerException e) {
-                Log.e(LOG_TAG, "Failed to obtain the external storage path: " + e.getMessage());
-            }
-        }
-
-        if (databasePath == null) {
-            // Default to internal storage
-            databasePath = context.getFilesDir().getAbsolutePath();
-        }
-
-        return databasePath;
+        return context.getFilesDir().getAbsolutePath();
     }
 
     /**

@@ -1,17 +1,22 @@
-package com.willkamp.myapplication.vectortiles;
+package com.willkamp.myapplication.tiles;
 
-import com.vividsolutions.jts.geom.CoordinateSequence;
 import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.util.GeometryTransformer;
+import com.vividsolutions.jts.io.ParseException;
+import com.vividsolutions.jts.io.WKBReader;
 
-public class TileCoordinateTransformer extends GeometryTransformer {
+public class GeometryRecord {
 
     //region CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //endregion
 
     //region FIELDS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    private final int z, x, y;
+    private final String mSourceFile;
+    private Geometry mGeometry;
+    private final String mLayerName;
+    private final String mLabel;
+
+    private static final WKBReader sReader = new WKBReader();
 
     //endregion
 
@@ -23,10 +28,14 @@ public class TileCoordinateTransformer extends GeometryTransformer {
 
     //region CONSTRUCTOR ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    public TileCoordinateTransformer(int z, int x, int y) {
-        this.z = z;
-        this.x = x;
-        this.y = y;
+    public GeometryRecord(String sourceFile,
+                          byte[] wkb,
+                          String layerName,
+                          String label) throws ParseException {
+        mSourceFile = sourceFile;
+        mGeometry = sReader.read(wkb);
+        mLayerName = layerName;
+        mLabel = label;
     }
 
     //endregion
@@ -38,22 +47,25 @@ public class TileCoordinateTransformer extends GeometryTransformer {
     //endregion
 
     //region ACCESSORS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //endregion
 
-    //region {GeometryTransformer} ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    public String getSourceFile() {
+        return mSourceFile;
+    }
 
-    @Override
-    protected CoordinateSequence transformCoordinates(CoordinateSequence coords, Geometry parent) {
-        CoordinateSequence newCoords = copy(coords);
-        for (int i = 0; i < newCoords.size(); i++) {
-            TileSystem.latLngToTileBoundedXy(newCoords.getCoordinate(i), z, x, y);
-        }
-        return newCoords;
+    public Geometry getGeometry() {
+        return mGeometry;
+    }
+
+    public String getLayerName() {
+        return mLayerName;
+    }
+
+    public String getLabel() {
+        return mLabel;
     }
 
     //endregion
 
     //region INNER CLASSES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //endregion
-
 }

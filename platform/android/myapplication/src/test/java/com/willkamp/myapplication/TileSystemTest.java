@@ -1,7 +1,7 @@
 package com.willkamp.myapplication;
 
 import com.vividsolutions.jts.geom.Coordinate;
-import com.willkamp.myapplication.vectortiles.TileSystem;
+import com.willkamp.myapplication.tiles.TileSystem;
 
 import org.junit.Test;
 
