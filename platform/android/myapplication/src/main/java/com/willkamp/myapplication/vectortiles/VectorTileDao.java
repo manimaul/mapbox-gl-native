@@ -6,6 +6,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
+import android.support.annotation.Nullable;
 import android.util.Log;
 
 import com.vividsolutions.jts.geom.Coordinate;
@@ -34,6 +35,7 @@ import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Action0;
 import rx.functions.Action1;
 import rx.functions.Func1;
+import rx.schedulers.Schedulers;
 
 public enum VectorTileDao {
 
@@ -129,7 +131,7 @@ public enum VectorTileDao {
 
     private Observable<SQLiteDatabase> getDatabase() {
         if (mDatabase != null) {
-            // Log.d(TAG, "getDatabase() thread " + Thread.currentThread().getId() + Thread.currentThread().getName());
+            Log.d(TAG, "getDatabase() thread " + Thread.currentThread().getId() + Thread.currentThread().getName());
             return Observable.just(mDatabase).subscribeOn(mScheduler);
         } else if (mDatabaseObservable != null) {
             return mDatabaseObservable;
@@ -152,7 +154,7 @@ public enum VectorTileDao {
                             return;
                         }
                     }
-                    // Log.d(TAG, "getDatabase() opening DB thread " + Thread.currentThread().getId() + Thread.currentThread().getName());
+                    Log.d(TAG, "getDatabase() opening DB thread " + Thread.currentThread().getId() + Thread.currentThread().getName());
                     SQLiteDatabase database = SQLiteDatabase.openDatabase(dbFile(mContext).getAbsolutePath(), null,
                             SQLiteDatabase.OPEN_READWRITE);
                     subscriber.onNext(database);
@@ -172,7 +174,7 @@ public enum VectorTileDao {
     }
 
     private GeometryRecord[] getGeometryRecords(SQLiteDatabase database, String zxy) {
-        // Log.d(TAG, "getGeometryRecords() thread " + Thread.currentThread().getId() + Thread.currentThread().getName());
+        Log.d(TAG, "getGeometryRecords() thread " + Thread.currentThread().getId() + Thread.currentThread().getName());
         final String table = "base_geometries";
         final String[] columns = {"source_file", "geometry", "layer_name", "label"};
         final String selection = "zxy=?";
@@ -199,8 +201,8 @@ public enum VectorTileDao {
         return records;
     }
 
-    private boolean isFullTile(SQLiteDatabase database, String zxy) {
-        // Log.d(TAG, "isFullTile() thread " + Thread.currentThread().getId() + Thread.currentThread().getName());
+    private boolean isFullTile(String zxy) {
+        Log.d(TAG, "isFullTile() thread " + Thread.currentThread().getId() + Thread.currentThread().getName());
         final String table = "base_geometries_full";
         final String[] columns = {"rowid"};
         final String selection = "zxy=?";
@@ -208,16 +210,16 @@ public enum VectorTileDao {
         final String groupBy = null;
         final String having = null;
         final String orderBy = null;
-        Cursor cursor = database.query(table, columns, selection, selectionArgs, groupBy, having, orderBy);
+        Cursor cursor = mDatabase.query(table, columns, selection, selectionArgs, groupBy, having, orderBy);
         boolean retVal = cursor.moveToFirst();
         cursor.close();
         return retVal;
     }
 
-    private byte[] getVectorTile(SQLiteDatabase database, int tile_z, int tile_x, int tile_y, Target target) {
-        // Log.d(TAG, "getVectorTile() thread " + Thread.currentThread().getId() + Thread.currentThread().getName());
+    private byte[] getVectorTile(int tile_z, int tile_x, int tile_y, Target target) {
+        Log.d(TAG, "getVectorTile() thread " + Thread.currentThread().getId() + Thread.currentThread().getName());
         String zxy = String.format(Locale.US, "%s/%s/%s", tile_z, tile_x, tile_y);
-        if (isFullTile(database, zxy)) {
+        if (isFullTile(zxy)) {
             return sFullTile;
         }
         if (target == null) {
@@ -228,7 +230,7 @@ public enum VectorTileDao {
         }
 
         Map<String, String> attributes = new HashMap<>();
-        GeometryRecord[] records = getGeometryRecords(database, zxy);
+        GeometryRecord[] records = getGeometryRecords(mDatabase, zxy);
         if (records.length > 0) {
             VectorTileEncoder encoder = new VectorTileEncoder(TileSystem.TILE_SIZE, 8, false);
             TileCoordinateTransformer transformer = new TileCoordinateTransformer(target.z, target.x, target.y);
@@ -251,7 +253,7 @@ public enum VectorTileDao {
             }
         }
 
-        return getVectorTile(database, tile_z - 1, tile_x >> 1, tile_y >> 1, target);
+        return getVectorTile(tile_z - 1, tile_x >> 1, tile_y >> 1, target);
     }
 
     //endregion
@@ -261,16 +263,41 @@ public enum VectorTileDao {
 
     //region ACCESSORS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    public Observable<byte[]> getVectorTileObservable(final int z, final int x, final int y) {
-
-        return getDatabase().map(new Func1<SQLiteDatabase, byte[]>() {
+    public Observable<Void> getIsDatabaseReadyObservable() {
+        return Observable.create(new Observable.OnSubscribe<Void>() {
             @Override
-            public byte[] call(SQLiteDatabase database) {
-                mDatabase = database;
-                //Log.d(TAG, "getVectorTileObservable() thread " + Thread.currentThread().getId() + Thread.currentThread().getName());
-                return getVectorTile(database, z, x, y, null);
+            public void call(Subscriber<? super Void> subscriber) {
+                while (mDatabase == null) {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        subscriber.onError(e);
+                        return;
+                    }
+                }
+                subscriber.onNext(null);
+                subscriber.onCompleted();
             }
-        });
+        }).subscribeOn(Schedulers.newThread()).asObservable();
+    }
+
+    @Nullable
+    public Observable<byte[]> getVectorTileObservable(final int z, final int x, final int y) {
+        final long t = System.currentTimeMillis();
+        return Observable.create(new Observable.OnSubscribe<byte[]>() {
+            @Override
+            public void call(Subscriber<? super byte[]> subscriber) {
+                if (mDatabase != null) {
+                    subscriber.onNext(getVectorTile(z, x, y, null));
+                    long dt = System.currentTimeMillis() - t;
+                    String message = String.format(Locale.US, "Tile access time for %d/%d/%d = %dms", z, x, y, dt);
+                    Log.d(TAG, message);
+                    subscriber.onCompleted();
+                } else {
+                    subscriber.onError(new Throwable("database is closed"));
+                }
+            }
+        }).subscribeOn(mScheduler).asObservable();
     }
 
     //endregion
