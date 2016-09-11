@@ -17,7 +17,6 @@ import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
-import com.mapbox.mapboxsdk.maps.UiSettings;
 import com.mapbox.mapboxsdk.testapp.R;
 
 public class ScrollByActivity extends AppCompatActivity implements OnMapReadyCallback {
@@ -59,10 +58,6 @@ public class ScrollByActivity extends AppCompatActivity implements OnMapReadyCal
     @Override
     public void onMapReady(MapboxMap map) {
         mapboxMap = map;
-        UiSettings uiSettings = mapboxMap.getUiSettings();
-        uiSettings.setLogoEnabled(false);
-        uiSettings.setAttributionEnabled(false);
-
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setColorFilter(ContextCompat.getColor(ScrollByActivity.this, R.color.primary));
         fab.setOnClickListener(new View.OnClickListener() {

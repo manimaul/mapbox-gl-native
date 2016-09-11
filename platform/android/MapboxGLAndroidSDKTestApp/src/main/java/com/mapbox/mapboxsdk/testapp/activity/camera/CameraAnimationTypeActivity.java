@@ -52,8 +52,6 @@ public class CameraAnimationTypeActivity extends AppCompatActivity implements On
     @Override
     public void onMapReady(MapboxMap map) {
         mapboxMap = map;
-        mapboxMap.getUiSettings().setAttributionEnabled(false);
-        mapboxMap.getUiSettings().setLogoEnabled(false);
         mapboxMap.setOnCameraChangeListener(new MapboxMap.OnCameraChangeListener() {
             @Override
             public void onCameraChange(CameraPosition position) {

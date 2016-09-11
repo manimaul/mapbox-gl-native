@@ -1,6 +1,7 @@
 package com.mapbox.mapboxsdk.constants;
 
 import android.content.Context;
+
 import java.util.Locale;
 
 /**
@@ -108,24 +109,6 @@ public class MapboxConstants {
     public static final String STATE_COMPASS_MARGIN_TOP = "compassMarginTop";
     public static final String STATE_COMPASS_MARGIN_RIGHT = "compassMarginRight";
     public static final String STATE_COMPASS_MARGIN_BOTTOM = "compassMarginBottom";
-    public static final String STATE_LOGO_GRAVITY = "logoGravity";
-    public static final String STATE_LOGO_MARGIN_LEFT = "logoMarginLeft";
-    public static final String STATE_LOGO_MARGIN_TOP = "logoMarginTop";
-    public static final String STATE_LOGO_MARGIN_RIGHT = "logoMarginRight";
-    public static final String STATE_LOGO_MARGIN_BOTTOM = "logoMarginBottom";
-    public static final String STATE_LOGO_ENABLED = "logoEnabled";
-    public static final String STATE_ATTRIBUTION_GRAVITY = "attrGravity";
-    public static final String STATE_ATTRIBUTION_MARGIN_LEFT = "attrMarginLeft";
-    public static final String STATE_ATTRIBUTION_MARGIN_TOP = "attrMarginTop";
-    public static final String STATE_ATTRIBUTION_MARGIN_RIGHT = "attrMarginRight";
-    public static final String STATE_ATTRIBUTION_MARGIN_BOTTOM = "atrrMarginBottom";
-    public static final String STATE_ATTRIBUTION_ENABLED = "atrrEnabled";
 
     public static final String TAG = "MapboxMap";
-
-    public static final String MAPBOX_SHARED_PREFERENCES_FILE = "MapboxSharedPreferences";
-    public static final String MAPBOX_SHARED_PREFERENCE_KEY_VENDORID = "mapboxVendorId";
-    public static final String MAPBOX_SHARED_PREFERENCE_KEY_TELEMETRY_ENABLED = "mapboxTelemetryEnabled";
-    public static final String MAPBOX_SHARED_PREFERENCE_KEY_TELEMETRY_STAGING_URL = "mapboxTelemetryStagingUrl";
-    public static final String MAPBOX_SHARED_PREFERENCE_KEY_TELEMETRY_STAGING_ACCESS_TOKEN = "mapboxTelemetryStagingAccessToken";
 }

@@ -9,7 +9,6 @@ import android.util.Log;
 import com.mapbox.mapboxsdk.constants.MapboxConstants;
 import com.mapbox.mapboxsdk.exceptions.InvalidAccessTokenException;
 import com.mapbox.mapboxsdk.exceptions.MapboxAccountManagerNotStartedException;
-import com.mapbox.mapboxsdk.telemetry.MapboxEventManager;
 
 public class MapboxAccountManager {
 
@@ -43,9 +42,6 @@ public class MapboxAccountManager {
         if (mapboxAccountManager == null) {
             mapboxAccountManager = new MapboxAccountManager(context, accessToken);
         }
-
-        MapboxEventManager eventManager = MapboxEventManager.getMapboxEventManager();
-        eventManager.initialize(mapboxAccountManager.applicationContext, mapboxAccountManager.accessToken);
         return mapboxAccountManager;
     }
 

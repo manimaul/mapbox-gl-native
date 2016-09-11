@@ -3,25 +3,20 @@ package com.mapbox.mapboxsdk.maps;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.app.Dialog;
 import android.app.Fragment;
 import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
-import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.PointF;
 import android.graphics.RectF;
-import android.graphics.drawable.ColorDrawable;
 import android.location.Location;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.CallSuper;
 import android.support.annotation.FloatRange;
@@ -32,7 +27,6 @@ import android.support.annotation.UiThread;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.view.GestureDetectorCompat;
 import android.support.v4.view.ScaleGestureDetectorCompat;
-import android.support.v7.app.AlertDialog;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
@@ -49,11 +43,7 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.FrameLayout;
-import android.widget.ImageView;
-import android.widget.ListView;
 import android.widget.ZoomButtonsController;
 
 import com.almeros.android.multitouch.gesturedetectors.RotateGestureDetector;
@@ -77,21 +67,19 @@ import com.mapbox.mapboxsdk.constants.MyLocationTracking;
 import com.mapbox.mapboxsdk.constants.Style;
 import com.mapbox.mapboxsdk.exceptions.IconBitmapChangedException;
 import com.mapbox.mapboxsdk.geometry.LatLng;
+import com.mapbox.mapboxsdk.http.HTTPRequest;
+import com.mapbox.mapboxsdk.http.OfflineInterceptor;
 import com.mapbox.mapboxsdk.location.LocationListener;
 import com.mapbox.mapboxsdk.location.LocationServices;
 import com.mapbox.mapboxsdk.maps.widgets.CompassView;
 import com.mapbox.mapboxsdk.maps.widgets.MyLocationView;
 import com.mapbox.mapboxsdk.maps.widgets.MyLocationViewSettings;
-import com.mapbox.mapboxsdk.telemetry.MapboxEvent;
-import com.mapbox.mapboxsdk.telemetry.MapboxEventManager;
-import com.mapbox.mapboxsdk.utils.ColorUtils;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -125,8 +113,6 @@ public class MapView extends FrameLayout {
 
     private ViewGroup mMarkerViewContainer;
     private CompassView mCompassView;
-    private ImageView mLogoView;
-    private ImageView mAttributionsView;
     private MyLocationView mMyLocationView;
     private LocationListener mMyLocationListener;
 
@@ -235,12 +221,6 @@ public class MapView extends FrameLayout {
         mCompassView = (CompassView) view.findViewById(R.id.compassView);
         mCompassView.setMapboxMap(mMapboxMap);
 
-        mLogoView = (ImageView) view.findViewById(R.id.logoView);
-
-        // Setup Attributions control
-        mAttributionsView = (ImageView) view.findViewById(R.id.attributionView);
-        mAttributionsView.setOnClickListener(new AttributionOnClickListener(this));
-
         mScreenDensity = context.getResources().getDisplayMetrics().density;
 
         setInitialState(options);
@@ -310,34 +290,6 @@ public class MapView extends FrameLayout {
             int tenDp = (int) getResources().getDimension(R.dimen.ten_dp);
             uiSettings.setCompassMargins(tenDp, tenDp, tenDp, tenDp);
         }
-
-        // Logo
-        uiSettings.setLogoEnabled(options.getLogoEnabled());
-        uiSettings.setLogoGravity(options.getLogoGravity());
-        int[] logoMargins = options.getLogoMargins();
-        if (logoMargins != null) {
-            uiSettings.setLogoMargins(logoMargins[0], logoMargins[1], logoMargins[2], logoMargins[3]);
-        } else {
-            int sixteenDp = (int) getResources().getDimension(R.dimen.sixteen_dp);
-            uiSettings.setLogoMargins(sixteenDp, sixteenDp, sixteenDp, sixteenDp);
-        }
-
-        // Attribution
-        uiSettings.setAttributionEnabled(options.getAttributionEnabled());
-        uiSettings.setAttributionGravity(options.getAttributionGravity());
-        int[] attributionMargins = options.getAttributionMargins();
-        if (attributionMargins != null) {
-            uiSettings.setAttributionMargins(attributionMargins[0], attributionMargins[1], attributionMargins[2], attributionMargins[3]);
-        } else {
-            Resources resources = getResources();
-            int sevenDp = (int) resources.getDimension(R.dimen.seven_dp);
-            int seventySixDp = (int) resources.getDimension(R.dimen.seventy_six_dp);
-            uiSettings.setAttributionMargins(seventySixDp, sevenDp, sevenDp, sevenDp);
-        }
-
-        int attributionTintColor = options.getAttributionTintColor();
-        uiSettings.setAttributionTintColor(attributionTintColor != -1 ?
-                attributionTintColor : ColorUtils.getPrimaryColor(getContext()));
     }
 
     //
@@ -396,22 +348,6 @@ public class MapView extends FrameLayout {
                     , savedInstanceState.getInt(MapboxConstants.STATE_COMPASS_MARGIN_RIGHT)
                     , savedInstanceState.getInt(MapboxConstants.STATE_COMPASS_MARGIN_BOTTOM));
 
-            // Logo
-            uiSettings.setLogoEnabled(savedInstanceState.getBoolean(MapboxConstants.STATE_LOGO_ENABLED));
-            uiSettings.setLogoGravity(savedInstanceState.getInt(MapboxConstants.STATE_LOGO_GRAVITY));
-            uiSettings.setLogoMargins(savedInstanceState.getInt(MapboxConstants.STATE_LOGO_MARGIN_LEFT)
-                    , savedInstanceState.getInt(MapboxConstants.STATE_LOGO_MARGIN_TOP)
-                    , savedInstanceState.getInt(MapboxConstants.STATE_LOGO_MARGIN_RIGHT)
-                    , savedInstanceState.getInt(MapboxConstants.STATE_LOGO_MARGIN_BOTTOM));
-
-            // Attribution
-            uiSettings.setAttributionEnabled(savedInstanceState.getBoolean(MapboxConstants.STATE_ATTRIBUTION_ENABLED));
-            uiSettings.setAttributionGravity(savedInstanceState.getInt(MapboxConstants.STATE_ATTRIBUTION_GRAVITY));
-            uiSettings.setAttributionMargins(savedInstanceState.getInt(MapboxConstants.STATE_ATTRIBUTION_MARGIN_LEFT)
-                    , savedInstanceState.getInt(MapboxConstants.STATE_ATTRIBUTION_MARGIN_TOP)
-                    , savedInstanceState.getInt(MapboxConstants.STATE_ATTRIBUTION_MARGIN_RIGHT)
-                    , savedInstanceState.getInt(MapboxConstants.STATE_ATTRIBUTION_MARGIN_BOTTOM));
-
             mMapboxMap.setDebugActive(savedInstanceState.getBoolean(MapboxConstants.STATE_DEBUG_ACTIVE));
             mMapboxMap.setStyleUrl(savedInstanceState.getString(MapboxConstants.STATE_STYLE_URL));
 
@@ -427,11 +363,6 @@ public class MapView extends FrameLayout {
             trackingSettings.setMyLocationTrackingMode(savedInstanceState.getInt(MapboxConstants.STATE_MY_LOCATION_TRACKING_MODE, MyLocationTracking.TRACKING_NONE));
             //noinspection ResourceType
             trackingSettings.setMyBearingTrackingMode(savedInstanceState.getInt(MapboxConstants.STATE_MY_BEARING_TRACKING_MODE, MyBearingTracking.NONE));
-        } else if (savedInstanceState == null) {
-            // Start Telemetry (authorization determined in initial MapboxEventManager constructor)
-            Log.i(MapView.class.getCanonicalName(), "MapView start Telemetry...");
-            MapboxEventManager eventManager = MapboxEventManager.getMapboxEventManager();
-            eventManager.initialize(getContext(), getAccessToken());
         }
 
         // Initialize EGL
@@ -470,14 +401,6 @@ public class MapView extends FrameLayout {
 
             }
         });
-
-        // Fire MapLoad
-        if (savedInstanceState == null) {
-            Hashtable<String, Object> evt = new Hashtable<>();
-            evt.put(MapboxEvent.ATTRIBUTE_EVENT, MapboxEvent.TYPE_MAP_LOAD);
-            evt.put(MapboxEvent.ATTRIBUTE_CREATED, MapboxEventManager.generateCreateDate());
-            MapboxEventManager.getMapboxEventManager().pushEvent(evt);
-        }
     }
 
     /**
@@ -519,22 +442,6 @@ public class MapView extends FrameLayout {
         outState.putInt(MapboxConstants.STATE_COMPASS_MARGIN_TOP, uiSettings.getCompassMarginTop());
         outState.putInt(MapboxConstants.STATE_COMPASS_MARGIN_BOTTOM, uiSettings.getCompassMarginBottom());
         outState.putInt(MapboxConstants.STATE_COMPASS_MARGIN_RIGHT, uiSettings.getCompassMarginRight());
-
-        // UiSettings - Logo
-        outState.putInt(MapboxConstants.STATE_LOGO_GRAVITY, uiSettings.getLogoGravity());
-        outState.putInt(MapboxConstants.STATE_LOGO_MARGIN_LEFT, uiSettings.getLogoMarginLeft());
-        outState.putInt(MapboxConstants.STATE_LOGO_MARGIN_TOP, uiSettings.getLogoMarginTop());
-        outState.putInt(MapboxConstants.STATE_LOGO_MARGIN_RIGHT, uiSettings.getLogoMarginRight());
-        outState.putInt(MapboxConstants.STATE_LOGO_MARGIN_BOTTOM, uiSettings.getLogoMarginBottom());
-        outState.putBoolean(MapboxConstants.STATE_LOGO_ENABLED, uiSettings.isLogoEnabled());
-
-        // UiSettings - Attribution
-        outState.putInt(MapboxConstants.STATE_ATTRIBUTION_GRAVITY, uiSettings.getAttributionGravity());
-        outState.putInt(MapboxConstants.STATE_ATTRIBUTION_MARGIN_LEFT, uiSettings.getAttributionMarginLeft());
-        outState.putInt(MapboxConstants.STATE_ATTRIBUTION_MARGIN_TOP, uiSettings.getAttributionMarginTop());
-        outState.putInt(MapboxConstants.STATE_ATTRIBUTION_MARGIN_RIGHT, uiSettings.getAttributionMarginRight());
-        outState.putInt(MapboxConstants.STATE_ATTRIBUTION_MARGIN_BOTTOM, uiSettings.getAttributionMarginBottom());
-        outState.putBoolean(MapboxConstants.STATE_ATTRIBUTION_ENABLED, uiSettings.isAttributionEnabled());
     }
 
     /**
@@ -829,9 +736,14 @@ public class MapView extends FrameLayout {
      * @see Style
      */
     public void setStyleUrl(@NonNull String url) {
+        setStyleUrl(url, null);
+    }
+
+    public void setStyleUrl(@NonNull String url, @Nullable OfflineInterceptor offlineInterceptor) {
         if (mDestroyed) {
             return;
         }
+        HTTPRequest.setOfflineInterceptor(offlineInterceptor);
         mStyleUrl = url;
         mNativeMapView.setStyleUrl(url);
     }
@@ -1514,73 +1426,6 @@ public class MapView extends FrameLayout {
         }
     }
 
-    //
-    // Touch events
-    //
-
-    /**
-     * Helper method for tracking gesture events
-     *
-     * @param gestureId   Type of Gesture See {@see MapboxEvent#GESTURE_SINGLETAP MapboxEvent#GESTURE_DOUBLETAP MapboxEvent#GESTURE_TWO_FINGER_SINGLETAP MapboxEvent#GESTURE_QUICK_ZOOM MapboxEvent#GESTURE_PAN_START MapboxEvent#GESTURE_PINCH_START MapboxEvent#GESTURE_ROTATION_START MapboxEvent#GESTURE_PITCH_START}
-     * @param xCoordinate Original x screen coordinate at start of gesture
-     * @param yCoordinate Original y screen cooridnate at start of gesture
-     */
-    private void trackGestureEvent(@NonNull String gestureId, @NonNull float xCoordinate, @NonNull float yCoordinate) {
-        LatLng tapLatLng = fromScreenLocation(new PointF(xCoordinate, yCoordinate));
-
-        // NaN and Infinite checks to prevent JSON errors at send to server time
-        if (Double.isNaN(tapLatLng.getLatitude()) || Double.isNaN(tapLatLng.getLongitude())) {
-            Log.d(MapView.class.getSimpleName(), "trackGestureEvent() has a NaN lat or lon.  Returning.");
-            return;
-        }
-
-        if (Double.isInfinite(tapLatLng.getLatitude()) || Double.isInfinite(tapLatLng.getLongitude())) {
-            Log.d(MapView.class.getSimpleName(), "trackGestureEvent() has an Infinite lat or lon.  Returning.");
-            return;
-        }
-
-        Hashtable<String, Object> evt = new Hashtable<>();
-        evt.put(MapboxEvent.ATTRIBUTE_EVENT, MapboxEvent.TYPE_MAP_CLICK);
-        evt.put(MapboxEvent.ATTRIBUTE_CREATED, MapboxEventManager.generateCreateDate());
-        evt.put(MapboxEvent.KEY_GESTURE_ID, gestureId);
-        evt.put(MapboxEvent.KEY_LATITUDE, tapLatLng.getLatitude());
-        evt.put(MapboxEvent.KEY_LONGITUDE, tapLatLng.getLongitude());
-        evt.put(MapboxEvent.KEY_ZOOM, mMapboxMap.getCameraPosition().zoom);
-
-        MapboxEventManager.getMapboxEventManager().pushEvent(evt);
-    }
-
-    /**
-     * Helper method for tracking DragEnd gesture event
-     * See {@see MapboxEvent#TYPE_MAP_DRAGEND}
-     *
-     * @param xCoordinate Original x screen coordinate at end of drag
-     * @param yCoordinate Orginal y screen coordinate at end of drag
-     */
-    private void trackGestureDragEndEvent(@NonNull float xCoordinate, @NonNull float yCoordinate) {
-        LatLng tapLatLng = fromScreenLocation(new PointF(xCoordinate, yCoordinate));
-
-        // NaN and Infinite checks to prevent JSON errors at send to server time
-        if (Double.isNaN(tapLatLng.getLatitude()) || Double.isNaN(tapLatLng.getLongitude())) {
-            Log.d(MapView.class.getSimpleName(), "trackGestureDragEndEvent() has a NaN lat or lon.  Returning.");
-            return;
-        }
-
-        if (Double.isInfinite(tapLatLng.getLatitude()) || Double.isInfinite(tapLatLng.getLongitude())) {
-            Log.d(MapView.class.getSimpleName(), "trackGestureDragEndEvent() has an Infinite lat or lon.  Returning.");
-            return;
-        }
-
-        Hashtable<String, Object> evt = new Hashtable<>();
-        evt.put(MapboxEvent.ATTRIBUTE_EVENT, MapboxEvent.TYPE_MAP_DRAGEND);
-        evt.put(MapboxEvent.ATTRIBUTE_CREATED, MapboxEventManager.generateCreateDate());
-        evt.put(MapboxEvent.KEY_LATITUDE, tapLatLng.getLatitude());
-        evt.put(MapboxEvent.KEY_LONGITUDE, tapLatLng.getLongitude());
-        evt.put(MapboxEvent.KEY_ZOOM, mMapboxMap.getCameraPosition().zoom);
-
-        MapboxEventManager.getMapboxEventManager().pushEvent(evt);
-    }
-
     // Called when user touches the screen, all positions are absolute
     @Override
     public boolean onTouchEvent(@NonNull MotionEvent event) {
@@ -1609,10 +1454,6 @@ public class MapView extends FrameLayout {
                 // Second pointer down
                 mTwoTap = event.getPointerCount() == 2
                         && mMapboxMap.getUiSettings().isZoomGesturesEnabled();
-                if (mTwoTap) {
-                    // Confirmed 2nd Finger Down
-                    trackGestureEvent(MapboxEvent.GESTURE_TWO_FINGER_SINGLETAP, event.getX(), event.getY());
-                }
                 break;
 
             case MotionEvent.ACTION_POINTER_UP:
@@ -1640,7 +1481,6 @@ public class MapView extends FrameLayout {
 
                 // Scroll / Pan Has Stopped
                 if (mScrollInProgress) {
-                    trackGestureDragEndEvent(event.getX(), event.getY());
                     mScrollInProgress = false;
                 }
 
@@ -1701,8 +1541,6 @@ public class MapView extends FrameLayout {
                     }
                     break;
             }
-
-            trackGestureEvent(MapboxEvent.GESTURE_DOUBLETAP, e.getX(), e.getY());
 
             return true;
         }
@@ -1779,8 +1617,6 @@ public class MapView extends FrameLayout {
                     listener.onMapClick(point);
                 }
             }
-
-            trackGestureEvent(MapboxEvent.GESTURE_SINGLETAP, e.getX(), e.getY());
             return true;
         }
 
@@ -1823,8 +1659,6 @@ public class MapView extends FrameLayout {
             if (listener != null) {
                 listener.onFling();
             }
-
-            trackGestureEvent(MapboxEvent.GESTURE_PAN_START, e1.getX(), e1.getY());
             return true;
         }
 
@@ -1878,7 +1712,6 @@ public class MapView extends FrameLayout {
             resetTrackingModesIfRequired();
 
             mBeginTime = detector.getEventTime();
-            trackGestureEvent(MapboxEvent.GESTURE_PINCH_START, detector.getFocusX(), detector.getFocusY());
             return true;
         }
 
@@ -1961,7 +1794,6 @@ public class MapView extends FrameLayout {
             resetTrackingModesIfRequired();
 
             mBeginTime = detector.getEventTime();
-            trackGestureEvent(MapboxEvent.GESTURE_ROTATION_START, detector.getFocusX(), detector.getFocusY());
             return true;
         }
 
@@ -2041,7 +1873,6 @@ public class MapView extends FrameLayout {
             resetTrackingModesIfRequired();
 
             mBeginTime = detector.getEventTime();
-            trackGestureEvent(MapboxEvent.GESTURE_PITCH_START, detector.getFocusX(), detector.getFocusY());
             return true;
         }
 
@@ -2584,42 +2415,6 @@ public class MapView extends FrameLayout {
         setWidgetMargins(mCompassView, left, top, right, bottom);
     }
 
-    //
-    // Logo
-    //
-
-    void setLogoGravity(int gravity) {
-        setWidgetGravity(mLogoView, gravity);
-    }
-
-    void setLogoMargins(int left, int top, int right, int bottom) {
-        setWidgetMargins(mLogoView, left, top, right, bottom);
-    }
-
-    void setLogoEnabled(boolean visible) {
-        mLogoView.setVisibility(visible ? View.VISIBLE : View.GONE);
-    }
-
-    //
-    // Attribution
-    //
-
-    void setAttributionGravity(int gravity) {
-        setWidgetGravity(mAttributionsView, gravity);
-    }
-
-    void setAttributionMargins(int left, int top, int right, int bottom) {
-        setWidgetMargins(mAttributionsView, left, top, right, bottom);
-    }
-
-    void setAttributionEnabled(int visibility) {
-        mAttributionsView.setVisibility(visibility);
-    }
-
-    void setAtttibutionTintColor(int tintColor) {
-        ColorUtils.setTintList(mAttributionsView, tintColor);
-    }
-
     int getAttributionTintColor() {
         return mMapboxMap.getUiSettings().getAttributionTintColor();
     }
@@ -2721,86 +2516,6 @@ public class MapView extends FrameLayout {
         bottom += mContentPaddingBottom;
         layoutParams.setMargins(left, top, right, bottom);
         view.setLayoutParams(layoutParams);
-    }
-
-    private static class AttributionOnClickListener implements View.OnClickListener, DialogInterface.OnClickListener {
-
-        private static final int ATTRIBUTION_INDEX_IMPROVE_THIS_MAP = 2;
-        private static final int ATTRIBUTION_INDEX_TELEMETRY_SETTINGS = 3;
-        private MapView mMapView;
-
-        public AttributionOnClickListener(MapView mapView) {
-            super();
-            mMapView = mapView;
-        }
-
-        // Called when someone presses the attribution icon
-        @Override
-        public void onClick(View v) {
-            Context context = v.getContext();
-            String[] items = context.getResources().getStringArray(R.array.attribution_names);
-            AlertDialog.Builder builder = new AlertDialog.Builder(context, R.style.AttributionAlertDialogStyle);
-            builder.setTitle(R.string.attributionsDialogTitle);
-            builder.setAdapter(new ArrayAdapter<>(context, R.layout.attribution_list_item, items), this);
-            AlertDialog dialog = builder.show();
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(mMapView.getAttributionTintColor()));
-        }
-
-        // Called when someone selects an attribution, 'Improve this map' adds location data to the url
-        @Override
-        public void onClick(DialogInterface dialog, int which) {
-            final Context context = ((Dialog) dialog).getContext();
-            if (which == ATTRIBUTION_INDEX_TELEMETRY_SETTINGS) {
-
-                int array = R.array.attribution_telemetry_options;
-                if (MapboxEventManager.getMapboxEventManager().isTelemetryEnabled()) {
-                    array = R.array.attribution_telemetry_options_already_participating;
-                }
-                String[] items = context.getResources().getStringArray(array);
-                AlertDialog.Builder builder = new AlertDialog.Builder(context, R.style.AttributionAlertDialogStyle);
-                builder.setTitle(R.string.attributionTelemetryTitle);
-                LayoutInflater factory = LayoutInflater.from(context);
-                View content = factory.inflate(R.layout.attribution_telemetry_view, null);
-
-                ListView lv = (ListView) content.findViewById(R.id.telemetryOptionsList);
-                lv.setAdapter(new ArrayAdapter<String>(context, R.layout.attribution_list_item, items));
-                lv.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
-
-                builder.setView(content);
-                final AlertDialog telemDialog = builder.show();
-                lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                    @Override
-                    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                        switch (position) {
-                            case 0:
-                                String url = context.getResources().getStringArray(R.array.attribution_links)[3];
-                                Intent intent = new Intent(Intent.ACTION_VIEW);
-                                intent.setData(Uri.parse(url));
-                                context.startActivity(intent);
-                                telemDialog.cancel();
-                                return;
-                            case 1:
-                                MapboxEventManager.getMapboxEventManager().setTelemetryEnabled(false);
-                                telemDialog.cancel();
-                                return;
-                            case 2:
-                                MapboxEventManager.getMapboxEventManager().setTelemetryEnabled(true);
-                                telemDialog.cancel();
-                                return;
-                        }
-                    }
-                });
-                return;
-            }
-            String url = context.getResources().getStringArray(R.array.attribution_links)[which];
-            if (which == ATTRIBUTION_INDEX_IMPROVE_THIS_MAP) {
-                LatLng latLng = mMapView.getMapboxMap().getCameraPosition().target;
-                url = String.format(url, latLng.getLongitude(), latLng.getLatitude(), (int) mMapView.getZoom());
-            }
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setData(Uri.parse(url));
-            context.startActivity(intent);
-        }
     }
 
     private static class ZoomInvalidator implements Runnable {
