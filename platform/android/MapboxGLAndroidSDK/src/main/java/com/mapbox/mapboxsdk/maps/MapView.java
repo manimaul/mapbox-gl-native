@@ -78,6 +78,8 @@ import com.mapbox.mapboxsdk.constants.Style;
 import com.mapbox.mapboxsdk.exceptions.IconBitmapChangedException;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.geometry.LatLngBounds;
+import com.mapbox.mapboxsdk.http.HTTPRequest;
+import com.mapbox.mapboxsdk.http.OfflineInterceptor;
 import com.mapbox.mapboxsdk.layers.CustomLayer;
 import com.mapbox.mapboxsdk.location.LocationListener;
 import com.mapbox.mapboxsdk.location.LocationServices;
@@ -815,9 +817,14 @@ public class MapView extends FrameLayout {
      * @see Style
      */
     public void setStyleUrl(@NonNull String url) {
+        setStyleUrl(url, null);
+    }
+
+    public void setStyleUrl(@NonNull String url, @Nullable OfflineInterceptor offlineInterceptor) {
         if (mDestroyed) {
             return;
         }
+        HTTPRequest.setOfflineInterceptor(offlineInterceptor);
         mStyleInitializer.setStyle(url);
         mNativeMapView.setStyleUrl(url);
     }
