@@ -7,13 +7,13 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 
-import com.mapbox.mapboxsdk.MapboxAccountManager;
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.http.OfflineInterceptor;
 import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 import com.willkamp.myapplication.R;
+import com.willkamp.myapplication.tiles.RasterTileDao;
 import com.willkamp.myapplication.tiles.VectorTileDao;
 import com.willkamp.myapplication.utility.AssetReader;
 
@@ -59,7 +59,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        MapboxAccountManager.start(this, "pk.eyJ1IjoibWFuaW1hdWwiLCJhIjoiN0UwQVM2NCJ9.3j7MEA8DVkd0N8D1GWww1A");
         setContentView(R.layout.activity_main);
         mMapView = (MapView) findViewById(R.id.mainMapView);
         mMapView.onCreate(savedInstanceState);
@@ -121,11 +120,9 @@ public class MainActivity extends AppCompatActivity {
     private static class Interceptor implements OfflineInterceptor {
 
         private final Resources mResources;
-        private final byte[] mBlankTile;
 
         private Interceptor(Resources resources) {
             mResources = resources;
-            mBlankTile = AssetReader.readAssetByteArray(mResources, "blank.png");
         }
 
         @Override
@@ -153,7 +150,7 @@ public class MainActivity extends AppCompatActivity {
                         int x = Integer.parseInt(segments.get(2));
                         int y = Integer.parseInt(segments.get(3));
                         if ("raster".equals(segments.get(0))) {
-                            return Observable.just(mBlankTile);
+                            return RasterTileDao.INSTANCE.getRasterTileObservable(z, x, y);
                         } else {
                             return VectorTileDao.INSTANCE.getVectorTileObservable(z, x, y);
                         }
