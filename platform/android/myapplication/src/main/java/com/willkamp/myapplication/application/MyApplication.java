@@ -3,6 +3,8 @@ package com.willkamp.myapplication.application;
 import android.app.Application;
 import android.content.Context;
 
+import com.mapbox.mapboxsdk.MapboxAccountManager;
+
 public class MyApplication extends Application {
 
     //region CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -42,6 +44,7 @@ public class MyApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        MapboxAccountManager.start(this, "pk.invalid.token");
         sAppContext = getApplicationContext();
         registerActivityLifecycleCallbacks(ApplicationLifeCycle.INSTANCE);
     }

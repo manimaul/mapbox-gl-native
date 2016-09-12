@@ -57,60 +57,6 @@ public class UiSettingsTest {
     }
 
     @Test
-    public void testLogoEnabled() {
-        uiSettings.setLogoEnabled(true);
-        assertEquals("Logo should be enabled", true, uiSettings.isLogoEnabled());
-    }
-
-    @Test
-    public void testLogoDisabled() {
-        uiSettings.setLogoEnabled(false);
-        assertEquals("Logo should be disabled", false, uiSettings.isLogoEnabled());
-    }
-
-    @Test
-    public void testLogoGravity() {
-        uiSettings.setLogoGravity(Gravity.RIGHT);
-        assertEquals("Logo gravity should be same", Gravity.RIGHT, uiSettings.getLogoGravity());
-    }
-
-    @Test
-    public void testLogoMargins() {
-        uiSettings.setLogoMargins(1, 2, 3, 4);
-        assertTrue("Compass margin left should be same", uiSettings.getLogoMarginLeft() == 1);
-        assertTrue("Compass margin top should be same", uiSettings.getLogoMarginTop() == 2);
-        assertTrue("Compass margin right should be same", uiSettings.getLogoMarginRight() == 3);
-        assertTrue("Compass margin bottom should be same", uiSettings.getLogoMarginBottom() == 4);
-    }
-
-    @Test
-    public void testAttributionEnabled() {
-        uiSettings.setAttributionEnabled(true);
-        assertEquals("Attribution should be enabled", true, uiSettings.isAttributionEnabled());
-    }
-
-    @Test
-    public void testAttributionDisabled() {
-        uiSettings.setAttributionEnabled(false);
-        assertEquals("Attribution should be disabled", false, uiSettings.isLogoEnabled());
-    }
-
-    @Test
-    public void testAttributionGravity() {
-        uiSettings.setAttributionGravity(Gravity.RIGHT);
-        assertEquals("Attribution gravity should be same", Gravity.RIGHT, uiSettings.getAttributionGravity());
-    }
-
-    @Test
-    public void testAttributionMargins() {
-        uiSettings.setAttributionMargins(1, 2, 3, 4);
-        assertTrue("Attribution margin left should be same", uiSettings.getAttributionMarginLeft() == 1);
-        assertTrue("Attribution margin top should be same", uiSettings.getAttributionMarginTop() == 2);
-        assertTrue("Attribution margin right should be same", uiSettings.getAttributionMarginRight() == 3);
-        assertTrue("Attribution margin bottom should be same", uiSettings.getAttributionMarginBottom() == 4);
-    }
-
-    @Test
     public void testRotateGesturesEnabled() {
         uiSettings.setRotateGesturesEnabled(true);
         assertEquals("Rotate gesture should be enabled", true, uiSettings.isRotateGesturesEnabled());
