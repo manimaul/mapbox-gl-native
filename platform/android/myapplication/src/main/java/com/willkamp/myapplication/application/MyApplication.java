@@ -44,7 +44,7 @@ public class MyApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-        MapboxAccountManager.start(this, "pk.invalid.token");
+        MapboxAccountManager.start(this, "pk.invalid.key");
         sAppContext = getApplicationContext();
         registerActivityLifecycleCallbacks(ApplicationLifeCycle.INSTANCE);
     }

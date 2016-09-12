@@ -10,14 +10,14 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
-import com.mapbox.mapboxsdk.constants.MapboxConstants;
-import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
+import com.mapbox.mapboxsdk.constants.MapboxConstants;
 import com.mapbox.mapboxsdk.geometry.LatLng;
+import com.mapbox.mapboxsdk.maps.MapView;
+import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 import com.mapbox.mapboxsdk.testapp.R;
-import com.mapbox.mapboxsdk.maps.MapView;
 
 public class CameraAnimationTypeActivity extends AppCompatActivity {
 
@@ -48,8 +48,6 @@ public class CameraAnimationTypeActivity extends AppCompatActivity {
         mapView.getMapAsync(new OnMapReadyCallback() {
             @Override
             public void onMapReady(@NonNull final MapboxMap mapboxMap) {
-                mapboxMap.getUiSettings().setAttributionEnabled(false);
-                mapboxMap.getUiSettings().setLogoEnabled(false);
                 mapboxMap.setOnCameraChangeListener(new MapboxMap.OnCameraChangeListener() {
                     @Override
                     public void onCameraChange(CameraPosition position) {

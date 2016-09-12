@@ -150,7 +150,7 @@ idocument:
 #### Android targets #####################################################
 
 ANDROID_ENV = platform/android/scripts/toolchain.sh
-ANDROID_ABIS = arm-v5 arm-v7 arm-v8 x86 x86-64 mips
+ANDROID_ABIS = arm-v5 arm-v7 arm-v8 x86 x86-64
 
 define ANDROID_RULES
 build/android-$1/config.gypi: platform/android/scripts/configure.sh $(CONFIG_DEPENDENCIES)

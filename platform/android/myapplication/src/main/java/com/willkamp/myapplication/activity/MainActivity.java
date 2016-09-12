@@ -61,8 +61,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         mMapView = (MapView) findViewById(R.id.mainMapView);
-        mMapView.onCreate(savedInstanceState);
         mMapView.setStyleUrl("http://localhost/style.json", new Interceptor(getResources()));
+        mMapView.onCreate(savedInstanceState);
         mMapView.getMapAsync(new OnMapReadyCallback() {
             @Override
             public void onMapReady(MapboxMap mapboxMap) {

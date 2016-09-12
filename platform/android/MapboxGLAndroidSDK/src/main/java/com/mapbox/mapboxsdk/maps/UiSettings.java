@@ -1,14 +1,10 @@
 package com.mapbox.mapboxsdk.maps;
 
 import android.graphics.PointF;
-import android.support.annotation.ColorInt;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.UiThread;
 import android.view.Gravity;
-import android.view.View;
-
-import com.mapbox.mapboxsdk.maps.widgets.MyLocationViewSettings;
 
 /**
  * Settings for the user interface of a MapboxMap. To obtain this interface, call getUiSettings().
@@ -18,8 +14,6 @@ public class UiSettings {
     private MapView mapView;
 
     private ViewSettings compassSettings;
-    private ViewSettings logoSettings;
-    private ViewSettings attributionSettings;
 
     private boolean rotateGesturesEnabled = true;
     private boolean rotateGestureChangeAllowed = true;
@@ -42,8 +36,6 @@ public class UiSettings {
     UiSettings(@NonNull MapView mapView) {
         this.mapView = mapView;
         this.compassSettings = new ViewSettings();
-        this.logoSettings = new ViewSettings();
-        this.attributionSettings = new ViewSettings();
     }
 
     /**
@@ -145,218 +137,6 @@ public class UiSettings {
      */
     public int getCompassMarginBottom() {
         return compassSettings.getMargins()[3];
-    }
-
-    /**
-     * <p>
-     * Enables or disables the Mapbox logo.
-     * </p>
-     * By default, the compass is enabled.
-     *
-     * @param enabled True to enable the logo; false to disable the logo.
-     */
-    public void setLogoEnabled(boolean enabled) {
-        logoSettings.setEnabled(enabled);
-        mapView.setLogoEnabled(enabled);
-    }
-
-    /**
-     * Returns whether the logo is enabled.
-     *
-     * @return True if the logo is enabled; false if the logo is disabled.
-     */
-    public boolean isLogoEnabled() {
-        return logoSettings.isEnabled();
-    }
-
-    /**
-     * <p>
-     * Sets the gravity of the logo view. Use this to change the corner of the map view that the
-     * Mapbox logo is displayed in.
-     * </p>
-     * By default, the logo is in the bottom left corner.
-     *
-     * @param gravity One of the values from {@link Gravity}.
-     * @see Gravity
-     */
-    public void setLogoGravity(int gravity) {
-        logoSettings.setGravity(gravity);
-        mapView.setLogoGravity(gravity);
-    }
-
-    /**
-     * Returns the gravity value of the logo
-     *
-     * @return The gravity
-     */
-    public int getLogoGravity() {
-        return logoSettings.getGravity();
-    }
-
-    /**
-     * Sets the margins of the logo view. Use this to change the distance of the Mapbox logo from the
-     * map view edge.
-     *
-     * @param left   The left margin in pixels.
-     * @param top    The top margin in pixels.
-     * @param right  The right margin in pixels.
-     * @param bottom The bottom margin in pixels.
-     */
-    public void setLogoMargins(int left, int top, int right, int bottom) {
-        logoSettings.setMargins(new int[]{left, top, right, bottom});
-        mapView.setLogoMargins(left, top, right, bottom);
-    }
-
-    /**
-     * Returns the left side margin of the logo
-     *
-     * @return The left margin in pixels
-     */
-    public int getLogoMarginLeft() {
-        return logoSettings.getMargins()[0];
-    }
-
-    /**
-     * Returns the top side margin of the logo
-     *
-     * @return The top margin in pixels
-     */
-    public int getLogoMarginTop() {
-        return logoSettings.getMargins()[1];
-    }
-
-    /**
-     * Returns the right side margin of the logo
-     *
-     * @return The right margin in pixels
-     */
-    public int getLogoMarginRight() {
-        return logoSettings.getMargins()[2];
-    }
-
-    /**
-     * Returns the bottom side margin of the logo
-     *
-     * @return The bottom margin in pixels
-     */
-    public int getLogoMarginBottom() {
-        return logoSettings.getMargins()[3];
-    }
-
-    /**
-     * <p>
-     * Enables or disables the attribution.
-     * </p>
-     * By default, the attribution is enabled.
-     *
-     * @param enabled True to enable the attribution; false to disable the attribution.
-     */
-    public void setAttributionEnabled(boolean enabled) {
-        attributionSettings.setEnabled(enabled);
-        mapView.setAttributionEnabled(enabled ? View.VISIBLE : View.GONE);
-    }
-
-    /**
-     * Returns whether the attribution is enabled.
-     *
-     * @return True if the attribution is enabled; false if the attribution is disabled.
-     */
-    public boolean isAttributionEnabled() {
-        return attributionSettings.isEnabled();
-    }
-
-    /**
-     * <p>
-     * Sets the gravity of the attribution.
-     * </p>
-     * By default, the attribution is in the bottom left corner next to the Mapbox logo.
-     *
-     * @param gravity One of the values from {@link Gravity}.
-     * @see Gravity
-     */
-    public void setAttributionGravity(int gravity) {
-        attributionSettings.setGravity(gravity);
-        mapView.setAttributionGravity(gravity);
-    }
-
-    /**
-     * Returns the gravity value of the logo
-     *
-     * @return The gravity
-     */
-    public int getAttributionGravity() {
-        return attributionSettings.getGravity();
-    }
-
-    /**
-     * Sets the margins of the attribution view.
-     *
-     * @param left   The left margin in pixels.
-     * @param top    The top margin in pixels.
-     * @param right  The right margin in pixels.
-     * @param bottom The bottom margin in pixels.
-     */
-    public void setAttributionMargins(int left, int top, int right, int bottom) {
-        attributionSettings.setMargins(new int[]{left, top, right, bottom});
-        mapView.setAttributionMargins(left, top, right, bottom);
-    }
-
-    /**
-     * <p>
-     * Sets the tint of the attribution view. Use this to change the color of the attribution.
-     * </p>
-     * By default, the logo is tinted with the primary color of your theme.
-     *
-     * @param tintColor Color to tint the attribution.
-     */
-    public void setAttributionTintColor(@ColorInt int tintColor) {
-        attributionSettings.setTintColor(tintColor);
-        mapView.setAtttibutionTintColor(tintColor);
-    }
-
-    /**
-     * Returns the tint color value of the attribution view.
-     *
-     * @return The tint color
-     */
-    public int getAttributionTintColor() {
-        return attributionSettings.getTintColor();
-    }
-
-    /**
-     * Returns the left side margin of the attribution view.
-     *
-     * @return The left margin in pixels
-     */
-    public int getAttributionMarginLeft() {
-        return attributionSettings.getMargins()[0];
-    }
-
-    /**
-     * Returns the top side margin of the attribution view.
-     *
-     * @return The top margin in pixels
-     */
-    public int getAttributionMarginTop() {
-        return attributionSettings.getMargins()[1];
-    }
-
-    /**
-     * Returns the right side margin of the attribution view.
-     *
-     * @return The right margin in pixels
-     */
-    public int getAttributionMarginRight() {
-        return attributionSettings.getMargins()[2];
-    }
-
-    /**
-     * Returns the bottom side margin of the logo
-     *
-     * @return The bottom margin in pixels
-     */
-    public int getAttributionMarginBottom() {
-        return attributionSettings.getMargins()[3];
     }
 
     /**
@@ -608,8 +388,6 @@ public class UiSettings {
      * Invalidates the ViewSettings instances shown on top of the MapView
      */
     public void invalidate() {
-        mapView.setLogoMargins(getLogoMarginLeft(), getLogoMarginTop(), getLogoMarginRight(), getLogoMarginBottom());
         mapView.setCompassMargins(getCompassMarginLeft(), getCompassMarginTop(), getCompassMarginRight(), getCompassMarginBottom());
-        mapView.setAttributionMargins(getAttributionMarginLeft(), getAttributionMarginTop(), getAttributionMarginRight(), getAttributionMarginBottom());
     }
 }

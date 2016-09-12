@@ -55,9 +55,6 @@ public class ScrollByActivity extends AppCompatActivity {
             @Override
             public void onMapReady(@NonNull final MapboxMap mapboxMap) {
                 UiSettings uiSettings = mapboxMap.getUiSettings();
-                uiSettings.setLogoEnabled(false);
-                uiSettings.setAttributionEnabled(false);
-
                 FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
                 fab.setColorFilter(ContextCompat.getColor(ScrollByActivity.this, R.color.primary));
                 fab.setOnClickListener(new View.OnClickListener() {
