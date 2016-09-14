@@ -49,18 +49,14 @@ public class TileSystem {
 
     static LatLngBounds zxyToLngLatBounds(int z, int x, int y) {
         final Pixel p = pixel(x, y);
-        final LatLng tl = pixelToLngLat(p, z);
+        final LatLng northWest = pixelToLngLat(p, z);
         p.x = p.x + TILE_SIZE;
-        final LatLng tr = pixelToLngLat(p, z);
+        final LatLng northEast = pixelToLngLat(p, z);
         p.y = p.y + TILE_SIZE;
-        final LatLng br = pixelToLngLat(p, z);
+        final LatLng southEast = pixelToLngLat(p, z);
         p.x = p.x - TILE_SIZE;
-        final LatLng bl = pixelToLngLat(p, z);
-        final double left = Math.min(tl.lngX, bl.lngX);
-        final double top = Math.max(tl.latY, tr.latY);
-        final double right = Math.max(tr.lngX, br.lngX);
-        final double bottom = Math.min(br.latY, bl.latY);
-        return new LatLngBounds(left, bottom, right, top);
+        final LatLng southWest = pixelToLngLat(p, z);
+        return new LatLngBounds(northWest, northEast, southEast, southWest);
     }
 
     static LatLng pixelToLngLat(Pixel pixel, int z) {
@@ -87,7 +83,7 @@ public class TileSystem {
     public static void latLngToTileBoundedXy(Coordinate coordinate, int z, int x, int y) {
         Pixel pixel = latLngToPixel(coordinate, z);
         coordinate.x = pixel.x - x * TILE_SIZE;
-        coordinate.y = (pixel.y - y * TILE_SIZE) - y;
+        coordinate.y = TILE_SIZE - (pixel.y - y * TILE_SIZE);
     }
 
     public static double clip(double num, double min, double max) {
@@ -95,13 +91,13 @@ public class TileSystem {
     }
 
     public static Polygon tileClipPolygon(int z, int x, int y) {
-        LatLngBounds rect = zxyToLngLatBounds(z, x, y);
+        LatLngBounds bounds = zxyToLngLatBounds(z, x, y);
         Coordinate[] coordinates = new Coordinate[5];
-        coordinates[0] = new Coordinate(rect.westX, rect.northY);
-        coordinates[1] = new Coordinate(rect.eastX, rect.northY);
-        coordinates[2] = new Coordinate(rect.eastX, rect.southY);
-        coordinates[3] = new Coordinate(rect.westX, rect.southY);
-        coordinates[4] = new Coordinate(rect.westX, rect.northY);
+        coordinates[0] = new Coordinate(bounds.northWest.lngX, bounds.northWest.latY);
+        coordinates[1] = new Coordinate(bounds.northEast.lngX, bounds.northEast.latY);
+        coordinates[2] = new Coordinate(bounds.southEast.lngX, bounds.southEast.latY);
+        coordinates[3] = new Coordinate(bounds.southWest.lngX, bounds.southWest.latY);
+        coordinates[4] = new Coordinate(bounds.northWest.lngX, bounds.northWest.latY);
         return GEOMETRY_FACTORY.createPolygon(coordinates);
     }
 
@@ -133,16 +129,16 @@ public class TileSystem {
     }
 
     static class LatLngBounds {
-        double westX;
-        double southY;
-        double eastX;
-        double northY;
+        LatLng northWest;
+        LatLng northEast;
+        LatLng southEast;
+        LatLng southWest;
 
-        public LatLngBounds(double westX, double southY, double eastX, double northY) {
-            this.westX = westX;
-            this.southY = southY;
-            this.eastX = eastX;
-            this.northY = northY;
+        public LatLngBounds(LatLng northWest, LatLng northEast, LatLng southEast, LatLng southWest) {
+            this.northWest = northWest;
+            this.northEast = northEast;
+            this.southEast = southEast;
+            this.southWest = southWest;
         }
     }
 

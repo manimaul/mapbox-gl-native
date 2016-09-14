@@ -4,7 +4,6 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Handler;
-import android.support.annotation.Nullable;
 import android.util.Log;
 
 import com.vividsolutions.jts.geom.Coordinate;
@@ -269,7 +268,6 @@ public enum VectorTileDao {
         }).subscribeOn(Schedulers.newThread()).asObservable();
     }
 
-    @Nullable
     public Observable<byte[]> getVectorTileObservable(final int z, final int x, final int y) {
         final long t = System.currentTimeMillis();
         return Observable.create(new Observable.OnSubscribe<byte[]>() {

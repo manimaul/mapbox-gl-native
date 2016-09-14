@@ -42,7 +42,7 @@ public enum RasterTileDao {
     RasterTileDao() {
         mPaint.setColor(Color.BLACK);
         mPaint.setAntiAlias(true);
-        mPaint.setStrokeWidth(2);
+        mPaint.setStrokeWidth(1);
         mPaint.setStyle(Paint.Style.STROKE);
     }
 
@@ -56,7 +56,7 @@ public enum RasterTileDao {
                 TILE_SIZE, Bitmap.Config.ARGB_8888);
         final Canvas canvas = new Canvas(bitmap);
         canvas.drawRect(0, 0, TILE_SIZE, TILE_SIZE, mPaint);
-        canvas.drawText(String.format(Locale.US, "z:%d z:%d y:%d", z, x, y), 10, 128, mPaint);
+        canvas.drawText(String.format(Locale.US, "z:%d x:%d y:%d", z, x, y), 10, 128, mPaint);
         return bitmap;
     }
 
