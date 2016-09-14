@@ -3,6 +3,8 @@ package com.mapbox.mapboxsdk.http;
 import android.net.Uri;
 import android.support.annotation.Nullable;
 import android.text.TextUtils;
+import android.text.format.DateFormat;
+import android.util.Base64;
 import android.util.Log;
 
 import com.mapbox.mapboxsdk.constants.MapboxConstants;
@@ -12,6 +14,8 @@ import java.io.InterruptedIOException;
 import java.net.ProtocolException;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -38,10 +42,16 @@ public class HTTPRequest implements Callback {
     public static final int OFFLINE_RESPONSE_CODE = 200;
     public static final int OFFLINE_FAILURE_CODE = 404;
     public static final String OFFLINE_FAILURE_MESSAGE = "";
-    public static final String OFFLINE_RESPONSE_ETAG = "OK";
-    public static final String OFFLINE_RESPONSE_MODIFIED = "";
-    public static final String OFFLINE_RESPONSE_CACHE_CONTROL = "no-cache, no-store";
-    public static final String OFFLINE_RESPONSE_CACHE_EXPIRES = "";
+    public static final String OFFLINE_RESPONSE_CACHE_CONTROL = "max-age=43200,s-maxage=300";
+    public static final String OFFLINE_RESPONSE_CACHE_EXPIRES = null;
+    private static MessageDigest sMessageDigest;
+    static {
+        try {
+            sMessageDigest = MessageDigest.getInstance("SHA-1");
+        } catch (NoSuchAlgorithmException e) {
+            Log.e(LOG_TAG, "", e);
+        }
+    }
 
     //endregion
 
@@ -144,14 +154,26 @@ public class HTTPRequest implements Callback {
     public void onOfflineResponse(byte[] body) {
         mLock.lock();
         if (mNativePtr != 0) {
+            String etag = makeEtag(body);
+            String mod = makeModified();
             nativeOnResponse(OFFLINE_RESPONSE_CODE,
-                    OFFLINE_RESPONSE_ETAG,
-                    OFFLINE_RESPONSE_MODIFIED,
+                    etag,
+                    mod,
                     OFFLINE_RESPONSE_CACHE_CONTROL,
                     OFFLINE_RESPONSE_CACHE_EXPIRES,
                     body);
         }
         mLock.unlock();
+    }
+
+    public String makeModified() {
+        return DateFormat.format("EEE, dd MMM yyyy HH:mm:ss zzz", System.currentTimeMillis()).toString();
+    }
+
+    public synchronized String makeEtag(byte[] body) {
+        assert sMessageDigest != null;
+        sMessageDigest.reset();
+        return Base64.encodeToString(sMessageDigest.digest(body), Base64.DEFAULT);
     }
 
     public void onOfflineFailure() {
