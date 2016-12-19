@@ -1,0 +1,140 @@
+{
+  "version": 8,
+  "name": "Basic",
+  "center": [
+    0,
+    0
+  ],
+  "zoom": 0,
+  "bearing": 0,
+  "pitch": 0,
+  "sources": {
+    "VectorOffline": {
+      "url": "http://localhost/vector_data_source_v8.json",
+      "type": "vector"
+    },
+    "RasterOffline": {
+      "url": "http://localhost/raster_data_source_v8.json",
+      "type": "raster"
+    }
+  },
+  "glyphs": "http://localhost/fonts/{fontstack}/{range}.pbf",
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#CAE5EA"
+      },
+      "interactive": true
+    },
+    {
+      "id": "landPolyLine",
+      "layout": {
+        "visibility": "visible",
+        "line-join": "round",
+        "line-cap": "round"
+      },
+      "filter": [
+        "==",
+        "$type",
+        "Polygon"
+      ],
+      "type": "line",
+      "source": "VectorOffline",
+      "paint": {
+        "line-color": "#254577",
+        "line-width": 3
+      },
+      "source-layer": "land",
+      "interactive": true
+    },
+    {
+      "id": "landPolyFill",
+      "layout": {
+        "visibility": "visible"
+      },
+      "filter": [
+        "==",
+        "$type",
+        "Polygon"
+      ],
+      "type": "fill",
+      "source": "VectorOffline",
+      "paint": {
+        "fill-color": "#C4D5B1"
+      },
+      "source-layer": "land",
+      "interactive": true
+    },
+    {
+      "id": "lakePolyLine",
+      "layout": {
+        "visibility": "visible",
+        "line-join": "round",
+        "line-cap": "round"
+      },
+      "filter": [
+        "==",
+        "$type",
+        "Polygon"
+      ],
+      "type": "line",
+      "source": "VectorOffline",
+      "paint": {
+        "line-color": "#254577",
+        "line-width": 3
+      },
+      "source-layer": "lake",
+      "interactive": true
+    },
+    {
+      "id": "lakePolyFill",
+      "layout": {
+        "visibility": "visible"
+      },
+      "filter": [
+        "==",
+        "$type",
+        "Polygon"
+      ],
+      "type": "fill",
+      "source": "VectorOffline",
+      "paint": {
+        "fill-color": "#CAE5EA"
+      },
+      "source-layer": "lake",
+      "interactive": true
+    },
+    {
+      "id": "marineAreaLabel",
+      "layout": {
+        "visibility": "visible",
+        "text-field": "{name}",
+        "text-size": 12,
+        "text-transform": "none",
+        "symbol-placement": "point",
+        "text-anchor": "center",
+        "text-justify": "center",
+        "text-rotation-alignment": "viewport"
+      },
+      "type": "symbol",
+      "source": "VectorOffline",
+      "paint": {
+        "text-color": "#000000",
+        "text-halo-color": "#FFFFFF",
+        "text-halo-width": 1,
+        "text-halo-blur": 1
+      },
+      "source-layer": "marine_area",
+      "interactive": true
+    },
+    {
+      "id": "offlinePngTile",
+      "type": "raster",
+      "source": "RasterOffline",
+      "source-layer": "mapbox_offline_full"
+    }
+  ],
+  "draft": false
+}
