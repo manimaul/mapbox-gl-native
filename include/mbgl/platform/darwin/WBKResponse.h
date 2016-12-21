@@ -8,7 +8,7 @@
 #import <Foundation/Foundation.h>
 
 
-@protocol WBKResponse <NSObject>
+@protocol WBKResponse
 
 - (void) success:(NSData *)data;
 - (void) failure:(NSString *)reason;

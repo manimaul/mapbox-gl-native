@@ -8,9 +8,9 @@
 #import <Foundation/Foundation.h>
 #import "WBKResponse.h"
 
-@protocol WBKInterceptor <NSObject>
+@protocol WBKInterceptor
 
 -(NSString *)host;
--(BOOL)handleRequest:(id<WBKResponse>)callback;
+-(void)handleRequest:(NSString*)url callback:(id<WBKResponse>)cb;
 
 @end

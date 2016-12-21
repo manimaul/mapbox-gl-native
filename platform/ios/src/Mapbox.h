@@ -55,3 +55,5 @@ FOUNDATION_EXPORT const unsigned char MapboxVersionString[];
 #import "NSValue+MGLStyleEnumAttributeAdditions.h"
 #import "MGLStyleValue.h"
 #import "MGLAttributionInfo.h"
+#import "WBKResponse.h"
+#import "WBKRequestInterceptor.h"

@@ -172,6 +172,10 @@
 		7E016D851D9E890300A29A21 /* MGLPolygon+MGLAdditions.h in Headers */ = {isa = PBXBuildFile; fileRef = 7E016D821D9E890300A29A21 /* MGLPolygon+MGLAdditions.h */; };
 		7E016D861D9E890300A29A21 /* MGLPolygon+MGLAdditions.m in Sources */ = {isa = PBXBuildFile; fileRef = 7E016D831D9E890300A29A21 /* MGLPolygon+MGLAdditions.m */; };
 		7E016D871D9E890300A29A21 /* MGLPolygon+MGLAdditions.m in Sources */ = {isa = PBXBuildFile; fileRef = 7E016D831D9E890300A29A21 /* MGLPolygon+MGLAdditions.m */; };
+		D06298AA1E0A117A00568A2A /* WBKTileRequestInterceptor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D06298A91E0A117A00568A2A /* WBKTileRequestInterceptor.swift */; };
+		D06298AC1E0A166900568A2A /* WBKRequestInterceptor.h in Headers */ = {isa = PBXBuildFile; fileRef = D06298AB1E0A166900568A2A /* WBKRequestInterceptor.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		D06298AE1E0A168000568A2A /* WBKResponse.h in Headers */ = {isa = PBXBuildFile; fileRef = D06298AD1E0A168000568A2A /* WBKResponse.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		D06298B01E0AC34100568A2A /* WBKAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D06298AF1E0AC34100568A2A /* WBKAppDelegate.swift */; };
 		D0DA04891E07936200540F5D /* WBKMain.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = D0DA04881E07936200540F5D /* WBKMain.storyboard */; };
 		D0DA048C1E07937D00540F5D /* WBKMapViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0DA048B1E07937D00540F5D /* WBKMapViewController.swift */; };
 		DA00FC8E1D5EEB0D009AABC8 /* MGLAttributionInfo.h in Headers */ = {isa = PBXBuildFile; fileRef = DA00FC8C1D5EEB0D009AABC8 /* MGLAttributionInfo.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -186,7 +190,6 @@
 		DA1DC9701CB6C6CE006E619F /* points.geojson in Resources */ = {isa = PBXBuildFile; fileRef = DA1DC96C1CB6C6CE006E619F /* points.geojson */; };
 		DA1DC9711CB6C6CE006E619F /* polyline.geojson in Resources */ = {isa = PBXBuildFile; fileRef = DA1DC96D1CB6C6CE006E619F /* polyline.geojson */; };
 		DA1DC9731CB6C6CE006E619F /* threestates.geojson in Resources */ = {isa = PBXBuildFile; fileRef = DA1DC96F1CB6C6CE006E619F /* threestates.geojson */; };
-		DA1DC9971CB6E046006E619F /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = DA1DC9961CB6E046006E619F /* main.m */; };
 		DA1DC9991CB6E054006E619F /* MBXAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = DA1DC9981CB6E054006E619F /* MBXAppDelegate.m */; };
 		DA1DC99B1CB6E064006E619F /* MBXViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = DA1DC99A1CB6E064006E619F /* MBXViewController.m */; };
 		DA1DC99D1CB6E076006E619F /* Default-568h@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = DA1DC99C1CB6E076006E619F /* Default-568h@2x.png */; };
@@ -614,6 +617,10 @@
 		7E016D7D1D9E86BE00A29A21 /* MGLPolyline+MGLAdditions.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "MGLPolyline+MGLAdditions.m"; sourceTree = "<group>"; };
 		7E016D821D9E890300A29A21 /* MGLPolygon+MGLAdditions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "MGLPolygon+MGLAdditions.h"; sourceTree = "<group>"; };
 		7E016D831D9E890300A29A21 /* MGLPolygon+MGLAdditions.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "MGLPolygon+MGLAdditions.m"; sourceTree = "<group>"; };
+		D06298A91E0A117A00568A2A /* WBKTileRequestInterceptor.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WBKTileRequestInterceptor.swift; sourceTree = "<group>"; };
+		D06298AB1E0A166900568A2A /* WBKRequestInterceptor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = WBKRequestInterceptor.h; path = ../../../include/mbgl/platform/darwin/WBKRequestInterceptor.h; sourceTree = "<group>"; };
+		D06298AD1E0A168000568A2A /* WBKResponse.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = WBKResponse.h; path = ../../../include/mbgl/platform/darwin/WBKResponse.h; sourceTree = "<group>"; };
+		D06298AF1E0AC34100568A2A /* WBKAppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WBKAppDelegate.swift; sourceTree = "<group>"; };
 		D0DA04881E07936200540F5D /* WBKMain.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; path = WBKMain.storyboard; sourceTree = "<group>"; };
 		D0DA048A1E07937C00540F5D /* iosapp-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "iosapp-Bridging-Header.h"; sourceTree = "<group>"; };
 		D0DA048B1E07937D00540F5D /* WBKMapViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WBKMapViewController.swift; sourceTree = "<group>"; };
@@ -632,7 +639,6 @@
 		DA1DC96C1CB6C6CE006E619F /* points.geojson */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = points.geojson; sourceTree = "<group>"; };
 		DA1DC96D1CB6C6CE006E619F /* polyline.geojson */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = polyline.geojson; sourceTree = "<group>"; };
 		DA1DC96F1CB6C6CE006E619F /* threestates.geojson */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = threestates.geojson; sourceTree = "<group>"; };
-		DA1DC9961CB6E046006E619F /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		DA1DC9981CB6E054006E619F /* MBXAppDelegate.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MBXAppDelegate.m; sourceTree = "<group>"; };
 		DA1DC99A1CB6E064006E619F /* MBXViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MBXViewController.m; sourceTree = "<group>"; };
 		DA1DC99C1CB6E076006E619F /* Default-568h@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Default-568h@2x.png"; sourceTree = "<group>"; };
@@ -1029,7 +1035,11 @@
 				DA1DC99A1CB6E064006E619F /* MBXViewController.m */,
 				DA821D051CCC6D59007508D4 /* Main.storyboard */,
 				DA821D041CCC6D59007508D4 /* LaunchScreen.storyboard */,
+				D06298AD1E0A168000568A2A /* WBKResponse.h */,
+				D06298AB1E0A166900568A2A /* WBKRequestInterceptor.h */,
+				D06298AF1E0AC34100568A2A /* WBKAppDelegate.swift */,
 				D0DA048B1E07937D00540F5D /* WBKMapViewController.swift */,
+				D06298A91E0A117A00568A2A /* WBKTileRequestInterceptor.swift */,
 				D0DA04881E07936200540F5D /* WBKMain.storyboard */,
 				DA1DC99E1CB6E088006E619F /* Assets.xcassets */,
 				DA1DC96C1CB6C6CE006E619F /* points.geojson */,
@@ -1051,7 +1061,6 @@
 		DA1DC94D1CB6C1C2006E619F /* Supporting Files */ = {
 			isa = PBXGroup;
 			children = (
-				DA1DC9961CB6E046006E619F /* main.m */,
 			);
 			name = "Supporting Files";
 			sourceTree = "<group>";
@@ -1469,6 +1478,7 @@
 				DA88483B1CBAFB8500AB86E3 /* MGLCalloutView.h in Headers */,
 				35E0CFE61D3E501500188327 /* MGLStyle_Private.h in Headers */,
 				3510FFF01D6D9D8C00F413B2 /* NSExpression+MGLAdditions.h in Headers */,
+				D06298AE1E0A168000568A2A /* WBKResponse.h in Headers */,
 				353AFA141D65AB17005A69F4 /* NSDate+MGLAdditions.h in Headers */,
 				DA8848531CBAFB9800AB86E3 /* MGLCompactCalloutView.h in Headers */,
 				DA8847FB1CBAFA5100AB86E3 /* MGLShape.h in Headers */,
@@ -1497,6 +1507,7 @@
 				353933F81D3FB79F003F57D7 /* MGLLineStyleLayer.h in Headers */,
 				DAAF722D1DA903C700312FA4 /* MGLStyleValue_Private.h in Headers */,
 				DA8847F41CBAFA5100AB86E3 /* MGLOfflinePack.h in Headers */,
+				D06298AC1E0A166900568A2A /* WBKRequestInterceptor.h in Headers */,
 				DA88482E1CBAFA6200AB86E3 /* NSException+MGLAdditions.h in Headers */,
 				DA8848551CBAFB9800AB86E3 /* MGLLocationManager.h in Headers */,
 				408AA8571DAEDA1700022900 /* NSDictionary+MGLAdditions.h in Headers */,
@@ -1790,6 +1801,7 @@
 					};
 					DA8933D41CCD306400E68420 = {
 						CreatedOnToolsVersion = 7.3;
+						DevelopmentTeam = TH39V46468;
 					};
 					DAA4E4121CBB71D400178DFB = {
 						CreatedOnToolsVersion = 7.3;
@@ -1929,14 +1941,15 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				DA1DC9971CB6E046006E619F /* main.m in Sources */,
 				354B839C1D2E9B48005D9406 /* MBXUserLocationAnnotationView.m in Sources */,
 				DA1DC9991CB6E054006E619F /* MBXAppDelegate.m in Sources */,
 				DA1DC96B1CB6C6B7006E619F /* MBXOfflinePacksTableViewController.m in Sources */,
 				DA1DC96A1CB6C6B7006E619F /* MBXCustomCalloutView.m in Sources */,
 				DA1DC99B1CB6E064006E619F /* MBXViewController.m in Sources */,
 				D0DA048C1E07937D00540F5D /* WBKMapViewController.swift in Sources */,
+				D06298B01E0AC34100568A2A /* WBKAppDelegate.swift in Sources */,
 				40FDA76B1CCAAA6800442548 /* MBXAnnotationView.m in Sources */,
+				D06298AA1E0A117A00568A2A /* WBKTileRequestInterceptor.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2484,6 +2497,7 @@
 		DA8933D91CCD306400E68420 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DEVELOPMENT_TEAM = TH39V46468;
 				INFOPLIST_FILE = "framework/Info-static.plist";
 				PRODUCT_BUNDLE_IDENTIFIER = com.mapbox.sdk.ios;
 				PRODUCT_NAME = Mapbox;
@@ -2495,6 +2509,7 @@
 		DA8933DA1CCD306400E68420 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DEVELOPMENT_TEAM = TH39V46468;
 				INFOPLIST_FILE = "framework/Info-static.plist";
 				PRODUCT_BUNDLE_IDENTIFIER = com.mapbox.sdk.ios;
 				PRODUCT_NAME = Mapbox;
