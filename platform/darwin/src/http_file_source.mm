@@ -1,14 +1,12 @@
+#import <Foundation/Foundation.h>
+#import <mbgl/platform/darwin/WBKRequestInterceptorReg.h>
+
 #include <mbgl/storage/http_file_source.hpp>
 #include <mbgl/storage/resource.hpp>
 #include <mbgl/storage/response.hpp>
-
 #include <mbgl/util/http_header.hpp>
 #include <mbgl/util/async_task.hpp>
-
 #include <mbgl/util/version.hpp>
-
-#import <Foundation/Foundation.h>
-
 #include <mutex>
 #include <chrono>
 
@@ -19,38 +17,6 @@
 @end
 
 namespace mbgl {
-    
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-parameter"
-std::unique_ptr<AsyncRequest> HttpInterceptor::handleRequest(std::string const &url, std::function<void (mbgl::Response)> callback) {
-    throw std::runtime_error("HttpInterceptor::handleRequest() should be overridden");
-}
-#pragma clang diagnostic pop
-    
-std::string const &HttpInterceptor::host() {
-    static std::string host = "http://localhost";
-    return host;
-}
-
-void HttpIntercepReg::clearInterceptor() {
-    interceptor.release();
-}
-
-void HttpIntercepReg::setIntecepter(std::unique_ptr<HttpInterceptor> i) {
-    interceptor.swap(i);
-}
-
-bool HttpIntercepReg::willHandleRequest(std::string const &url) {
-    if (interceptor && url.length() > 0) {
-        return interceptor->host().find(url) == 0;
-    }
-    return false;
-}
-    
-std::unique_ptr<AsyncRequest> HttpIntercepReg::handleRequest(std::string const &url, std::function<void (mbgl::Response)> callback) {
-    return interceptor->handleRequest(url, callback);
-}
-
 
 // Data that is shared between the requesting thread and the thread running the completion handler.
 class HTTPRequestShared {
@@ -230,8 +196,9 @@ uint32_t HTTPFileSource::maximumConcurrentRequests() {
 }
 
 std::unique_ptr<AsyncRequest> HTTPFileSource::request(const Resource& resource, Callback callback) {
-    if (HttpIntercepReg::sharedInstance().willHandleRequest(resource.url)) {
-        return HttpIntercepReg::sharedInstance().handleRequest(resource.url, callback);
+    
+    if ([WBKRequestInterceptorReg willHandleUrl:resource.url]) {
+        return [WBKRequestInterceptorReg handleRequest:resource.url withCallBack:callback];
     }
     
     auto request = std::make_unique<HTTPRequest>(callback);

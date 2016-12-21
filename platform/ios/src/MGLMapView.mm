@@ -56,6 +56,8 @@
 #import "MGLAnnotationContainerView.h"
 #import "MGLAnnotationContainerView_Private.h"
 #import "MGLAttributionInfo.h"
+#import <mbgl/platform/darwin/WBKRequestInterceptorReg.h>
+#import <mbgl/platform/darwin/WBKRequestInterceptor.h>
 
 #include <algorithm>
 #include <cstdlib>
@@ -357,6 +359,13 @@ public:
     NSString *styleURLString = @(_mbglMap->getStyleURL().c_str()).mgl_stringOrNilIfEmpty;
     NSAssert(styleURLString || _isTargetingInterfaceBuilder, @"Invalid style URL string %@", styleURLString);
     return styleURLString ? [NSURL URLWithString:styleURLString] : nil;
+}
+
++(void) setInterceptor:(id<WBKInterceptor>)interceptor {
+    [WBKRequestInterceptorReg setInterceptor:interceptor];
+}
++(void) clearInterceptor {
+    [WBKRequestInterceptorReg clearInterceptor];
 }
 
 - (void)setStyleURL:(nullable NSURL *)styleURL

@@ -16,6 +16,7 @@ NS_ASSUME_NONNULL_BEGIN
 @class MGLShape;
 @class MGLStyle;
 
+@protocol WBKInterceptor;
 @protocol MGLMapViewDelegate;
 @protocol MGLAnnotation;
 @protocol MGLOverlay;
@@ -131,6 +132,9 @@ IB_DESIGNABLE
     inspectable in Interface Builder, or a manually constructed `NSURL`.
  */
 @property (nonatomic, readonly) MGLStyle *style;
+
++(void) setInterceptor:(id<WBKInterceptor>)interceptor;
++(void) clearInterceptor;
 
 /**
  URLs of the styles bundled with the library.
