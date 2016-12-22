@@ -15,6 +15,6 @@
 +(void) clearInterceptor;
 
 +(bool) willHandleUrl:(std::string const &)url;
-+(std::unique_ptr<mbgl::AsyncRequest>) handleRequest:(std::string const &)url withCallBack:(std::function<void (mbgl::Response)>) callback;
++(std::unique_ptr<mbgl::AsyncRequest>) handleRequest:(std::string const &)url withCallBack:(mbgl::FileSource::Callback) callback;
 
 @end

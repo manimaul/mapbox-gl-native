@@ -14,6 +14,7 @@ class WBKMapViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        mapView.styleURL = URL(string: "http://localhost/style.json")
     }
     
 }

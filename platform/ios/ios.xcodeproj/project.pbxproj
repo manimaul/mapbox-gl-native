@@ -176,6 +176,10 @@
 		D06298AC1E0A166900568A2A /* WBKRequestInterceptor.h in Headers */ = {isa = PBXBuildFile; fileRef = D06298AB1E0A166900568A2A /* WBKRequestInterceptor.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		D06298AE1E0A168000568A2A /* WBKResponse.h in Headers */ = {isa = PBXBuildFile; fileRef = D06298AD1E0A168000568A2A /* WBKResponse.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		D06298B01E0AC34100568A2A /* WBKAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D06298AF1E0AC34100568A2A /* WBKAppDelegate.swift */; };
+		D06298B21E0ACEAB00568A2A /* style.json in Resources */ = {isa = PBXBuildFile; fileRef = D06298B11E0ACEAB00568A2A /* style.json */; };
+		D06298B51E0ACEFB00568A2A /* raster_data_source_v8.json in Resources */ = {isa = PBXBuildFile; fileRef = D06298B41E0ACEFB00568A2A /* raster_data_source_v8.json */; };
+		D06298B71E0ACF0900568A2A /* vector_data_source_v8.json in Resources */ = {isa = PBXBuildFile; fileRef = D06298B61E0ACF0900568A2A /* vector_data_source_v8.json */; };
+		D06298B91E0ACF1A00568A2A /* base_map_tile_geometries.s3db in Resources */ = {isa = PBXBuildFile; fileRef = D06298B81E0ACF1A00568A2A /* base_map_tile_geometries.s3db */; };
 		D0DA04891E07936200540F5D /* WBKMain.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = D0DA04881E07936200540F5D /* WBKMain.storyboard */; };
 		D0DA048C1E07937D00540F5D /* WBKMapViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0DA048B1E07937D00540F5D /* WBKMapViewController.swift */; };
 		DA00FC8E1D5EEB0D009AABC8 /* MGLAttributionInfo.h in Headers */ = {isa = PBXBuildFile; fileRef = DA00FC8C1D5EEB0D009AABC8 /* MGLAttributionInfo.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -621,6 +625,10 @@
 		D06298AB1E0A166900568A2A /* WBKRequestInterceptor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = WBKRequestInterceptor.h; path = ../../../include/mbgl/platform/darwin/WBKRequestInterceptor.h; sourceTree = "<group>"; };
 		D06298AD1E0A168000568A2A /* WBKResponse.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = WBKResponse.h; path = ../../../include/mbgl/platform/darwin/WBKResponse.h; sourceTree = "<group>"; };
 		D06298AF1E0AC34100568A2A /* WBKAppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WBKAppDelegate.swift; sourceTree = "<group>"; };
+		D06298B11E0ACEAB00568A2A /* style.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = style.json; sourceTree = "<group>"; };
+		D06298B41E0ACEFB00568A2A /* raster_data_source_v8.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = raster_data_source_v8.json; sourceTree = "<group>"; };
+		D06298B61E0ACF0900568A2A /* vector_data_source_v8.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = vector_data_source_v8.json; sourceTree = "<group>"; };
+		D06298B81E0ACF1A00568A2A /* base_map_tile_geometries.s3db */ = {isa = PBXFileReference; lastKnownFileType = file; path = base_map_tile_geometries.s3db; sourceTree = "<group>"; };
 		D0DA04881E07936200540F5D /* WBKMain.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; path = WBKMain.storyboard; sourceTree = "<group>"; };
 		D0DA048A1E07937C00540F5D /* iosapp-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "iosapp-Bridging-Header.h"; sourceTree = "<group>"; };
 		D0DA048B1E07937D00540F5D /* WBKMapViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WBKMapViewController.swift; sourceTree = "<group>"; };
@@ -990,6 +998,23 @@
 			name = Sources;
 			sourceTree = "<group>";
 		};
+		D06298B31E0ACEBA00568A2A /* WBK */ = {
+			isa = PBXGroup;
+			children = (
+				D06298AD1E0A168000568A2A /* WBKResponse.h */,
+				D06298AB1E0A166900568A2A /* WBKRequestInterceptor.h */,
+				D06298AF1E0AC34100568A2A /* WBKAppDelegate.swift */,
+				D0DA048B1E07937D00540F5D /* WBKMapViewController.swift */,
+				D06298A91E0A117A00568A2A /* WBKTileRequestInterceptor.swift */,
+				D0DA04881E07936200540F5D /* WBKMain.storyboard */,
+				D06298B11E0ACEAB00568A2A /* style.json */,
+				D06298B81E0ACF1A00568A2A /* base_map_tile_geometries.s3db */,
+				D06298B61E0ACF0900568A2A /* vector_data_source_v8.json */,
+				D06298B41E0ACEFB00568A2A /* raster_data_source_v8.json */,
+			);
+			name = WBK;
+			sourceTree = "<group>";
+		};
 		DA1DC9411CB6C1C2006E619F = {
 			isa = PBXGroup;
 			children = (
@@ -1021,6 +1046,7 @@
 		DA1DC94C1CB6C1C2006E619F /* Demo App */ = {
 			isa = PBXGroup;
 			children = (
+				D06298B31E0ACEBA00568A2A /* WBK */,
 				DA1DC9501CB6C1C2006E619F /* MBXAppDelegate.h */,
 				DA1DC9981CB6E054006E619F /* MBXAppDelegate.m */,
 				40FDA7691CCAAA6800442548 /* MBXAnnotationView.h */,
@@ -1035,12 +1061,6 @@
 				DA1DC99A1CB6E064006E619F /* MBXViewController.m */,
 				DA821D051CCC6D59007508D4 /* Main.storyboard */,
 				DA821D041CCC6D59007508D4 /* LaunchScreen.storyboard */,
-				D06298AD1E0A168000568A2A /* WBKResponse.h */,
-				D06298AB1E0A166900568A2A /* WBKRequestInterceptor.h */,
-				D06298AF1E0AC34100568A2A /* WBKAppDelegate.swift */,
-				D0DA048B1E07937D00540F5D /* WBKMapViewController.swift */,
-				D06298A91E0A117A00568A2A /* WBKTileRequestInterceptor.swift */,
-				D0DA04881E07936200540F5D /* WBKMain.storyboard */,
 				DA1DC99E1CB6E088006E619F /* Assets.xcassets */,
 				DA1DC96C1CB6C6CE006E619F /* points.geojson */,
 				DA1DC96D1CB6C6CE006E619F /* polyline.geojson */,
@@ -1851,8 +1871,12 @@
 				DA821D071CCC6D59007508D4 /* Main.storyboard in Resources */,
 				DA1DC9731CB6C6CE006E619F /* threestates.geojson in Resources */,
 				DA821D061CCC6D59007508D4 /* LaunchScreen.storyboard in Resources */,
+				D06298B71E0ACF0900568A2A /* vector_data_source_v8.json in Resources */,
+				D06298B51E0ACEFB00568A2A /* raster_data_source_v8.json in Resources */,
+				D06298B91E0ACF1A00568A2A /* base_map_tile_geometries.s3db in Resources */,
 				DD4823751D94AE6C00EB71B7 /* fill_filter_style.json in Resources */,
 				DA1DC99F1CB6E088006E619F /* Assets.xcassets in Resources */,
+				D06298B21E0ACEAB00568A2A /* style.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
