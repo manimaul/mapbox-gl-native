@@ -51,7 +51,6 @@
 #import "MGLAnnotationView_Private.h"
 #import "MGLStyle_Private.h"
 #import "MGLStyleLayer_Private.h"
-#import "MGLMapboxEvents.h"
 #import "MGLCompactCalloutView.h"
 #import "MGLAnnotationContainerView.h"
 #import "MGLAnnotationContainerView_Private.h"
@@ -234,10 +233,6 @@ public:
 @property (nonatomic) UIImageView *glSnapshotView;
 @property (nonatomic, readwrite) UIImageView *compassView;
 @property (nonatomic) NS_MUTABLE_ARRAY_OF(NSLayoutConstraint *) *compassViewConstraints;
-@property (nonatomic, readwrite) UIImageView *logoView;
-@property (nonatomic) NS_MUTABLE_ARRAY_OF(NSLayoutConstraint *) *logoViewConstraints;
-@property (nonatomic, readwrite) UIButton *attributionButton;
-@property (nonatomic) NS_MUTABLE_ARRAY_OF(NSLayoutConstraint *) *attributionButtonConstraints;
 @property (nonatomic) UIActionSheet *attributionSheet;
 @property (nonatomic, readwrite) MGLStyle *style;
 @property (nonatomic) UITapGestureRecognizer *singleTapGestureRecognizer;
@@ -462,26 +457,7 @@ public:
     _selectedAnnotationTag = MGLAnnotationTagNotFound;
     _annotationsNearbyLastTap = {};
 
-    // setup logo bug
-    //
-    UIImage *logo = [[MGLMapView resourceImageNamed:@"mapbox.png"] imageWithAlignmentRectInsets:UIEdgeInsetsMake(1.5, 4, 3.5, 2)];
-    _logoView = [[UIImageView alloc] initWithImage:logo];
-    _logoView.accessibilityTraits = UIAccessibilityTraitStaticText;
-    _logoView.accessibilityLabel = NSLocalizedStringWithDefaultValue(@"LOGO_A11Y_LABEL", nil, nil, @"Mapbox", @"Accessibility label");
-    _logoView.translatesAutoresizingMaskIntoConstraints = NO;
-    [self addSubview:_logoView];
-    _logoViewConstraints = [NSMutableArray array];
 
-    // setup attribution
-    //
-    _attributionButton = [UIButton buttonWithType:UIButtonTypeInfoLight];
-    _attributionButton.accessibilityLabel = NSLocalizedStringWithDefaultValue(@"INFO_A11Y_LABEL", nil, nil, @"About this map", @"Accessibility label");
-    _attributionButton.accessibilityHint = NSLocalizedStringWithDefaultValue(@"INFO_A11Y_HINT", nil, nil, @"Shows credits, a feedback form, and more", @"Accessibility hint");
-    [_attributionButton addTarget:self action:@selector(showAttribution) forControlEvents:UIControlEventTouchUpInside];
-    _attributionButton.translatesAutoresizingMaskIntoConstraints = NO;
-    [self addSubview:_attributionButton];
-    _attributionButtonConstraints = [NSMutableArray array];
-    [_attributionButton addObserver:self forKeyPath:@"hidden" options:NSKeyValueObservingOptionNew context:NULL];
 
     // setup compass
     //
@@ -571,9 +547,6 @@ public:
     _pendingLongitude = NAN;
     _targetCoordinate = kCLLocationCoordinate2DInvalid;
 
-    if ([UIApplication sharedApplication].applicationState != UIApplicationStateBackground) {
-        [MGLMapboxEvents pushEvent:MGLEventTypeMapLoad withAttributes:@{}];
-    }
 }
 
 - (void)createGLView
@@ -659,7 +632,6 @@ public:
 {
     [[UIDevice currentDevice] endGeneratingDeviceOrientationNotifications];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
-    [_attributionButton removeObserver:self forKeyPath:@"hidden"];
 
     // Removing the annotations unregisters any outstanding KVO observers.
     NSArray *annotations = self.annotations;
@@ -693,10 +665,6 @@ public:
         [EAGLContext setCurrentContext:nil];
     }
 
-    [self.logoViewConstraints removeAllObjects];
-    self.logoViewConstraints = nil;
-    [self.attributionButtonConstraints removeAllObjects];
-    self.attributionButtonConstraints = nil;
 }
 
 - (void)setDelegate:(nullable id<MGLMapViewDelegate>)delegate
@@ -803,54 +771,6 @@ public:
                                    constant:5 + self.contentInset.right]];
 
     [self addConstraints:self.compassViewConstraints];
-
-    // logo bug
-    //
-    [self removeConstraints:self.logoViewConstraints];
-    [self.logoViewConstraints removeAllObjects];
-
-    [self.logoViewConstraints addObject:
-     [NSLayoutConstraint constraintWithItem:self
-                                  attribute:NSLayoutAttributeBottom
-                                  relatedBy:NSLayoutRelationEqual
-                                     toItem:self.logoView
-                                  attribute:NSLayoutAttributeBaseline
-                                 multiplier:1
-                                   constant:8 + self.contentInset.bottom]];
-
-    [self.logoViewConstraints addObject:
-     [NSLayoutConstraint constraintWithItem:self.logoView
-                                  attribute:NSLayoutAttributeLeading
-                                  relatedBy:NSLayoutRelationEqual
-                                     toItem:self
-                                  attribute:NSLayoutAttributeLeading
-                                 multiplier:1
-                                   constant:8 + self.contentInset.left]];
-    [self addConstraints:self.logoViewConstraints];
-
-    // attribution button
-    //
-    [self removeConstraints:self.attributionButtonConstraints];
-    [self.attributionButtonConstraints removeAllObjects];
-
-    [self.attributionButtonConstraints addObject:
-     [NSLayoutConstraint constraintWithItem:self
-                                  attribute:NSLayoutAttributeBottom
-                                  relatedBy:NSLayoutRelationEqual
-                                     toItem:self.attributionButton
-                                  attribute:NSLayoutAttributeBaseline
-                                 multiplier:1
-                                   constant:8 + self.contentInset.bottom]];
-
-    [self.attributionButtonConstraints addObject:
-     [NSLayoutConstraint constraintWithItem:self
-                                  attribute:NSLayoutAttributeTrailing
-                                  relatedBy:NSLayoutRelationEqual
-                                     toItem:self.attributionButton
-                                  attribute:NSLayoutAttributeTrailing
-                                 multiplier:1
-                                   constant:8 + self.contentInset.right]];
-    [self addConstraints:self.attributionButtonConstraints];
 
     [super updateConstraints];
 }
@@ -1072,8 +992,6 @@ public:
 
         [self validateLocationServices];
 
-        [MGLMapboxEvents flush];
-
         _displayLink.paused = YES;
 
         if ( ! self.glSnapshotView)
@@ -1118,8 +1036,6 @@ public:
         _displayLink.paused = NO;
 
         [self validateLocationServices];
-
-        [MGLMapboxEvents pushEvent:MGLEventTypeMapLoad withAttributes:@{}];
     }
 }
 
@@ -1196,8 +1112,6 @@ public:
 
     if (pan.state == UIGestureRecognizerStateBegan)
     {
-        [self trackGestureEvent:MGLEventGesturePanStart forRecognizer:pan];
-
         self.userTrackingMode = MGLUserTrackingModeNone;
 
         [self notifyGestureDidBegin];
@@ -1227,17 +1141,6 @@ public:
         }
 
         [self notifyGestureDidEndWithDrift:drift];
-
-        // metrics: pan end
-        CGPoint pointInView = CGPointMake([pan locationInView:pan.view].x, [pan locationInView:pan.view].y);
-        CLLocationCoordinate2D panCoordinate = [self convertPoint:pointInView toCoordinateFromView:pan.view];
-        int zoom = round([self zoomLevel]);
-
-        [MGLMapboxEvents pushEvent:MGLEventTypeMapDragEnd withAttributes:@{
-            MGLEventKeyLatitude: @(panCoordinate.latitude),
-            MGLEventKeyLongitude: @(panCoordinate.longitude),
-            MGLEventKeyZoomLevel: @(zoom)
-        }];
     }
 }
 
@@ -1253,8 +1156,6 @@ public:
 
     if (pinch.state == UIGestureRecognizerStateBegan)
     {
-        [self trackGestureEvent:MGLEventGesturePinchStart forRecognizer:pinch];
-
         self.scale = _mbglMap->getScale();
 
         [self notifyGestureDidBegin];
@@ -1335,8 +1236,6 @@ public:
 
     if (rotate.state == UIGestureRecognizerStateBegan)
     {
-        [self trackGestureEvent:MGLEventGestureRotateStart forRecognizer:rotate];
-
         self.angle = MGLRadiansFromDegrees(_mbglMap->getBearing()) * -1;
 
         if (self.userTrackingMode != MGLUserTrackingModeNone)
@@ -1397,8 +1296,6 @@ public:
     {
         return;
     }
-    [self trackGestureEvent:MGLEventGestureSingleTap forRecognizer:singleTap];
-
     if (self.mapViewProxyAccessibilityElement.accessibilityElementIsFocused)
     {
         id nextElement;
@@ -1497,7 +1394,6 @@ public:
 
     if (doubleTap.state == UIGestureRecognizerStateEnded)
     {
-        [self trackGestureEvent:MGLEventGestureDoubleTap forRecognizer:doubleTap];
         CGPoint gesturePoint = [self anchorPointForGesture:doubleTap];
 
         mbgl::ScreenCoordinate center(gesturePoint.x, gesturePoint.y);
@@ -1520,11 +1416,7 @@ public:
 
     _mbglMap->cancelTransitions();
 
-    if (twoFingerTap.state == UIGestureRecognizerStateBegan)
-    {
-        [self trackGestureEvent:MGLEventGestureTwoFingerSingleTap forRecognizer:twoFingerTap];
-    }
-    else if (twoFingerTap.state == UIGestureRecognizerStateEnded)
+    if (twoFingerTap.state == UIGestureRecognizerStateEnded)
     {
         CGPoint gesturePoint = [self anchorPointForGesture:twoFingerTap];
 
@@ -1548,8 +1440,6 @@ public:
 
     if (quickZoom.state == UIGestureRecognizerStateBegan)
     {
-        [self trackGestureEvent:MGLEventGestureQuickZoom forRecognizer:quickZoom];
-
         self.scale = _mbglMap->getScale();
 
         self.quickZoomStart = [quickZoom locationInView:quickZoom.view].y;
@@ -1586,7 +1476,6 @@ public:
 
     if (twoFingerDrag.state == UIGestureRecognizerStateBegan)
     {
-        [self trackGestureEvent:MGLEventGesturePitchStart forRecognizer:twoFingerDrag];
         [self notifyGestureDidBegin];
     }
     else if (twoFingerDrag.state == UIGestureRecognizerStateBegan || twoFingerDrag.state == UIGestureRecognizerStateChanged)
@@ -1708,20 +1597,6 @@ public:
     return ([validSimultaneousGestures containsObject:gestureRecognizer] && [validSimultaneousGestures containsObject:otherGestureRecognizer]);
 }
 
-- (void)trackGestureEvent:(NSString *)gestureID forRecognizer:(UIGestureRecognizer *)recognizer
-{
-    CGPoint pointInView = CGPointMake([recognizer locationInView:recognizer.view].x, [recognizer locationInView:recognizer.view].y);
-    CLLocationCoordinate2D gestureCoordinate = [self convertPoint:pointInView toCoordinateFromView:recognizer.view];
-    int zoom = round([self zoomLevel]);
-
-    [MGLMapboxEvents pushEvent:MGLEventTypeMapTap withAttributes:@{
-        MGLEventKeyLatitude: @(gestureCoordinate.latitude),
-        MGLEventKeyLongitude: @(gestureCoordinate.longitude),
-        MGLEventKeyZoomLevel: @(zoom),
-        MGLEventKeyGestureID: gestureID
-    }];
-}
-
 #pragma mark - Attribution -
 
 - (void)showAttribution
@@ -1740,84 +1615,31 @@ public:
     }
     
     [self.attributionSheet addButtonWithTitle:NSLocalizedStringWithDefaultValue(@"TELEMETRY_NAME", nil, nil, @"Mapbox Telemetry", @"Action in attribution sheet")];
-    
-    [self.attributionSheet showFromRect:self.attributionButton.frame inView:self animated:YES];
 }
 
-- (void)actionSheet:(UIActionSheet *)actionSheet didDismissWithButtonIndex:(NSInteger)buttonIndex
-{
-    if (buttonIndex == actionSheet.numberOfButtons - 1)
-    {
-        NSString *message;
-        NSString *participate;
-        NSString *optOut;
 
-        if ([[NSUserDefaults standardUserDefaults] boolForKey:@"MGLMapboxMetricsEnabled"])
-        {
-            message = NSLocalizedStringWithDefaultValue(@"TELEMETRY_ENABLED_MSG", nil, nil, @"You are helping to make OpenStreetMap and Mapbox maps better by contributing anonymous usage data.", @"Telemetry prompt message");
-            participate = NSLocalizedStringWithDefaultValue(@"TELEMETRY_ENABLED_ON", nil, nil, @"Keep Participating", @"Telemetry prompt button");
-            optOut = NSLocalizedStringWithDefaultValue(@"TELEMETRY_ENABLED_OFF", nil, nil, @"Stop Participating", @"Telemetry prompt button");
-        }
-        else
-        {
-            message = NSLocalizedStringWithDefaultValue(@"TELEMETRY_DISABLED_MSG", nil, nil, @"You can help make OpenStreetMap and Mapbox maps better by contributing anonymous usage data.", @"Telemetry prompt message");
-            participate = NSLocalizedStringWithDefaultValue(@"TELEMETRY_DISABLED_ON", nil, nil, @"Participate", @"Telemetry prompt button");
-            optOut = NSLocalizedStringWithDefaultValue(@"TELEMETRY_DISABLED_OFF", nil, nil, @"Don’t Participate", @"Telemetry prompt button");
-        }
-
-        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:NSLocalizedStringWithDefaultValue(@"TELEMETRY_TITLE", nil, nil, @"Make Mapbox Maps Better", @"Telemetry prompt title")
-                                                        message:message
-                                                       delegate:self
-                                              cancelButtonTitle:participate
-                                              otherButtonTitles:NSLocalizedStringWithDefaultValue(@"TELEMETRY_MORE", nil, nil, @"Tell Me More", @"Telemetry prompt button"), optOut, nil];
-        [alert show];
-    }
-    else if (buttonIndex > 0)
-    {
-        MGLAttributionInfo *info = _attributionInfos[buttonIndex + actionSheet.firstOtherButtonIndex];
-        NSURL *url = info.URL;
-        if (url)
-        {
-            if (info.feedbackLink)
-            {
-                url = [info feedbackURLAtCenterCoordinate:self.centerCoordinate zoomLevel:self.zoomLevel];
-            }
-            [[UIApplication sharedApplication] openURL:url];
-        }
-    }
-}
-
-- (void)alertView:(UIAlertView *)alertView didDismissWithButtonIndex:(NSInteger)buttonIndex
-{
-    if (buttonIndex == alertView.cancelButtonIndex)
-    {
-        [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"MGLMapboxMetricsEnabled"];
-    }
-    else if (buttonIndex == alertView.firstOtherButtonIndex)
-    {
-        [[UIApplication sharedApplication] openURL:
-         [NSURL URLWithString:@"https://www.mapbox.com/telemetry/"]];
-    }
-    else if (buttonIndex == alertView.firstOtherButtonIndex + 1)
-    {
-        [[NSUserDefaults standardUserDefaults] setBool:NO forKey:@"MGLMapboxMetricsEnabled"];
-    }
-}
+//- (void)alertView:(UIAlertView *)alertView didDismissWithButtonIndex:(NSInteger)buttonIndex
+//{
+//    if (buttonIndex == alertView.cancelButtonIndex)
+//    {
+//        [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"MGLMapboxMetricsEnabled"];
+//    }
+//    else if (buttonIndex == alertView.firstOtherButtonIndex)
+//    {
+//        [[UIApplication sharedApplication] openURL:
+//         [NSURL URLWithString:@"https://www.mapbox.com/telemetry/"]];
+//    }
+//    else if (buttonIndex == alertView.firstOtherButtonIndex + 1)
+//    {
+//        [[NSUserDefaults standardUserDefaults] setBool:NO forKey:@"MGLMapboxMetricsEnabled"];
+//    }
+//}
 
 #pragma mark - Properties -
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
 {
-    if ([keyPath isEqualToString:@"hidden"] && object == _attributionButton)
-    {
-        NSNumber *hiddenNumber = change[NSKeyValueChangeNewKey];
-        BOOL attributionButtonWasHidden = [hiddenNumber boolValue];
-        if (attributionButtonWasHidden)
-        {
-            [MGLMapboxEvents ensureMetricsOptoutExists];
-        }
-    }
-    else if ([keyPath isEqualToString:@"coordinate"] && [object conformsToProtocol:@protocol(MGLAnnotation)] && ![object isKindOfClass:[MGLMultiPoint class]])
+    if ([keyPath isEqualToString:@"coordinate"] && [object conformsToProtocol:@protocol(MGLAnnotation)] && ![object isKindOfClass:[MGLMultiPoint class]])
     {
         id <MGLAnnotation> annotation = object;
         MGLAnnotationTag annotationTag = (MGLAnnotationTag)(NSUInteger)context;
@@ -2076,10 +1898,6 @@ public:
     {
         return self.userLocationAnnotationView;
     }
-    if (index > 0 && (NSUInteger)index == visibleAnnotations.size() + 2 /* compass, userLocationAnnotationView */)
-    {
-        return self.attributionButton;
-    }
 
     std::sort(visibleAnnotations.begin(), visibleAnnotations.end());
     CGPoint centerPoint = self.contentCenter;
@@ -2173,10 +1991,6 @@ public:
     else if ([element isKindOfClass:[MGLAnnotationAccessibilityElement class]])
     {
         tag = [(MGLAnnotationAccessibilityElement *)element tag];
-    }
-    else if (element == self.attributionButton)
-    {
-        return !!self.userLocationAnnotationView + visibleAnnotations.size();
     }
     else
     {

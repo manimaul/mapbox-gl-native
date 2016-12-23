@@ -179,39 +179,6 @@ IB_DESIGNABLE
  */
 @property (nonatomic, readonly) UIImageView *compassView;
 
-/**
- The Mapbox logo, positioned in the lower-left corner.
- 
- @note The Mapbox terms of service, which governs the use of Mapbox-hosted
-    vector tiles and styles,
-    <a href="https://www.mapbox.com/help/mapbox-logo/">requires</a> most Mapbox
-    customers to display the Mapbox logo. If this applies to you, do not
-    hide this view or change its contents.
- */
-@property (nonatomic, readonly) UIImageView *logoView;
-
-/** 
- A view showing legally required copyright notices and telemetry settings,
- positioned at the bottom-right of the map view.
- 
- @note The Mapbox terms of service, which governs the use of Mapbox-hosted
-    vector tiles and styles,
-    <a href="https://www.mapbox.com/help/attribution/">requires</a> these
-    copyright notices to accompany any map that features Mapbox-designed styles,
-    OpenStreetMap data, or other Mapbox data such as satellite or terrain
-    data. If that applies to this map view, do not hide this view or remove
-    any notices from it.
-
- @note You are additionally
-    <a href="https://www.mapbox.com/help/telemetry-opt-out-for-users/">required</a>
-    to provide users with the option to disable anonymous usage and location
-    sharing (telemetry). If this view is hidden, you must implement this
-    setting elsewhere in your app or via `Settings.bundle`. See our
-    <a href="https://www.mapbox.com/ios-sdk/#telemetry_opt_out">website</a> for
-    implementation help.
- */
-@property (nonatomic, readonly) UIButton *attributionButton;
-
 @property (nonatomic) NS_ARRAY_OF(NSString *) *styleClasses __attribute__((deprecated("Use style.styleClasses.")));
 
 - (BOOL)hasStyleClass:(NSString *)styleClass __attribute__((deprecated("Use style.hasStyleClass:.")));
