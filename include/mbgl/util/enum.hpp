@@ -8,6 +8,7 @@
 
 namespace mbgl {
 
+#pragma clang diagnostic ignored "-Wundefined-var-template"
 template <typename T>
 class Enum {
 public:
@@ -34,3 +35,4 @@ template <> const Enum<type>::Value* Enum<type>::begin = std::begin(type##_names
 template <> const Enum<type>::Value* Enum<type>::end = std::end(type##_names)
 
 } // namespace mbgl
+#pragma clang diagnostic pop
