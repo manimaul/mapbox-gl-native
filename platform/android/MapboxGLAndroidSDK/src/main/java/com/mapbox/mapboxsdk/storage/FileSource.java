@@ -15,6 +15,7 @@ import timber.log.Timber;
  * Holds a central reference to the core's DefaultFileSource for as long as
  * there are active mapviews / offline managers
  */
+@SuppressWarnings({"JniMissingFunction", "unused"})
 public class FileSource {
 
   /**
