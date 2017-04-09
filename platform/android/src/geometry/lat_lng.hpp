@@ -22,6 +22,12 @@ public:
 
     static jni::Class<LatLng> javaClass;
 
+    static void setLatitude(jni::JNIEnv&, jni::Object<LatLng>, double);
+
+    static void setLongitude(jni::JNIEnv&, jni::Object<LatLng>, double);
+
+    static void setAltitude(jni::JNIEnv&, jni::Object<LatLng>, double);
+
     static void registerNative(jni::JNIEnv&);
 
 };

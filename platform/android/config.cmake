@@ -166,6 +166,8 @@ macro(mbgl_platform_core)
         platform/android/src/geometry/feature.hpp
         platform/android/src/geometry/lat_lng.cpp
         platform/android/src/geometry/lat_lng.hpp
+        platform/android/src/geometry/visible_region.cpp
+        platform/android/src/geometry/visible_region.hpp
         platform/android/src/geometry/lat_lng_bounds.cpp
         platform/android/src/geometry/lat_lng_bounds.hpp
         platform/android/src/geometry/projected_meters.cpp

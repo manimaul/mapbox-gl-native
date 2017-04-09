@@ -13,6 +13,7 @@
 #include "file_source.hpp"
 #include "geometry/feature.hpp"
 #include "geometry/lat_lng.hpp"
+#include "geometry/visible_region.hpp"
 #include "geometry/lat_lng_bounds.hpp"
 #include "geometry/projected_meters.hpp"
 #include "graphics/pointf.hpp"
@@ -100,6 +101,7 @@ void registerNatives(JavaVM *vm) {
     // Geometry
     Feature::registerNative(env);
     LatLng::registerNative(env);
+    VisibleRegion::registerNative(env);
     LatLngBounds::registerNative(env);
     ProjectedMeters::registerNative(env);
 

@@ -3,6 +3,7 @@ package com.mapbox.mapboxsdk.net;
 /**
  * Updates the native library's connectivity state
  */
+@SuppressWarnings("JniMissingFunction")
 class NativeConnectivityListener implements ConnectivityListener {
 
   static {

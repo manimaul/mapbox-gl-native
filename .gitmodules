@@ -10,3 +10,6 @@
 [submodule "mapbox-gl-js"]
 	path = mapbox-gl-js
 	url = https://github.com/mapbox/mapbox-gl-js.git
+[submodule "platform/android/mx-mariner"]
+	path = platform/android/mx-mariner
+	url = git@bitbucket.org:manimaul/mx-mariner.git

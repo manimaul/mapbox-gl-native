@@ -10,6 +10,9 @@ ext {
     supportLibVersion = "25.3.1"
     leakCanaryVersion = '1.5'
     wearableVersion = '2.0.0'
+    daggerVersion = "2.7"
+    firebaseVerion = "9.6.1"
+    rxJavaVersion = "1.1.6"
 
     espressoVersion = '2.2.2'
     testRunnerVersion = '0.5'

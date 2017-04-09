@@ -19,6 +19,26 @@ mbgl::LatLngBounds LatLngBounds::getLatLngBounds(jni::JNIEnv& env, jni::Object<L
     );
 }
 
+void LatLngBounds::setLatitudeNorth(jni::JNIEnv& env, jni::Object<LatLngBounds> bounds, double value) {
+    static auto field = LatLngBounds::javaClass.GetField<double>(env, "mLatNorth");
+    bounds.Set(env, field, value);
+}
+
+void LatLngBounds::setLatitudeSouth(jni::JNIEnv& env, jni::Object<LatLngBounds> bounds, double value) {
+    static auto field = LatLngBounds::javaClass.GetField<double>(env, "mLatSouth");
+    bounds.Set(env, field, value);
+}
+
+void LatLngBounds::setLongitudeEast(jni::JNIEnv& env, jni::Object<LatLngBounds> bounds, double value) {
+    static auto field = LatLngBounds::javaClass.GetField<double>(env, "mLonEast");
+    bounds.Set(env, field, value);
+}
+
+void LatLngBounds::setLongitudeWest(jni::JNIEnv& env, jni::Object<LatLngBounds> bounds, double value) {
+    static auto field = LatLngBounds::javaClass.GetField<double>(env, "mLonWest");
+    bounds.Set(env, field, value);
+}
+
 void LatLngBounds::registerNative(jni::JNIEnv& env) {
     // Lookup the class
     LatLngBounds::javaClass = *jni::Class<LatLngBounds>::Find(env).NewGlobalRef(env).release();

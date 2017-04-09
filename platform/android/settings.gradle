@@ -1,3 +1,5 @@
 include ':MapboxGLAndroidSDK'
-include ':MapboxGLAndroidSDKTestApp'
-include ':MapboxGLAndroidSDKWearTestApp'
+include ':App'
+include ':Licensing'
+project(':App').projectDir = new File('mx-mariner/App')
+project(':Licensing').projectDir = new File('mx-mariner/Licensing')

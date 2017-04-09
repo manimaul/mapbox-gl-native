@@ -456,7 +456,7 @@ MBGL_ANDROID_ABIS += arm-v7;armeabi-v7a;9
 MBGL_ANDROID_ABIS += arm-v8;arm64-v8a;21
 MBGL_ANDROID_ABIS += x86;x86;9
 MBGL_ANDROID_ABIS += x86-64;x86_64;21
-MBGL_ANDROID_ABIS += mips;mips;9
+#MBGL_ANDROID_ABIS += mips;mips;9
 
 MBGL_ANDROID_BUILD_DIR = build/android-$1-$3/$(BUILDTYPE)
 MBGL_ANDROID_LOCAL_WORK_DIR = /data/local/tmp/core-tests

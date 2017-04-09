@@ -35,10 +35,6 @@ public final class Mapbox {
     if (INSTANCE == null) {
       Context appContext = context.getApplicationContext();
       INSTANCE = new Mapbox(appContext, accessToken);
-      LocationEngine locationEngine = new LocationSource(appContext);
-      locationEngine.setPriority(LocationEnginePriority.NO_POWER);
-      MapboxTelemetry.getInstance().initialize(
-        appContext, accessToken, BuildConfig.MAPBOX_EVENTS_USER_AGENT, locationEngine);
       ConnectivityReceiver.instance(appContext);
     }
     return INSTANCE;

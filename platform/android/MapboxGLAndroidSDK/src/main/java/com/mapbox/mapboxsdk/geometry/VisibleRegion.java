@@ -15,22 +15,22 @@ public class VisibleRegion implements Parcelable {
   /**
    * LatLng object that defines the far left corner of the camera.
    */
-  public final LatLng farLeft;
+  public LatLng farLeft;
 
   /**
    * LatLng object that defines the far right corner of the camera.
    */
-  public final LatLng farRight;
+  public LatLng farRight;
 
   /**
    * LatLng object that defines the bottom left corner of the camera.
    */
-  public final LatLng nearLeft;
+  public LatLng nearLeft;
 
   /**
    * LatLng object that defines the bottom right corner of the camera.
    */
-  public final LatLng nearRight;
+  public LatLng nearRight;
 
   /**
    * The smallest bounding box that includes the visible region defined in this class.
@@ -43,6 +43,21 @@ public class VisibleRegion implements Parcelable {
     this.nearLeft = in.readParcelable(LatLng.class.getClassLoader());
     this.nearRight = in.readParcelable(LatLng.class.getClassLoader());
     this.latLngBounds = in.readParcelable(LatLngBounds.class.getClassLoader());
+  }
+
+  public static VisibleRegion create() {
+      LatLngBounds.Builder builder = new LatLngBounds.Builder();
+
+      LatLng topLeft = new LatLng();
+      LatLng topRight = new LatLng();
+      LatLng bottomRight = new LatLng();
+      LatLng bottomLeft = new LatLng();
+
+      builder.include(topLeft)
+          .include(topRight)
+          .include(bottomRight)
+          .include(bottomLeft);
+      return new VisibleRegion(topLeft, topRight, bottomLeft, bottomRight, builder.build());
   }
 
   /**
@@ -60,6 +75,14 @@ public class VisibleRegion implements Parcelable {
     this.nearLeft = nearLeft;
     this.nearRight = nearRight;
     this.latLngBounds = latLngBounds;
+  }
+
+  public void set(VisibleRegion other) {
+    this.farLeft.set(other.farLeft);
+    this.farRight.set(other.farRight);
+    this.nearLeft.set(other.nearLeft);
+    this.nearRight.set(other.nearRight);
+    this.latLngBounds.set(other.latLngBounds);
   }
 
   /**

@@ -66,6 +66,7 @@ public final class MapboxMap {
   private final Transform transform;
   private final AnnotationManager annotationManager;
   private final MyLocationViewSettings myLocationViewSettings;
+  private final MapOverlayDispatch mapOverlayDispatch;
 
   private final OnRegisterTouchListener onRegisterTouchListener;
 
@@ -73,7 +74,7 @@ public final class MapboxMap {
 
   MapboxMap(NativeMapView map, Transform transform, UiSettings ui, TrackingSettings tracking,
             MyLocationViewSettings myLocationView, Projection projection, OnRegisterTouchListener listener,
-            AnnotationManager annotations) {
+            AnnotationManager annotations, MapOverlayDispatch mapOverlayDispatch) {
     this.nativeMapView = map;
     this.uiSettings = ui;
     this.trackingSettings = tracking;
@@ -82,6 +83,7 @@ public final class MapboxMap {
     this.annotationManager = annotations.bind(this);
     this.transform = transform;
     this.onRegisterTouchListener = listener;
+    this.mapOverlayDispatch = mapOverlayDispatch;
   }
 
   void initialise(@NonNull Context context, @NonNull MapboxMapOptions options) {
@@ -283,6 +285,16 @@ public final class MapboxMap {
   @UiThread
   public void addLayer(@NonNull Layer layer) {
     nativeMapView.addLayer(layer);
+  }
+
+  @UiThread
+  public void addOverlay(Overlay overlay) {
+    mapOverlayDispatch.addOverlay(overlay);
+  }
+
+  @UiThread
+  public void removeOverlay(Overlay overlay) {
+    mapOverlayDispatch.removeOverlay(overlay);
   }
 
   /**

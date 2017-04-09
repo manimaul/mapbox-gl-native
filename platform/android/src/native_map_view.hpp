@@ -18,6 +18,8 @@
 #include "graphics/rectf.hpp"
 #include "geometry/feature.hpp"
 #include "geometry/lat_lng.hpp"
+#include "geometry/lat_lng_bounds.hpp"
+#include "geometry/visible_region.hpp"
 #include "geometry/projected_meters.hpp"
 #include "style/layers/layers.hpp"
 #include "style/sources/sources.hpp"
@@ -167,7 +169,9 @@ public:
 
     jni::Object<ProjectedMeters> projectedMetersForLatLng(JNIEnv&, jni::jdouble, jni::jdouble);
 
-    jni::Object<PointF> pixelForLatLng(JNIEnv&, jdouble, jdouble);
+    void pixelForLatLng(JNIEnv&, jdouble, jdouble, jni::Object<PointF>);
+
+    void updateMapBounds(JNIEnv&, jni::Object<VisibleRegion>, jni::Object<LatLng>);
 
     jni::Object<LatLng> latLngForProjectedMeters(JNIEnv&, jdouble, jdouble);
 

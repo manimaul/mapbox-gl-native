@@ -20,6 +20,7 @@ import com.mapbox.mapboxsdk.annotations.Polyline;
 import com.mapbox.mapboxsdk.constants.MapboxConstants;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.geometry.ProjectedMeters;
+import com.mapbox.mapboxsdk.geometry.VisibleRegion;
 import com.mapbox.mapboxsdk.storage.FileSource;
 import com.mapbox.mapboxsdk.style.layers.CannotAddLayerException;
 import com.mapbox.mapboxsdk.style.layers.Filter;
@@ -38,6 +39,7 @@ import timber.log.Timber;
 
 
 // Class that wraps the native methods for convenience
+@SuppressWarnings({"JniMissingFunction", "unused"})
 final class NativeMapView {
 
   // Flag to indicating destroy was called
@@ -670,11 +672,20 @@ final class NativeMapView {
       projectedMeters.getEasting()).wrap();
   }
 
+  public void updateMapBounds(VisibleRegion visibleRegion, LatLng latLng) {
+    nativeUpdateMapBounds(visibleRegion, latLng);
+  }
+
   public PointF pixelForLatLng(LatLng latLng) {
+    return pixelForLatLng(latLng, null);
+  }
+
+  public PointF pixelForLatLng(LatLng latLng, @Nullable PointF reuse) {
     if (isDestroyedOn("pixelForLatLng")) {
       return new PointF();
     }
-    PointF pointF = nativePixelForLatLng(latLng.getLatitude(), latLng.getLongitude());
+    final PointF pointF = reuse == null ? new PointF() : reuse;
+    nativePixelForLatLng(latLng.getLatitude(), latLng.getLongitude(), pointF);
     pointF.set(pointF.x * pixelRatio, pointF.y * pixelRatio);
     return pointF;
   }
@@ -1075,7 +1086,9 @@ final class NativeMapView {
 
   private native LatLng nativeLatLngForProjectedMeters(double northing, double easting);
 
-  private native PointF nativePixelForLatLng(double lat, double lon);
+  private native void nativeUpdateMapBounds(VisibleRegion visibleRegion, LatLng latLng);
+
+  private native void nativePixelForLatLng(double lat, double lon, PointF point);
 
   private native LatLng nativeLatLngForPixel(float x, float y);
 

@@ -3,6 +3,7 @@ package com.mapbox.mapboxsdk.maps;
 import android.graphics.PointF;
 import android.support.annotation.FloatRange;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.geometry.LatLngBounds;
@@ -71,6 +72,11 @@ public class Projection {
     return nativeMapView.latLngForPixel(point);
   }
 
+
+  public void updateMapBounds(VisibleRegion visibleRegion, LatLng mapCenter) {
+    nativeMapView.updateMapBounds(visibleRegion, mapCenter);
+  }
+
   /**
    * Gets a projection of the viewing frustum for converting between screen coordinates and
    * geo-latitude/longitude coordinates.
@@ -108,6 +114,10 @@ public class Projection {
    */
   public PointF toScreenLocation(LatLng location) {
     return nativeMapView.pixelForLatLng(location);
+  }
+
+  public PointF toScreenLocation(LatLng location, @Nullable PointF point) {
+    return nativeMapView.pixelForLatLng(location, point);
   }
 
   float getHeight() {

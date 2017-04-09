@@ -14,10 +14,10 @@ import java.util.List;
  */
 public class LatLngBounds implements Parcelable {
 
-  private final double mLatNorth;
-  private final double mLatSouth;
-  private final double mLonEast;
-  private final double mLonWest;
+  private double mLatNorth;
+  private double mLatSouth;
+  private double mLonEast;
+  private double mLonWest;
 
   /**
    * Construct a new LatLngBounds based on its corners, given in NESW
@@ -28,8 +28,8 @@ public class LatLngBounds implements Parcelable {
    * @param southLatitude Southern Latitude
    * @param westLongitude Western Longitude
    */
-  LatLngBounds(final double northLatitude, final double eastLongitude, final double southLatitude,
-               final double westLongitude) {
+  public LatLngBounds(final double northLatitude, final double eastLongitude, final double southLatitude,
+                      final double westLongitude) {
     this.mLatNorth = northLatitude;
     this.mLonEast = eastLongitude;
     this.mLatSouth = southLatitude;
@@ -44,7 +44,7 @@ public class LatLngBounds implements Parcelable {
    */
   public LatLng getCenter() {
     return new LatLng((this.mLatNorth + this.mLatSouth) / 2,
-      (this.mLonEast + this.mLonWest) / 2);
+        (this.mLonEast + this.mLonWest) / 2);
   }
 
   public double getLatNorth() {
@@ -114,7 +114,7 @@ public class LatLngBounds implements Parcelable {
    * @param latLngs List of LatLng objects
    * @return LatLngBounds
    */
-  static LatLngBounds fromLatLngs(final List<? extends ILatLng> latLngs) {
+  public static LatLngBounds fromLatLngs(final List<? extends ILatLng> latLngs) {
     double minLat = 90;
     double minLon = 180;
     double maxLat = -90;
@@ -134,7 +134,7 @@ public class LatLngBounds implements Parcelable {
   }
 
   public LatLng[] toLatLngs() {
-    return new LatLng[] {new LatLng(mLatNorth, mLonEast), new LatLng(mLatSouth, mLonWest)};
+    return new LatLng[]{new LatLng(mLatNorth, mLonEast), new LatLng(mLatSouth, mLonWest)};
   }
 
   /**
@@ -151,9 +151,9 @@ public class LatLngBounds implements Parcelable {
     if (o instanceof LatLngBounds) {
       LatLngBounds other = (LatLngBounds) o;
       return mLatNorth == other.getLatNorth()
-        && mLatSouth == other.getLatSouth()
-        && mLonEast == other.getLonEast()
-        && mLonWest == other.getLonWest();
+          && mLatSouth == other.getLatSouth()
+          && mLonEast == other.getLonEast()
+          && mLonWest == other.getLonWest();
     }
     return false;
   }
@@ -169,9 +169,9 @@ public class LatLngBounds implements Parcelable {
     final double latitude = latLng.getLatitude();
     final double longitude = latLng.getLongitude();
     return ((latitude < this.mLatNorth)
-      && (latitude > this.mLatSouth))
-      && ((longitude < this.mLonEast)
-      && (longitude > this.mLonWest));
+        && (latitude > this.mLatSouth))
+        && ((longitude < this.mLonEast)
+        && (longitude > this.mLonWest));
   }
 
   /**
@@ -196,9 +196,9 @@ public class LatLngBounds implements Parcelable {
    */
   public LatLngBounds union(final double lonNorth, final double latEast, final double lonSouth, final double latWest) {
     return new LatLngBounds((this.mLatNorth < lonNorth) ? lonNorth : this.mLatNorth,
-      (this.mLonEast < latEast) ? latEast : this.mLonEast,
-      (this.mLatSouth > lonSouth) ? lonSouth : this.mLatSouth,
-      (this.mLonWest > latWest) ? latWest : this.mLonWest);
+        (this.mLonEast < latEast) ? latEast : this.mLonEast,
+        (this.mLatSouth > lonSouth) ? lonSouth : this.mLatSouth,
+        (this.mLonWest > latWest) ? latWest : this.mLonWest);
   }
 
   /**
@@ -235,24 +235,24 @@ public class LatLngBounds implements Parcelable {
   }
 
   public static final Parcelable.Creator<LatLngBounds> CREATOR =
-    new Parcelable.Creator<LatLngBounds>() {
-      @Override
-      public LatLngBounds createFromParcel(final Parcel in) {
-        return readFromParcel(in);
-      }
+      new Parcelable.Creator<LatLngBounds>() {
+        @Override
+        public LatLngBounds createFromParcel(final Parcel in) {
+          return readFromParcel(in);
+        }
 
-      @Override
-      public LatLngBounds[] newArray(final int size) {
-        return new LatLngBounds[size];
-      }
-    };
+        @Override
+        public LatLngBounds[] newArray(final int size) {
+          return new LatLngBounds[size];
+        }
+      };
 
   @Override
   public int hashCode() {
     return (int) ((mLatNorth + 90)
-      + ((mLatSouth + 90) * 1000)
-      + ((mLonEast + 180) * 1000000)
-      + ((mLonEast + 180) * 1000000000));
+        + ((mLatSouth + 90) * 1000)
+        + ((mLonEast + 180) * 1000000)
+        + ((mLonEast + 180) * 1000000000));
   }
 
   @Override
@@ -274,6 +274,13 @@ public class LatLngBounds implements Parcelable {
     final double lonSouth = in.readDouble();
     final double latWest = in.readDouble();
     return new LatLngBounds(lonNorth, latEast, lonSouth, latWest);
+  }
+
+  public void set(LatLngBounds other) {
+    mLatNorth = other.mLatNorth;
+    mLatSouth = other.mLatSouth;
+    mLonEast = other.mLonEast;
+    mLonWest = other.mLonWest;
   }
 
   /**
