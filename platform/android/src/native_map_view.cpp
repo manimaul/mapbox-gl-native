@@ -583,10 +583,6 @@ void NativeMapView::updateMapBounds(JNIEnv& env,
                                     jni::Object<VisibleRegion> visibleRegion,
                                     jni::Object<LatLng> wgsCenter) {
 
-    mbgl::LatLng center = map->getLatLng();
-    LatLng::setLatitude(env, wgsCenter, center.latitude);
-    LatLng::setLongitude(env, wgsCenter, center.longitude);
-
     double w = static_cast<double>(width);
     double h = static_cast<double>(height);
 
@@ -626,6 +622,14 @@ void NativeMapView::updateMapBounds(JNIEnv& env,
         auto jLatLng = VisibleRegion::getFarLeft(env, visibleRegion);
         LatLng::setLatitude(env, jLatLng, latLng.latitude);
         LatLng::setLongitude(env, jLatLng, latLng.longitude);
+    }
+
+    pixel.x = width / 2.0; // center
+    pixel.y = height / 2.0;
+    {
+        mbgl::LatLng latLng = map->latLngForPixel(pixel);
+        LatLng::setLatitude(env, wgsCenter, latLng.latitude);
+        LatLng::setLongitude(env, wgsCenter, latLng.longitude);
     }
 
     double west = bounds.west();
