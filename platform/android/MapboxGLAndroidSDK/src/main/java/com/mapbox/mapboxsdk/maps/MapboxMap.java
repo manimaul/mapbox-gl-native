@@ -61,25 +61,20 @@ public final class MapboxMap {
   private final NativeMapView nativeMapView;
 
   private final UiSettings uiSettings;
-  private final TrackingSettings trackingSettings;
   private final Projection projection;
   private final Transform transform;
   private final AnnotationManager annotationManager;
-  private final MyLocationViewSettings myLocationViewSettings;
   private final MapOverlayDispatch mapOverlayDispatch;
 
   private final OnRegisterTouchListener onRegisterTouchListener;
 
   private MapboxMap.OnFpsChangedListener onFpsChangedListener;
 
-  MapboxMap(NativeMapView map, Transform transform, UiSettings ui, TrackingSettings tracking,
-            MyLocationViewSettings myLocationView, Projection projection, OnRegisterTouchListener listener,
+  MapboxMap(NativeMapView map, Transform transform, UiSettings ui, Projection projection, OnRegisterTouchListener listener,
             AnnotationManager annotations, MapOverlayDispatch mapOverlayDispatch) {
     this.nativeMapView = map;
     this.uiSettings = ui;
-    this.trackingSettings = tracking;
     this.projection = projection;
-    this.myLocationViewSettings = myLocationView;
     this.annotationManager = annotations.bind(this);
     this.transform = transform;
     this.onRegisterTouchListener = listener;
@@ -89,8 +84,6 @@ public final class MapboxMap {
   void initialise(@NonNull Context context, @NonNull MapboxMapOptions options) {
     transform.initialise(this, options);
     uiSettings.initialise(context, options);
-    myLocationViewSettings.initialise(options);
-    trackingSettings.initialise(options);
 
     // Map configuration
     setDebugActive(options.getDebugActive());
@@ -103,18 +96,10 @@ public final class MapboxMap {
    */
   void onStart() {
     nativeMapView.update();
-    trackingSettings.onStart();
     if (TextUtils.isEmpty(nativeMapView.getStyleUrl())) {
       // if user hasn't loaded a Style yet
       nativeMapView.setStyleUrl(Style.MAPBOX_STREETS);
     }
-  }
-
-  /**
-   * Called when the hosting Activity/Fragment onStop() method is called.
-   */
-  void onStop() {
-    trackingSettings.onStop();
   }
 
   /**
@@ -126,7 +111,6 @@ public final class MapboxMap {
     outState.putParcelable(MapboxConstants.STATE_CAMERA_POSITION, transform.getCameraPosition());
     outState.putBoolean(MapboxConstants.STATE_DEBUG_ACTIVE, nativeMapView.getDebug());
     outState.putString(MapboxConstants.STATE_STYLE_URL, nativeMapView.getStyleUrl());
-    trackingSettings.onSaveInstanceState(outState);
     uiSettings.onSaveInstanceState(outState);
   }
 
@@ -142,7 +126,6 @@ public final class MapboxMap {
     }
 
     uiSettings.onRestoreInstanceState(savedInstanceState);
-    trackingSettings.onRestoreInstanceState(savedInstanceState);
     nativeMapView.setDebug(savedInstanceState.getBoolean(MapboxConstants.STATE_DEBUG_ACTIVE));
 
     final String styleUrl = savedInstanceState.getString(MapboxConstants.STATE_STYLE_URL);
@@ -174,7 +157,6 @@ public final class MapboxMap {
    * Called when the region is changing or has changed.
    */
   void onUpdateRegionChange() {
-    trackingSettings.update();
     annotationManager.update();
   }
 
@@ -182,10 +164,7 @@ public final class MapboxMap {
    * Called when the map frame is fully rendered.
    */
   void onUpdateFullyRendered() {
-    CameraPosition cameraPosition = transform.invalidateCameraPosition();
-    if (cameraPosition != null) {
-      uiSettings.update(cameraPosition);
-    }
+    transform.invalidateCameraPosition();
   }
 
   // Style
@@ -544,7 +523,7 @@ public final class MapboxMap {
    * @return the TrackingSettings asssociated with this map
    */
   public TrackingSettings getTrackingSettings() {
-    return trackingSettings;
+    return null;
   }
 
   //
@@ -557,7 +536,7 @@ public final class MapboxMap {
    * @return the MyLocationViewSettings associated with this map
    */
   public MyLocationViewSettings getMyLocationViewSettings() {
-    return myLocationViewSettings;
+    return null;
   }
 
   //
@@ -1539,7 +1518,7 @@ public final class MapboxMap {
    * @param bottom The bottom margin in pixels.
    */
   public void setPadding(int left, int top, int right, int bottom) {
-    projection.setContentPadding(new int[] {left, top, right, bottom}, myLocationViewSettings.getPadding());
+    projection.setContentPadding(new int[] {left, top, right, bottom});
     uiSettings.invalidate();
   }
 
@@ -1699,7 +1678,7 @@ public final class MapboxMap {
    */
   @UiThread
   public boolean isMyLocationEnabled() {
-    return trackingSettings.isMyLocationEnabled();
+    return false; //trackingSettings.isMyLocationEnabled();
   }
 
   /**
@@ -1715,7 +1694,7 @@ public final class MapboxMap {
    */
   @UiThread
   public void setMyLocationEnabled(boolean enabled) {
-    trackingSettings.setMyLocationEnabled(enabled);
+    //trackingSettings.setMyLocationEnabled(enabled);
   }
 
   /**
@@ -1726,7 +1705,7 @@ public final class MapboxMap {
   @UiThread
   @Nullable
   public Location getMyLocation() {
-    return trackingSettings.getMyLocation();
+    return null; //trackingSettings.getMyLocation();
   }
 
   /**
@@ -1739,7 +1718,7 @@ public final class MapboxMap {
   @UiThread
   public void setOnMyLocationChangeListener(@Nullable MapboxMap.OnMyLocationChangeListener
                                               listener) {
-    trackingSettings.setOnMyLocationChangeListener(listener);
+    //trackingSettings.setOnMyLocationChangeListener(listener);
   }
 
   /**
@@ -1751,7 +1730,7 @@ public final class MapboxMap {
   @UiThread
   public void setOnMyLocationTrackingModeChangeListener(
     @Nullable MapboxMap.OnMyLocationTrackingModeChangeListener listener) {
-    trackingSettings.setOnMyLocationTrackingModeChangeListener(listener);
+    //trackingSettings.setOnMyLocationTrackingModeChangeListener(listener);
   }
 
   /**
@@ -1762,7 +1741,7 @@ public final class MapboxMap {
    */
   @UiThread
   public void setOnMyBearingTrackingModeChangeListener(@Nullable OnMyBearingTrackingModeChangeListener listener) {
-    trackingSettings.setOnMyBearingTrackingModeChangeListener(listener);
+    //trackingSettings.setOnMyBearingTrackingModeChangeListener(listener);
   }
 
   //

@@ -17,8 +17,6 @@ import com.almeros.android.multitouch.gesturedetectors.ShoveGestureDetector;
 import com.almeros.android.multitouch.gesturedetectors.TwoFingerGestureDetector;
 import com.mapbox.mapboxsdk.constants.MapboxConstants;
 import com.mapbox.mapboxsdk.geometry.LatLng;
-import com.mapbox.services.android.telemetry.MapboxEvent;
-import com.mapbox.services.android.telemetry.MapboxTelemetry;
 import com.mapbox.services.android.telemetry.utils.MathUtils;
 import com.mapbox.services.android.telemetry.utils.TelemetryUtils;
 
@@ -33,7 +31,6 @@ final class MapGestureDetector {
   private final Transform transform;
   private final Projection projection;
   private final UiSettings uiSettings;
-  private final TrackingSettings trackingSettings;
   private final AnnotationManager annotationManager;
 
   private final GestureDetectorCompat gestureDetector;
@@ -56,13 +53,16 @@ final class MapGestureDetector {
   private boolean scrollInProgress = false;
   private boolean scaleGestureOccurred = false;
 
-  MapGestureDetector(Context context, Transform transform, Projection projection, UiSettings uiSettings,
-                     TrackingSettings trackingSettings, AnnotationManager annotationManager, MapOverlayDispatch mapOverlayDispatch) {
+  MapGestureDetector(Context context,
+                     Transform transform,
+                     Projection projection,
+                     UiSettings uiSettings,
+                     AnnotationManager annotationManager,
+                     MapOverlayDispatch mapOverlayDispatch) {
     this.annotationManager = annotationManager;
     this.transform = transform;
     this.projection = projection;
     this.uiSettings = uiSettings;
-    this.trackingSettings = trackingSettings;
     this.mapOverlayDispatch = mapOverlayDispatch;
 
     // Touch gesture detectors
@@ -338,11 +338,11 @@ final class MapGestureDetector {
 
     @Override
     public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
-      if ((!trackingSettings.isScrollGestureCurrentlyEnabled()) || scaleGestureOccurred) {
-        // don't allow a fling is scroll is disabled
-        // and ignore when a scale gesture has occurred
-        return false;
-      }
+//      if ((!trackingSettings.isScrollGestureCurrentlyEnabled()) || scaleGestureOccurred) {
+//        // don't allow a fling is scroll is disabled
+//        // and ignore when a scale gesture has occurred
+//        return false;
+//      }
 
       float screenDensity = uiSettings.getPixelRatio();
 
@@ -353,7 +353,7 @@ final class MapGestureDetector {
         return false;
       }
 
-      trackingSettings.resetTrackingModesIfRequired(true, false);
+//      trackingSettings.resetTrackingModesIfRequired(true, false);
 
       // cancel any animation
       transform.cancelTransitions();
@@ -387,16 +387,16 @@ final class MapGestureDetector {
 //          getLocationFromGesture(e1.getX(), e1.getY()),
 //          MapboxEvent.GESTURE_PAN_START, transform.getZoom()));
       }
-      if (!trackingSettings.isScrollGestureCurrentlyEnabled()) {
-        return false;
-      }
+//      if (!trackingSettings.isScrollGestureCurrentlyEnabled()) {
+//        return false;
+//      }
 
       if (dragStarted) {
         return false;
       }
 
       // reset tracking if needed
-      trackingSettings.resetTrackingModesIfRequired(true, false);
+//      trackingSettings.resetTrackingModesIfRequired(true, false);
       // Cancel any animation
       transform.cancelTransitions();
 
@@ -481,7 +481,7 @@ final class MapGestureDetector {
       // to be in the center of the map. Therefore the zoom will translate the map center, so tracking
       // should be disabled.
 
-      trackingSettings.resetTrackingModesIfRequired(!quickZoom, false);
+//      trackingSettings.resetTrackingModesIfRequired(!quickZoom, false);
       // Scale the map
       if (focalPoint != null) {
         // arround user provided focal point
@@ -514,9 +514,9 @@ final class MapGestureDetector {
     // Called when two fingers first touch the screen
     @Override
     public boolean onRotateBegin(RotateGestureDetector detector) {
-      if (!trackingSettings.isRotateGestureCurrentlyEnabled()) {
-        return false;
-      }
+//      if (!trackingSettings.isRotateGestureCurrentlyEnabled()) {
+//        return false;
+//      }
 
       beginTime = detector.getEventTime();
 //      MapboxTelemetry.getInstance().pushEvent(MapboxEvent.buildMapClickEvent(
@@ -537,7 +537,7 @@ final class MapGestureDetector {
     // Called for rotation
     @Override
     public boolean onRotate(RotateGestureDetector detector) {
-      if (!trackingSettings.isRotateGestureCurrentlyEnabled() || dragStarted) {
+      if (/*!trackingSettings.isRotateGestureCurrentlyEnabled() ||*/ dragStarted) {
         return false;
       }
 
@@ -566,7 +566,7 @@ final class MapGestureDetector {
       // rotation constitutes translation of anything except the center of
       // rotation, so cancel both location and bearing tracking if required
 
-      trackingSettings.resetTrackingModesIfRequired(true, true);
+//      trackingSettings.resetTrackingModesIfRequired(true, true);
 
       // Get rotate value
       double bearing = transform.getRawBearing();

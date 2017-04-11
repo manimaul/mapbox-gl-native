@@ -231,7 +231,7 @@ public class MyLocationViewSettings {
   public void setPadding(int left, int top, int right, int bottom) {
     padding = new int[] {left, top, right, bottom};
     myLocationView.setContentPadding(padding);
-    projection.invalidateContentPadding(padding);
+    projection.invalidateContentPadding();
     invalidateFocalPointForTracking(myLocationView);
   }
 

@@ -29,9 +29,6 @@ public final class UiSettings {
 
   private final FocalPointChangeListener focalPointChangeListener;
   private final Projection projection;
-  private final CompassView compassView;
-  private final ImageView attributionsView;
-  private final View logoView;
   private float pixelRatio;
 
   private boolean rotateGesturesEnabled = true;
@@ -56,15 +53,10 @@ public final class UiSettings {
   private PointF userProvidedFocalPoint;
 
   UiSettings(@NonNull Projection projection, @NonNull FocalPointChangeListener listener,
-             @NonNull CompassView compassView, @NonNull ImageView attributionsView, @NonNull View logoView) {
+             @NonNull Resources resources) {
     this.projection = projection;
     this.focalPointChangeListener = listener;
-    this.compassView = compassView;
-    this.attributionsView = attributionsView;
-    this.logoView = logoView;
-    if (logoView.getResources() != null) {
-      this.pixelRatio = logoView.getResources().getDisplayMetrics().density;
-    }
+    this.pixelRatio = resources.getDisplayMetrics().density;
   }
 
   void initialise(@NonNull Context context, @NonNull MapboxMapOptions options) {
@@ -159,9 +151,9 @@ public final class UiSettings {
     setCompassEnabled(savedInstanceState.getBoolean(MapboxConstants.STATE_COMPASS_ENABLED));
     setCompassGravity(savedInstanceState.getInt(MapboxConstants.STATE_COMPASS_GRAVITY));
     setCompassMargins(savedInstanceState.getInt(MapboxConstants.STATE_COMPASS_MARGIN_LEFT),
-      savedInstanceState.getInt(MapboxConstants.STATE_COMPASS_MARGIN_TOP),
-      savedInstanceState.getInt(MapboxConstants.STATE_COMPASS_MARGIN_RIGHT),
-      savedInstanceState.getInt(MapboxConstants.STATE_COMPASS_MARGIN_BOTTOM));
+        savedInstanceState.getInt(MapboxConstants.STATE_COMPASS_MARGIN_TOP),
+        savedInstanceState.getInt(MapboxConstants.STATE_COMPASS_MARGIN_RIGHT),
+        savedInstanceState.getInt(MapboxConstants.STATE_COMPASS_MARGIN_BOTTOM));
     setCompassFadeFacingNorth(savedInstanceState.getBoolean(MapboxConstants.STATE_COMPASS_FADE_WHEN_FACING_NORTH));
   }
 
@@ -190,9 +182,9 @@ public final class UiSettings {
     setLogoEnabled(savedInstanceState.getBoolean(MapboxConstants.STATE_LOGO_ENABLED));
     setLogoGravity(savedInstanceState.getInt(MapboxConstants.STATE_LOGO_GRAVITY));
     setLogoMargins(savedInstanceState.getInt(MapboxConstants.STATE_LOGO_MARGIN_LEFT),
-      savedInstanceState.getInt(MapboxConstants.STATE_LOGO_MARGIN_TOP),
-      savedInstanceState.getInt(MapboxConstants.STATE_LOGO_MARGIN_RIGHT),
-      savedInstanceState.getInt(MapboxConstants.STATE_LOGO_MARGIN_BOTTOM));
+        savedInstanceState.getInt(MapboxConstants.STATE_LOGO_MARGIN_TOP),
+        savedInstanceState.getInt(MapboxConstants.STATE_LOGO_MARGIN_RIGHT),
+        savedInstanceState.getInt(MapboxConstants.STATE_LOGO_MARGIN_BOTTOM));
   }
 
   private void initialiseAttribution(Context context, MapboxMapOptions options) {
@@ -210,7 +202,7 @@ public final class UiSettings {
 
     int attributionTintColor = options.getAttributionTintColor();
     setAttributionTintColor(attributionTintColor != -1
-      ? attributionTintColor : ColorUtils.getPrimaryColor(context));
+        ? attributionTintColor : ColorUtils.getPrimaryColor(context));
   }
 
   private void saveAttribution(Bundle outState) {
@@ -226,9 +218,9 @@ public final class UiSettings {
     setAttributionEnabled(savedInstanceState.getBoolean(MapboxConstants.STATE_ATTRIBUTION_ENABLED));
     setAttributionGravity(savedInstanceState.getInt(MapboxConstants.STATE_ATTRIBUTION_GRAVITY));
     setAttributionMargins(savedInstanceState.getInt(MapboxConstants.STATE_ATTRIBUTION_MARGIN_LEFT),
-      savedInstanceState.getInt(MapboxConstants.STATE_ATTRIBUTION_MARGIN_TOP),
-      savedInstanceState.getInt(MapboxConstants.STATE_ATTRIBUTION_MARGIN_RIGHT),
-      savedInstanceState.getInt(MapboxConstants.STATE_ATTRIBUTION_MARGIN_BOTTOM));
+        savedInstanceState.getInt(MapboxConstants.STATE_ATTRIBUTION_MARGIN_TOP),
+        savedInstanceState.getInt(MapboxConstants.STATE_ATTRIBUTION_MARGIN_RIGHT),
+        savedInstanceState.getInt(MapboxConstants.STATE_ATTRIBUTION_MARGIN_BOTTOM));
   }
 
   private void initialiseZoomControl(Context context) {
@@ -257,7 +249,7 @@ public final class UiSettings {
    * @param compassEnabled True to enable the compass; false to disable the compass.
    */
   public void setCompassEnabled(boolean compassEnabled) {
-    compassView.setEnabled(compassEnabled);
+    //compassView.setEnabled(compassEnabled);
   }
 
   /**
@@ -266,7 +258,7 @@ public final class UiSettings {
    * @return True if the compass is enabled; false if the compass is disabled.
    */
   public boolean isCompassEnabled() {
-    return compassView.isEnabled();
+    return false; //compassView.isEnabled();
   }
 
   /**
@@ -281,7 +273,7 @@ public final class UiSettings {
    */
   @UiThread
   public void setCompassGravity(int gravity) {
-    setWidgetGravity(compassView, gravity);
+    //setWidgetGravity(compassView, gravity);
   }
 
   /**
@@ -293,7 +285,7 @@ public final class UiSettings {
    * @param compassFadeFacingNorth True to enable the fading animation; false to disable it
    */
   public void setCompassFadeFacingNorth(boolean compassFadeFacingNorth) {
-    compassView.fadeCompassViewFacingNorth(compassFadeFacingNorth);
+    //compassView.fadeCompassViewFacingNorth(compassFadeFacingNorth);
   }
 
   /**
@@ -302,7 +294,7 @@ public final class UiSettings {
    * @return True if the compass will fade, false if it remains visible
    */
   public boolean isCompassFadeWhenFacingNorth() {
-    return compassView.isFadeCompassViewFacingNorth();
+    return false; //compassView.isFadeCompassViewFacingNorth();
   }
 
   /**
@@ -311,7 +303,7 @@ public final class UiSettings {
    * @return The gravity
    */
   public int getCompassGravity() {
-    return ((FrameLayout.LayoutParams) compassView.getLayoutParams()).gravity;
+    return 0; //((FrameLayout.LayoutParams) compassView.getLayoutParams()).gravity;
   }
 
   /**
@@ -325,7 +317,7 @@ public final class UiSettings {
    */
   @UiThread
   public void setCompassMargins(int left, int top, int right, int bottom) {
-    setWidgetMargins(compassView, left, top, right, bottom);
+    //setWidgetMargins(compassView, left, top, right, bottom);
   }
 
   /**
@@ -334,7 +326,7 @@ public final class UiSettings {
    * @return The left margin in pixels
    */
   public int getCompassMarginLeft() {
-    return ((FrameLayout.LayoutParams) compassView.getLayoutParams()).leftMargin;
+    return 0; //((FrameLayout.LayoutParams) compassView.getLayoutParams()).leftMargin;
   }
 
   /**
@@ -343,7 +335,7 @@ public final class UiSettings {
    * @return The top margin in pixels
    */
   public int getCompassMarginTop() {
-    return ((FrameLayout.LayoutParams) compassView.getLayoutParams()).topMargin;
+    return 0; //((FrameLayout.LayoutParams) compassView.getLayoutParams()).topMargin;
   }
 
   /**
@@ -352,7 +344,7 @@ public final class UiSettings {
    * @return The right margin in pixels
    */
   public int getCompassMarginRight() {
-    return ((FrameLayout.LayoutParams) compassView.getLayoutParams()).rightMargin;
+    return 0; //((FrameLayout.LayoutParams) compassView.getLayoutParams()).rightMargin;
   }
 
   /**
@@ -361,15 +353,15 @@ public final class UiSettings {
    * @return The bottom margin in pixels
    */
   public int getCompassMarginBottom() {
-    return ((FrameLayout.LayoutParams) compassView.getLayoutParams()).bottomMargin;
+    return 0; //((FrameLayout.LayoutParams) compassView.getLayoutParams()).bottomMargin;
   }
 
   void update(@NonNull CameraPosition cameraPosition) {
-    if (!isCompassEnabled()) {
-      return;
-    }
-
-    compassView.update(cameraPosition.bearing);
+//    if (!isCompassEnabled()) {
+//      return;
+//    }
+//
+//    compassView.update(cameraPosition.bearing);
   }
 
   /**
@@ -381,7 +373,7 @@ public final class UiSettings {
    * @param enabled True to enable the logo; false to disable the logo.
    */
   public void setLogoEnabled(boolean enabled) {
-    logoView.setVisibility(enabled ? View.VISIBLE : View.GONE);
+    //logoView.setVisibility(enabled ? View.VISIBLE : View.GONE);
   }
 
   /**
@@ -390,7 +382,7 @@ public final class UiSettings {
    * @return True if the logo is enabled; false if the logo is disabled.
    */
   public boolean isLogoEnabled() {
-    return logoView.getVisibility() == View.VISIBLE;
+    return false; // logoView.getVisibility() == View.VISIBLE;
   }
 
   /**
@@ -404,7 +396,7 @@ public final class UiSettings {
    * @see Gravity
    */
   public void setLogoGravity(int gravity) {
-    setWidgetGravity(logoView, gravity);
+    //setWidgetGravity(logoView, gravity);
   }
 
   /**
@@ -413,7 +405,7 @@ public final class UiSettings {
    * @return The gravity
    */
   public int getLogoGravity() {
-    return ((FrameLayout.LayoutParams) logoView.getLayoutParams()).gravity;
+    return 0;//((FrameLayout.LayoutParams) logoView.getLayoutParams()).gravity;
   }
 
   /**
@@ -426,7 +418,7 @@ public final class UiSettings {
    * @param bottom The bottom margin in pixels.
    */
   public void setLogoMargins(int left, int top, int right, int bottom) {
-    setWidgetMargins(logoView, left, top, right, bottom);
+    //setWidgetMargins(logoView, left, top, right, bottom);
   }
 
   /**
@@ -435,7 +427,7 @@ public final class UiSettings {
    * @return The left margin in pixels
    */
   public int getLogoMarginLeft() {
-    return ((FrameLayout.LayoutParams) logoView.getLayoutParams()).leftMargin;
+    return 0; //((FrameLayout.LayoutParams) logoView.getLayoutParams()).leftMargin;
   }
 
   /**
@@ -444,7 +436,7 @@ public final class UiSettings {
    * @return The top margin in pixels
    */
   public int getLogoMarginTop() {
-    return ((FrameLayout.LayoutParams) logoView.getLayoutParams()).topMargin;
+    return 0; //((FrameLayout.LayoutParams) logoView.getLayoutParams()).topMargin;
   }
 
   /**
@@ -453,7 +445,7 @@ public final class UiSettings {
    * @return The right margin in pixels
    */
   public int getLogoMarginRight() {
-    return ((FrameLayout.LayoutParams) logoView.getLayoutParams()).rightMargin;
+    return 0; //((FrameLayout.LayoutParams) logoView.getLayoutParams()).rightMargin;
   }
 
   /**
@@ -462,7 +454,7 @@ public final class UiSettings {
    * @return The bottom margin in pixels
    */
   public int getLogoMarginBottom() {
-    return ((FrameLayout.LayoutParams) logoView.getLayoutParams()).bottomMargin;
+    return 0; //((FrameLayout.LayoutParams) logoView.getLayoutParams()).bottomMargin;
   }
 
   /**
@@ -474,7 +466,7 @@ public final class UiSettings {
    * @param enabled True to enable the attribution; false to disable the attribution.
    */
   public void setAttributionEnabled(boolean enabled) {
-    attributionsView.setVisibility(enabled ? View.VISIBLE : View.GONE);
+    //attributionsView.setVisibility(enabled ? View.VISIBLE : View.GONE);
   }
 
   /**
@@ -483,7 +475,7 @@ public final class UiSettings {
    * @return True if the attribution is enabled; false if the attribution is disabled.
    */
   public boolean isAttributionEnabled() {
-    return attributionsView.getVisibility() == View.VISIBLE;
+    return false; //attributionsView.getVisibility() == View.VISIBLE;
   }
 
   /**
@@ -496,7 +488,7 @@ public final class UiSettings {
    * @see Gravity
    */
   public void setAttributionGravity(int gravity) {
-    setWidgetGravity(attributionsView, gravity);
+    //setWidgetGravity(attributionsView, gravity);
   }
 
   /**
@@ -505,7 +497,7 @@ public final class UiSettings {
    * @return The gravity
    */
   public int getAttributionGravity() {
-    return ((FrameLayout.LayoutParams) attributionsView.getLayoutParams()).gravity;
+    return 0; //((FrameLayout.LayoutParams) attributionsView.getLayoutParams()).gravity;
   }
 
   /**
@@ -517,7 +509,7 @@ public final class UiSettings {
    * @param bottom The bottom margin in pixels.
    */
   public void setAttributionMargins(int left, int top, int right, int bottom) {
-    setWidgetMargins(attributionsView, left, top, right, bottom);
+    //setWidgetMargins(attributionsView, left, top, right, bottom);
   }
 
   /**
@@ -530,12 +522,12 @@ public final class UiSettings {
    */
   public void setAttributionTintColor(@ColorInt int tintColor) {
     // Check that the tint color being passed in isn't transparent.
-    if (Color.alpha(tintColor) == 0) {
-      ColorUtils.setTintList(attributionsView,
-        ContextCompat.getColor(attributionsView.getContext(), R.color.mapbox_blue));
-    } else {
-      ColorUtils.setTintList(attributionsView, tintColor);
-    }
+//    if (Color.alpha(tintColor) == 0) {
+//      ColorUtils.setTintList(attributionsView,
+//        ContextCompat.getColor(attributionsView.getContext(), R.color.mapbox_blue));
+//    } else {
+//      ColorUtils.setTintList(attributionsView, tintColor);
+//    }
   }
 
   /**
@@ -544,7 +536,7 @@ public final class UiSettings {
    * @return The left margin in pixels
    */
   public int getAttributionMarginLeft() {
-    return ((FrameLayout.LayoutParams) attributionsView.getLayoutParams()).leftMargin;
+    return 0; //((FrameLayout.LayoutParams) attributionsView.getLayoutParams()).leftMargin;
   }
 
   /**
@@ -553,7 +545,7 @@ public final class UiSettings {
    * @return The top margin in pixels
    */
   public int getAttributionMarginTop() {
-    return ((FrameLayout.LayoutParams) attributionsView.getLayoutParams()).topMargin;
+    return 0; //((FrameLayout.LayoutParams) attributionsView.getLayoutParams()).topMargin;
   }
 
   /**
@@ -562,7 +554,7 @@ public final class UiSettings {
    * @return The right margin in pixels
    */
   public int getAttributionMarginRight() {
-    return ((FrameLayout.LayoutParams) attributionsView.getLayoutParams()).rightMargin;
+    return 0; //((FrameLayout.LayoutParams) attributionsView.getLayoutParams()).rightMargin;
   }
 
   /**
@@ -571,7 +563,7 @@ public final class UiSettings {
    * @return The bottom margin in pixels
    */
   public int getAttributionMarginBottom() {
-    return ((FrameLayout.LayoutParams) attributionsView.getLayoutParams()).bottomMargin;
+    return 0; //((FrameLayout.LayoutParams) attributionsView.getLayoutParams()).bottomMargin;
   }
 
   /**
@@ -866,7 +858,7 @@ public final class UiSettings {
     setLogoMargins(getLogoMarginLeft(), getLogoMarginTop(), getLogoMarginRight(), getLogoMarginBottom());
     setCompassMargins(getCompassMarginLeft(), getCompassMarginTop(), getCompassMarginRight(), getCompassMarginBottom());
     setAttributionMargins(getAttributionMarginLeft(), getAttributionMarginTop(), getAttributionMarginRight(),
-      getAttributionMarginBottom());
+        getAttributionMarginBottom());
   }
 
   private void setWidgetGravity(@NonNull final View view, int gravity) {

@@ -15,39 +15,9 @@
         android:background="@android:color/transparent"
         android:contentDescription="@null"/>
 
-    <com.mapbox.mapboxsdk.maps.widgets.MyLocationView
-        android:id="@+id/userLocationView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:contentDescription="@string/mapbox_myLocationViewContentDescription"/>
-
-    <com.mapbox.mapboxsdk.maps.widgets.CompassView
-        android:id="@+id/compassView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:contentDescription="@string/mapbox_compassContentDescription"/>
-
     <com.mapbox.mapboxsdk.maps.MapOverlayDispatch
         android:id="@+id/overlayDispatch"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
-
-    <ImageView
-        android:id="@+id/logoView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:contentDescription="@null"
-        android:src="@drawable/mapbox_logo_icon"/>
-
-    <ImageView
-        android:id="@+id/attributionView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:adjustViewBounds="true"
-        android:background="@drawable/mapbox_default_bg_selector"
-        android:clickable="true"
-        android:contentDescription="@string/mapbox_attributionsIconContentDescription"
-        android:padding="7dp"
-        android:src="@drawable/mapbox_info_bg_selector"/>
 
 </merge>

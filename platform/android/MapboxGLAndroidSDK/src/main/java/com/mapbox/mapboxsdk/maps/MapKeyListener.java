@@ -19,16 +19,13 @@ import android.view.ViewConfiguration;
  */
 final class MapKeyListener {
 
-  private final TrackingSettings trackingSettings;
   private final Transform transform;
   private final UiSettings uiSettings;
 
   private TrackballLongPressTimeOut currentTrackballLongPressTimeOut;
 
-  MapKeyListener(@NonNull Transform transform, @NonNull TrackingSettings trackingSettings,
-                 @NonNull UiSettings uiSettings) {
+  MapKeyListener(@NonNull Transform transform, @NonNull UiSettings uiSettings) {
     this.transform = transform;
-    this.trackingSettings = trackingSettings;
     this.uiSettings = uiSettings;
   }
 
@@ -54,9 +51,9 @@ final class MapKeyListener {
         return true;
 
       case KeyEvent.KEYCODE_DPAD_LEFT:
-        if (!trackingSettings.isScrollGestureCurrentlyEnabled()) {
-          return false;
-        }
+//        if (!trackingSettings.isScrollGestureCurrentlyEnabled()) {
+//          return false;
+//        }
 
         // Cancel any animation
         transform.cancelTransitions();
@@ -66,9 +63,9 @@ final class MapKeyListener {
         return true;
 
       case KeyEvent.KEYCODE_DPAD_RIGHT:
-        if (!trackingSettings.isScrollGestureCurrentlyEnabled()) {
-          return false;
-        }
+//        if (!trackingSettings.isScrollGestureCurrentlyEnabled()) {
+//          return false;
+//        }
 
         // Cancel any animation
         transform.cancelTransitions();
@@ -78,9 +75,9 @@ final class MapKeyListener {
         return true;
 
       case KeyEvent.KEYCODE_DPAD_UP:
-        if (!trackingSettings.isScrollGestureCurrentlyEnabled()) {
-          return false;
-        }
+//        if (!trackingSettings.isScrollGestureCurrentlyEnabled()) {
+//          return false;
+//        }
 
         // Cancel any animation
         transform.cancelTransitions();
@@ -90,9 +87,9 @@ final class MapKeyListener {
         return true;
 
       case KeyEvent.KEYCODE_DPAD_DOWN:
-        if (!trackingSettings.isScrollGestureCurrentlyEnabled()) {
-          return false;
-        }
+//        if (!trackingSettings.isScrollGestureCurrentlyEnabled()) {
+//          return false;
+//        }
 
         // Cancel any animation
         transform.cancelTransitions();
@@ -182,9 +179,9 @@ final class MapKeyListener {
     switch (event.getActionMasked()) {
       // The trackball was rotated
       case MotionEvent.ACTION_MOVE:
-        if (!trackingSettings.isScrollGestureCurrentlyEnabled()) {
-          return false;
-        }
+//        if (!trackingSettings.isScrollGestureCurrentlyEnabled()) {
+//          return false;
+//        }
 
         // Cancel any animation
         transform.cancelTransitions();
