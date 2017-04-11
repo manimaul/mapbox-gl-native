@@ -137,4 +137,13 @@ public class Projection {
   public double calculateZoom(float minScale) {
     return Math.log(nativeMapView.getScale() * minScale) / Math.log(2);
   }
+
+  public double getZoom() {
+    return nativeMapView.getZoom();
+  }
+
+  public double getBearing() {
+    return nativeMapView.getBearing();
+  }
+
 }

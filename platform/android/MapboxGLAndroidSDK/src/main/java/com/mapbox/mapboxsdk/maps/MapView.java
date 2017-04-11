@@ -8,7 +8,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Canvas;
 import android.graphics.PointF;
-import android.graphics.SurfaceTexture;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -25,7 +24,6 @@ import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
@@ -40,7 +38,6 @@ import com.mapbox.mapboxsdk.camera.CameraPosition;
 import com.mapbox.mapboxsdk.constants.MapboxConstants;
 import com.mapbox.mapboxsdk.constants.Style;
 import com.mapbox.mapboxsdk.geometry.LatLng;
-import com.mapbox.mapboxsdk.geometry.LatLngBounds;
 import com.mapbox.mapboxsdk.geometry.VisibleRegion;
 import com.mapbox.mapboxsdk.http.HTTPRequest;
 import com.mapbox.mapboxsdk.http.OfflineInterceptor;
@@ -48,8 +45,6 @@ import com.mapbox.mapboxsdk.maps.widgets.CompassView;
 import com.mapbox.mapboxsdk.maps.widgets.MyLocationView;
 import com.mapbox.mapboxsdk.maps.widgets.MyLocationViewSettings;
 import com.mapbox.mapboxsdk.net.ConnectivityReceiver;
-import com.mapbox.services.android.telemetry.MapboxEvent;
-import com.mapbox.services.android.telemetry.MapboxTelemetry;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -71,6 +66,7 @@ import java.util.List;
  * <strong>Warning:</strong> Please note that you are responsible for getting permission to use the map data,
  * and for ensuring your use adheres to the relevant terms of use.
  */
+@SuppressWarnings("unused")
 public class MapView extends FrameLayout {
 
   private NativeMapView nativeMapView;
@@ -123,17 +119,13 @@ public class MapView extends FrameLayout {
     CompassView compassView = (CompassView) view.findViewById(R.id.compassView);
     MyLocationView myLocationView = (MyLocationView) view.findViewById(R.id.userLocationView);
     ImageView attrView = (ImageView) view.findViewById(R.id.attributionView);
-    initalizeDrawingSurface(context, options);
+    initalizeDrawingSurface();
 
     // add accessibility support
     setContentDescription(context.getString(R.string.mapbox_mapActionDescription));
 
     // create native Map object
     nativeMapView = new NativeMapView(this);
-
-    // Overlays
-    mapOverlayDispatch = (MapOverlayDispatch) view.findViewById(R.id.overlayDispatch);
-    mapOverlayDispatch.setMapBoxMap(mapboxMap);
 
     // callback for focal point invalidation
     FocalPointInvalidator focalPoint = new FocalPointInvalidator(compassView);
@@ -143,6 +135,9 @@ public class MapView extends FrameLayout {
 
     // callback for zooming in the camera
     CameraZoomInvalidator zoomInvalidator = new CameraZoomInvalidator();
+
+    // Overlays
+    mapOverlayDispatch = (MapOverlayDispatch) view.findViewById(R.id.overlayDispatch);
 
     // setup components for MapboxMap creation
     Projection proj = new Projection(nativeMapView);
@@ -154,6 +149,7 @@ public class MapView extends FrameLayout {
     Transform transform = new Transform(nativeMapView, annotations.getMarkerViewManager(), trackingSettings);
     mapboxMap = new MapboxMap(nativeMapView, transform, uiSettings, trackingSettings, myLocationViewSettings, proj,
       registerTouchListener, annotations, mapOverlayDispatch);
+    mapOverlayDispatch.setMapBoxMap(mapboxMap);
 
     // user input
     mapGestureDetector = new MapGestureDetector(context, transform, proj, uiSettings,
@@ -185,16 +181,10 @@ public class MapView extends FrameLayout {
     mapboxMap.initialise(context, options);
   }
 
-  private void initalizeDrawingSurface(Context context, MapboxMapOptions options) {
-//    if (options.getTextureMode()) {
-//      TextureView textureView = new TextureView(context);
-//      textureView.setSurfaceTextureListener(new SurfaceTextureListener());
-//      addView(textureView, 0);
-//    } else {
+  private void initalizeDrawingSurface() {
       SurfaceView surfaceView = (SurfaceView) findViewById(R.id.surfaceView);
       surfaceView.getHolder().addCallback(new SurfaceCallback());
       surfaceView.setVisibility(View.VISIBLE);
-//    }
   }
 
   //
@@ -214,9 +204,7 @@ public class MapView extends FrameLayout {
    */
   @UiThread
   public void onCreate(@Nullable Bundle savedInstanceState) {
-    if (savedInstanceState == null) {
-//      MapboxTelemetry.getInstance().pushEvent(MapboxEvent.buildMapLoadEvent());
-    } else if (savedInstanceState.getBoolean(MapboxConstants.STATE_HAS_SAVED_STATE)) {
+    if (savedInstanceState != null && savedInstanceState.getBoolean(MapboxConstants.STATE_HAS_SAVED_STATE)) {
       mapboxMap.onRestoreInstanceState(savedInstanceState);
     }
 
@@ -1063,8 +1051,9 @@ public class MapView extends FrameLayout {
         });
       } else if (change == DID_FINISH_RENDERING_FRAME || change == DID_FINISH_RENDERING_FRAME_FULLY_RENDERED) {
         mapboxMap.onUpdateFullyRendered(); // updates compass view
-        mapboxMap.getProjection().updateMapBounds(visibleRegion, wgsCenter);
-        mapOverlayDispatch.update(visibleRegion, wgsCenter, 0, 0);
+        final Projection pj = mapboxMap.getProjection();
+        pj.updateMapBounds(visibleRegion, wgsCenter);
+        mapOverlayDispatch.update(visibleRegion, wgsCenter, (float) pj.getBearing(), (float) pj.getZoom());
 
       } else if (change == REGION_IS_CHANGING || change == REGION_DID_CHANGE || change == DID_FINISH_LOADING_MAP) {
         mapboxMap.onUpdateRegionChange(); // updates location view
