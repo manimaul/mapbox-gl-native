@@ -80,7 +80,10 @@ public class ConnectivityReceiver extends BroadcastReceiver {
   public void onReceive(Context context, Intent intent) {
     boolean connected = isConnected(context);
     Timber.v("Connected: " + connected);
+    notifyListenersConnected(connected);
+  }
 
+  public void notifyListenersConnected(boolean connected) {
     // Loop over listeners
     for (ConnectivityListener listener : listeners) {
       listener.onNetworkStateChanged(connected);

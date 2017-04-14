@@ -4,15 +4,12 @@ import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.text.TextUtils;
 
 import com.mapbox.mapboxsdk.constants.MapboxConstants;
 import com.mapbox.mapboxsdk.exceptions.InvalidAccessTokenException;
-import com.mapbox.mapboxsdk.location.LocationSource;
 import com.mapbox.mapboxsdk.net.ConnectivityReceiver;
-import com.mapbox.services.android.telemetry.MapboxTelemetry;
-import com.mapbox.services.android.telemetry.location.LocationEngine;
-import com.mapbox.services.android.telemetry.location.LocationEnginePriority;
 
 public final class Mapbox {
 
@@ -20,6 +17,7 @@ public final class Mapbox {
   private Context context;
   private String accessToken;
   private Boolean connected;
+  private final ConnectivityReceiver connectivityReceiver;
 
   /**
    * Get an instance of Mapbox.
@@ -35,7 +33,6 @@ public final class Mapbox {
     if (INSTANCE == null) {
       Context appContext = context.getApplicationContext();
       INSTANCE = new Mapbox(appContext, accessToken);
-      ConnectivityReceiver.instance(appContext);
     }
     return INSTANCE;
   }
@@ -43,6 +40,7 @@ public final class Mapbox {
   Mapbox(@NonNull Context context, @NonNull String accessToken) {
     this.context = context;
     this.accessToken = accessToken;
+    connectivityReceiver = ConnectivityReceiver.instance(context);
   }
 
   /**
@@ -82,9 +80,10 @@ public final class Mapbox {
    * @param connected flag to determine the connectivity state, true for connected, false for
    *                  disconnected, null for ConnectivityManager to determine.
    */
-  public static synchronized void setConnected(Boolean connected) {
+  public static synchronized void setConnected(@Nullable Boolean connected) {
     // Connectivity state overridden by app
     INSTANCE.connected = connected;
+    INSTANCE.connectivityReceiver.notifyListenersConnected(isConnected());
   }
 
   /**
