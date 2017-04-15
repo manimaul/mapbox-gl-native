@@ -1818,6 +1818,10 @@ public final class MapboxMap {
     return nativeMapView.queryRenderedFeatures(coordinates, layerIds, filter);
   }
 
+  public void invalidate() {
+    mapOverlayDispatch.invalidate();
+  }
+
   //
   // Interfaces
   //

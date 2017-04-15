@@ -143,7 +143,16 @@ public class Projection {
   }
 
   public double getBearing() {
-    return nativeMapView.getBearing();
+    double direction = -nativeMapView.getBearing();
+
+    while (direction > 360) {
+      direction -= 360;
+    }
+    while (direction < 0) {
+      direction += 360;
+    }
+
+    return direction;
   }
 
 }

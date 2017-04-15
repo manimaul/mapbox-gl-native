@@ -33,9 +33,6 @@ import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.geometry.VisibleRegion;
 import com.mapbox.mapboxsdk.http.HTTPRequest;
 import com.mapbox.mapboxsdk.http.OfflineInterceptor;
-import com.mapbox.mapboxsdk.maps.widgets.CompassView;
-import com.mapbox.mapboxsdk.maps.widgets.MyLocationView;
-import com.mapbox.mapboxsdk.maps.widgets.MyLocationViewSettings;
 import com.mapbox.mapboxsdk.net.ConnectivityReceiver;
 
 import java.lang.annotation.Retention;
@@ -874,6 +871,7 @@ public class MapView extends FrameLayout {
   private static class MapCallback implements OnMapChangedListener {
 
     private final MapboxMap mapboxMap;
+    private final Projection projection;
     private final MapOverlayDispatch mapOverlayDispatch;
     private final List<OnMapReadyCallback> onMapReadyCallbackList = new ArrayList<>();
     private boolean initialLoad = true;
@@ -884,10 +882,15 @@ public class MapView extends FrameLayout {
     MapCallback(MapboxMap mapboxMap, MapOverlayDispatch mapOverlayDispatch) {
       this.mapboxMap = mapboxMap;
       this.mapOverlayDispatch = mapOverlayDispatch;
+      this.projection = mapboxMap.getProjection();
     }
 
     @Override
     public void onMapChanged(@MapChange int change) {
+
+      projection.updateMapBounds(visibleRegion, wgsCenter);
+      mapOverlayDispatch.update(visibleRegion, wgsCenter, (float) projection.getBearing(), (float) projection.getZoom());
+
       if (change == DID_FINISH_LOADING_STYLE && initialLoad) {
         initialLoad = false;
         new Handler().post(new Runnable() {
@@ -900,10 +903,6 @@ public class MapView extends FrameLayout {
         });
       } else if (change == DID_FINISH_RENDERING_FRAME || change == DID_FINISH_RENDERING_FRAME_FULLY_RENDERED) {
         mapboxMap.onUpdateFullyRendered();
-        final Projection pj = mapboxMap.getProjection();
-        pj.updateMapBounds(visibleRegion, wgsCenter);
-        mapOverlayDispatch.update(visibleRegion, wgsCenter, (float) pj.getBearing(), (float) pj.getZoom());
-
       } else if (change == REGION_IS_CHANGING || change == REGION_DID_CHANGE || change == DID_FINISH_LOADING_MAP) {
         mapboxMap.onUpdateRegionChange(); // updates location view
       }
