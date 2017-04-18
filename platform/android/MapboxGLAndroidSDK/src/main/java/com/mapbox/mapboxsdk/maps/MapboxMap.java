@@ -96,10 +96,10 @@ public final class MapboxMap {
    */
   void onStart() {
     nativeMapView.update();
-    if (TextUtils.isEmpty(nativeMapView.getStyleUrl())) {
-      // if user hasn't loaded a Style yet
-      nativeMapView.setStyleUrl(Style.MAPBOX_STREETS);
-    }
+//    if (TextUtils.isEmpty(nativeMapView.getStyleUrl())) {
+//      // if user hasn't loaded a Style yet
+//      nativeMapView.setStyleUrl(Style.MAPBOX_STREETS);
+//    }
   }
 
   /**
