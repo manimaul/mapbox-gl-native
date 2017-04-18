@@ -19,6 +19,21 @@ public class LatLngBounds implements Parcelable {
   private double mLonEast;
   private double mLonWest;
 
+  public static LatLngBounds create() {
+    LatLngBounds.Builder builder = new LatLngBounds.Builder();
+
+    LatLng topLeft = new LatLng();
+    LatLng topRight = new LatLng();
+    LatLng bottomRight = new LatLng();
+    LatLng bottomLeft = new LatLng();
+
+    builder.include(topLeft)
+            .include(topRight)
+            .include(bottomRight)
+            .include(bottomLeft);
+    return builder.build();
+  }
+
   /**
    * Construct a new LatLngBounds based on its corners, given in NESW
    * order.

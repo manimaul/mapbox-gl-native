@@ -8,7 +8,6 @@ import android.view.MotionEvent;
 import android.view.View;
 
 import com.mapbox.mapboxsdk.geometry.LatLng;
-import com.mapbox.mapboxsdk.geometry.LatLngBounds;
 import com.mapbox.mapboxsdk.geometry.VisibleRegion;
 
 import java.util.ArrayList;
@@ -23,7 +22,7 @@ final class MapOverlayDispatch extends View {
 
     private List<Overlay> overlays = new ArrayList<>();
     private LatLng wgsCenter = new LatLng();
-    private VisibleRegion visibleRegion = new VisibleRegion(new LatLng(), new LatLng(), new LatLng(), new LatLng(), new LatLngBounds(0,0,0,0));
+    private VisibleRegion visibleRegion = VisibleRegion.create();
     private final Rect mapPixelBounds = new Rect();
     private float bearing = 0;
     private float zoom = 0;

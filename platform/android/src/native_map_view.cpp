@@ -634,14 +634,6 @@ void NativeMapView::updateMapBounds(JNIEnv& env,
 
     double west = bounds.west();
     double east = bounds.east();
-    if (west < -180.0) {
-        west += 180.0;
-        west = 180.0 + west;
-    }
-    if (east > 180.0) {
-        east -= 180.0;
-        east = -180.0 + east;
-    }
 
     auto jBounds = VisibleRegion::getBounds(env, visibleRegion);
     LatLngBounds::setLatitudeNorth(env, jBounds, bounds.north());
