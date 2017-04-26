@@ -888,9 +888,6 @@ public class MapView extends FrameLayout {
     @Override
     public void onMapChanged(@MapChange int change) {
 
-      projection.updateMapBounds(visibleRegion, wgsCenter);
-      mapOverlayDispatch.update(visibleRegion, wgsCenter, (float) projection.getBearing(), (float) projection.getZoom());
-
       if (change == DID_FINISH_LOADING_STYLE && initialLoad) {
         initialLoad = false;
         new Handler().post(new Runnable() {
@@ -902,6 +899,8 @@ public class MapView extends FrameLayout {
           }
         });
       } else if (change == DID_FINISH_RENDERING_FRAME || change == DID_FINISH_RENDERING_FRAME_FULLY_RENDERED) {
+        projection.updateMapBounds(visibleRegion, wgsCenter);
+        mapOverlayDispatch.update(visibleRegion, wgsCenter, (float) projection.getBearing(), (float) projection.getZoom());
         mapboxMap.onUpdateFullyRendered();
       } else if (change == REGION_IS_CHANGING || change == REGION_DID_CHANGE || change == DID_FINISH_LOADING_MAP) {
         mapboxMap.onUpdateRegionChange(); // updates location view

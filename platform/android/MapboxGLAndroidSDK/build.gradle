@@ -5,6 +5,7 @@ dependencies {
     compile "com.android.support:support-v4:${supportLibVersion}"
     compile "com.android.support:design:${supportLibVersion}"
     compile "io.reactivex:rxjava:${rxJavaVersion}"
+    compile "io.reactivex:rxandroid:1.2.1"
 
     compile rootProject.ext.dep.timber
     compile rootProject.ext.dep.okhttp3
