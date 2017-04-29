@@ -12,7 +12,8 @@ ext {
     wearableVersion = '2.0.0'
     daggerVersion = "2.7"
     firebaseVerion = "9.6.1"
-    rxJavaVersion = "1.1.6"
+    rxJavaVersion = "1.2.3"
+    rxAndroidVersion = "1.2.1"
 
     espressoVersion = '2.2.2'
     testRunnerVersion = '0.5'
