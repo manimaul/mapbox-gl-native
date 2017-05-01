@@ -79,7 +79,7 @@ final class NativeMapView {
     Context context = mapView.getContext();
     fileSource = FileSource.getInstance(context);
 
-    pixelRatio = context.getResources().getDisplayMetrics().density;
+    pixelRatio = context.getResources().getDisplayMetrics().density / 1.3f;
     int availableProcessors = Runtime.getRuntime().availableProcessors();
     ActivityManager.MemoryInfo memoryInfo = new ActivityManager.MemoryInfo();
     ActivityManager activityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
