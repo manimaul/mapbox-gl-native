@@ -177,6 +177,10 @@ final class NativeMapView {
     nativeRender();
   }
 
+  public float pixelRatio() {
+    return pixelRatio;
+  }
+
   public void resizeView(int width, int height) {
     if (isDestroyedOn("resizeView")) {
       return;

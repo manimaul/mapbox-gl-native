@@ -128,6 +128,10 @@ public class Projection {
     return nativeMapView.getWidth();
   }
 
+  public float getPixelRatio() {
+    return nativeMapView.pixelRatio();
+  }
+
   /**
    * Calculates a zoom level based on minimum scale and current scale from MapView
    *
