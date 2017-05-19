@@ -4,8 +4,8 @@ dependencies {
     compile "com.android.support:support-annotations:${supportLibVersion}"
     compile "com.android.support:support-v4:${supportLibVersion}"
     compile "com.android.support:design:${supportLibVersion}"
-    compile "io.reactivex:rxjava:${rxJavaVersion}"
-    compile "io.reactivex:rxandroid:${rxAndroidVersion}"
+    compile "io.reactivex.rxjava2:rxjava:${rxJavaVersion}"
+    compile "io.reactivex.rxjava2:rxandroid:${rxAndroidVersion}"
 
     compile rootProject.ext.dep.timber
     compile rootProject.ext.dep.okhttp3

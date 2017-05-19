@@ -2,7 +2,7 @@ package com.mapbox.mapboxsdk.http;
 
 import android.net.Uri;
 
-import rx.Observable;
+import io.reactivex.Observable;
 
 public interface OfflineInterceptor {
 

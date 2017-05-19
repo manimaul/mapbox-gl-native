@@ -22,15 +22,16 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import javax.net.ssl.SSLException;
 
+import io.reactivex.Observable;
+import io.reactivex.Observer;
+import io.reactivex.Scheduler;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.Disposable;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
-import rx.Observable;
-import rx.Observer;
-import rx.Scheduler;
-import rx.android.schedulers.AndroidSchedulers;
 
 @SuppressWarnings({"JniMissingFunction", "unused"})
 public class HTTPRequest implements Callback {
@@ -149,15 +150,21 @@ public class HTTPRequest implements Callback {
                     .take(1)
                     .observeOn(sScheduler)
                     .subscribe(new Observer<byte[]>() {
-                        @Override
-                        public void onCompleted() {
-
-                        }
 
                         @Override
                         public void onError(Throwable e) {
                             final String message = e.getMessage();
                             onOfflineFailure(message == null ? UNKNOWN_ERROR : message);
+                        }
+
+                        @Override
+                        public void onComplete() {
+
+                        }
+
+                        @Override
+                        public void onSubscribe(Disposable d) {
+
                         }
 
                         @Override
