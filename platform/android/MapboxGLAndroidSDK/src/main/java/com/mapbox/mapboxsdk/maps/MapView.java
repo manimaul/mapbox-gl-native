@@ -379,6 +379,11 @@ public class MapView extends FrameLayout {
     nativeMapView.setStyleUrl(url);
   }
 
+  @UiThread
+  public void invalidateOverlay() {
+    mapOverlayDispatch.invalidate();
+  }
+
 
   @UiThread
   void addOverlay(Overlay overlay) {
