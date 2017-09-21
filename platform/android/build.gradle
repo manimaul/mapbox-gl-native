@@ -18,11 +18,12 @@ buildscript {
 allprojects {
     repositories {
         jcenter()
+        google()
     }
 }
 
-task wrapper(type: Wrapper) {
-    gradleVersion = '3.2.1'
+task clean(type: Delete) {
+    delete rootProject.buildDir
 }
 
 apply from: rootProject.file('dependencies.gradle')
