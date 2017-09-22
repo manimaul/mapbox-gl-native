@@ -5,13 +5,12 @@ buildscript {
         jcenter()
     }
     dependencies {
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlin_version}"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath "com.android.tools.build:gradle:$build_tools_version"
         classpath "com.google.gms:google-services:3.0.0" /* Google Analytics */
         classpath "me.tatarka:gradle-retrolambda:3.3.0" /* Retro-Lambda */
         classpath 'com.amazonaws:aws-devicefarm-gradle-plugin:1.2'
         classpath 'com.stanfy.spoon:spoon-gradle-plugin:1.2.1'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }
 
