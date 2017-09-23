@@ -14,6 +14,7 @@ ext {
     firebaseVerion = "9.6.1"
     rxJavaVersion = "2.0.1"
     rxAndroidVersion = "2.0.1"
+    retrofitVersion = "2.3.0"
 
     espressoVersion = '2.2.2'
     testRunnerVersion = '0.5'
