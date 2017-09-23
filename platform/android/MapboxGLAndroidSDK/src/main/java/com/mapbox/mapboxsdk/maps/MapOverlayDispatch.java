@@ -3,6 +3,7 @@ package com.mapbox.mapboxsdk.maps;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Rect;
+import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
@@ -16,7 +17,7 @@ import java.util.List;
 /**
  * View placed over the GL MapView that can draw {@link Overlay}s.
  */
-final class MapOverlayDispatch extends View {
+final public class MapOverlayDispatch extends View {
 
     //region FIELDS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -43,6 +44,13 @@ final class MapOverlayDispatch extends View {
 
     public MapOverlayDispatch(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
+    }
+
+    public MapOverlayDispatch(Context context,
+                              @Nullable AttributeSet attrs,
+                              int defStyleAttr,
+                              int defStyleRes) {
+        super(context, attrs, defStyleAttr, defStyleRes);
     }
 
     //endregion
