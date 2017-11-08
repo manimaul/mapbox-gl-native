@@ -7,11 +7,11 @@ ext {
     versionCode = 11
     versionName = "5.0.0"
 
-    supportLibVersion = "26.0.2"
+    supportLibVersion = "26.1.0"
     leakCanaryVersion = '1.5'
     wearableVersion = '2.0.0'
     daggerVersion = "2.7"
-    firebaseVerion = "9.6.1"
+    firebaseVerion = "11.4.2"
     rxJavaVersion = "2.0.1"
     rxAndroidVersion = "2.0.1"
     retrofitVersion = "2.3.0"
