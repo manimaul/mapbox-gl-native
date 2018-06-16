@@ -63,6 +63,12 @@ android {
             jniDebuggable false
         }
     }
+    packagingOptions {
+        doNotStrip '*/mips/*.so'
+        doNotStrip '*/mips64/*.so'
+        exclude 'lib/mips/libmapbox-gl.so'
+        exclude 'lib/mips/libsqlcipher.so'
+    }
 }
 
 def getGitRevision() {
