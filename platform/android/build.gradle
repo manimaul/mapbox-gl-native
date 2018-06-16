@@ -3,6 +3,7 @@ buildscript {
     ext.android_tools_version = "2.3.3"
     repositories {
         jcenter()
+        google()
     }
     dependencies {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
