@@ -14,11 +14,13 @@ ext {
     firebaseVerion = "11.4.2"
     rxJavaVersion = "2.0.2"
     rxKotlinVersion = "2.2.0"
-    rxAndroidVersion = "2.0.1"
+    rxAndroidVersion = "2.0.2"
     retrofitVersion = "2.3.0"
 
     espressoVersion = '2.2.2'
     testRunnerVersion = '0.5'
+    okhttpVersion = '3.9.1'
+    rxjava_extras_version = '0.1.24'
 
     dep = [
             // mapbox
@@ -53,7 +55,7 @@ ext {
 
             // square crew
             timber                 : 'com.jakewharton.timber:timber:4.5.1',
-            okhttp3                : 'com.squareup.okhttp3:okhttp:3.6.0',
+            okhttp3                : "com.squareup.okhttp3:okhttp:$okhttpVersion",
             leakCanaryDebug        : "com.squareup.leakcanary:leakcanary-android:${leakCanaryVersion}",
             leakCanaryRelease      : "com.squareup.leakcanary:leakcanary-android-no-op:${leakCanaryVersion}",
             leakCanaryTest         : "com.squareup.leakcanary:leakcanary-android-no-op:${leakCanaryVersion}"
