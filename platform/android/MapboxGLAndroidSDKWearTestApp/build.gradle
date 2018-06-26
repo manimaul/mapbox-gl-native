@@ -1,14 +1,13 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion rootProject.ext.compileSdkVersion
-    buildToolsVersion rootProject.ext.buildToolsVersion
+    compileSdkVersion rootProject.ext.compileSdkVersion.toInteger()
 
     defaultConfig {
         applicationId "com.mapbox.mapboxsdk.testapp"
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode rootProject.ext.versionCode
+        minSdkVersion rootProject.ext.minSdkVersion.toInteger()
+        targetSdkVersion rootProject.ext.targetSdkVersion.toInteger()
+        versionCode rootProject.ext.versionCode.toInteger()
         versionName rootProject.ext.versionName
     }
 
