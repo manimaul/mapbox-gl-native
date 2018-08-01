@@ -5,6 +5,7 @@ import android.graphics.PointF;
 import android.location.Location;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.math.MathUtils;
 import android.support.v4.view.GestureDetectorCompat;
 import android.support.v4.view.ScaleGestureDetectorCompat;
 import android.view.InputDevice;
@@ -17,8 +18,6 @@ import com.almeros.android.multitouch.gesturedetectors.ShoveGestureDetector;
 import com.almeros.android.multitouch.gesturedetectors.TwoFingerGestureDetector;
 import com.mapbox.mapboxsdk.constants.MapboxConstants;
 import com.mapbox.mapboxsdk.geometry.LatLng;
-import com.mapbox.services.android.telemetry.utils.MathUtils;
-import com.mapbox.services.android.telemetry.utils.TelemetryUtils;
 
 /**
  * Manages gestures events on a MapView.
@@ -106,19 +105,6 @@ final class MapGestureDetector {
   @Nullable
   PointF getFocalPoint() {
     return focalPoint;
-  }
-
-  /**
-   * Given coordinates from a gesture, use the current projection to translate it into
-   * a Location object.
-   *
-   * @param x coordinate
-   * @param y coordinate
-   * @return location
-   */
-  private Location getLocationFromGesture(float x, float y) {
-    LatLng latLng = projection.fromScreenLocation(new PointF(x, y));
-    return TelemetryUtils.buildLocation(latLng.getLongitude(), latLng.getLatitude());
   }
 
   /**
