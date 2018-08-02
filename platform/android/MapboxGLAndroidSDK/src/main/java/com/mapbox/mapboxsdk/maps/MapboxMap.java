@@ -14,6 +14,7 @@ import android.support.annotation.Nullable;
 import android.support.annotation.UiThread;
 import android.support.v4.util.Pools;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -32,11 +33,8 @@ import com.mapbox.mapboxsdk.camera.CameraPosition;
 import com.mapbox.mapboxsdk.camera.CameraUpdate;
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.constants.MapboxConstants;
-import com.mapbox.mapboxsdk.constants.MyBearingTracking;
-import com.mapbox.mapboxsdk.constants.MyLocationTracking;
 import com.mapbox.mapboxsdk.constants.Style;
 import com.mapbox.mapboxsdk.geometry.LatLng;
-import com.mapbox.mapboxsdk.maps.widgets.MyLocationViewSettings;
 import com.mapbox.mapboxsdk.style.layers.Filter;
 import com.mapbox.mapboxsdk.style.layers.Layer;
 import com.mapbox.mapboxsdk.style.sources.Source;
@@ -45,7 +43,6 @@ import com.mapbox.services.commons.geojson.Feature;
 import java.lang.reflect.ParameterizedType;
 import java.util.List;
 
-import timber.log.Timber;
 
 /**
  * The general class to interact with in the Android Mapbox SDK. It exposes the entry point for all
@@ -59,6 +56,7 @@ import timber.log.Timber;
 public final class MapboxMap {
 
   private final NativeMapView nativeMapView;
+  public static final String TAG = MapboxMap.class.getSimpleName();
 
   private final UiSettings uiSettings;
   private final Projection projection;
@@ -247,7 +245,7 @@ public final class MapboxMap {
       // noinspection unchecked
       return (T) nativeMapView.getLayer(layerId);
     } catch (ClassCastException exception) {
-      Timber.e(String.format("Layer: %s is a different type: %s", layerId, exception));
+      Log.e(TAG, String.format("Layer: %s is a different type: %s", layerId, exception));
       return null;
     }
   }
@@ -378,7 +376,7 @@ public final class MapboxMap {
       // noinspection unchecked
       return (T) nativeMapView.getSource(sourceId);
     } catch (ClassCastException exception) {
-      Timber.e(String.format("Source: %s is a different type: %s", sourceId, exception));
+      Log.e(TAG, String.format("Source: %s is a different type: %s", sourceId, exception));
       return null;
     }
   }
@@ -507,32 +505,6 @@ public final class MapboxMap {
    */
   public UiSettings getUiSettings() {
     return uiSettings;
-  }
-
-  //
-  // TrackingSettings
-  //
-
-  /**
-   * Gets the tracking interface settings for the map.
-   *
-   * @return the TrackingSettings asssociated with this map
-   */
-  public TrackingSettings getTrackingSettings() {
-    return null;
-  }
-
-  //
-  // MyLocationViewSettings
-  //
-
-  /**
-   * Gets the settings of the user location for the map.
-   *
-   * @return the MyLocationViewSettings associated with this map
-   */
-  public MyLocationViewSettings getMyLocationViewSettings() {
-    return null;
   }
 
   //
@@ -694,11 +666,6 @@ public final class MapboxMap {
    * unless specified within {@link CameraUpdate}. A callback can be used to be notified when
    * easing the camera stops. If {@link #getCameraPosition()} is called during the animation, it
    * will return the current location of the camera in flight.
-   * <p>
-   * Note that this will cancel location tracking mode if enabled. You can change this behaviour by calling
-   * {@link TrackingSettings#setDismissTrackingModeForCameraPositionChange(boolean)} with false before invoking this
-   * method and calling it with true in the {@link CancelableCallback#onFinish()}.
-   * </p>
    *
    * @param update             The change that should be applied to the camera.
    * @param durationMs         The duration of the animation in milliseconds. This must be strictly
@@ -1398,7 +1365,7 @@ public final class MapboxMap {
   @UiThread
   public void selectMarker(@NonNull Marker marker) {
     if (marker == null) {
-      Timber.w("marker was null, so just returning");
+      Log.w(TAG,"marker was null, so just returning");
       return;
     }
     annotationManager.selectMarker(marker);
@@ -1715,29 +1682,6 @@ public final class MapboxMap {
   public void setOnMyLocationChangeListener(@Nullable MapboxMap.OnMyLocationChangeListener
                                               listener) {
     //trackingSettings.setOnMyLocationChangeListener(listener);
-  }
-
-  /**
-   * Sets a callback that's invoked when the location tracking mode changes.
-   *
-   * @param listener The callback that's invoked when the location tracking mode changes.
-   *                 To unset the callback, use null.
-   */
-  @UiThread
-  public void setOnMyLocationTrackingModeChangeListener(
-    @Nullable MapboxMap.OnMyLocationTrackingModeChangeListener listener) {
-    //trackingSettings.setOnMyLocationTrackingModeChangeListener(listener);
-  }
-
-  /**
-   * Sets a callback that's invoked when the bearing tracking mode changes.
-   *
-   * @param listener The callback that's invoked when the bearing tracking mode changes.
-   *                 To unset the callback, use null.
-   */
-  @UiThread
-  public void setOnMyBearingTrackingModeChangeListener(@Nullable OnMyBearingTrackingModeChangeListener listener) {
-    //trackingSettings.setOnMyBearingTrackingModeChangeListener(listener);
   }
 
   //
@@ -2139,36 +2083,6 @@ public final class MapboxMap {
      * @param location The current location of the My Location view The type of map change event.
      */
     void onMyLocationChange(@Nullable Location location);
-  }
-
-  /**
-   * Interface definition for a callback to be invoked when the the My Location tracking mode changes.
-   *
-   * @see TrackingSettings#setMyLocationTrackingMode(int)
-   */
-  public interface OnMyLocationTrackingModeChangeListener {
-
-    /**
-     * Called when the tracking mode of My Location tracking has changed
-     *
-     * @param myLocationTrackingMode the current active location tracking mode
-     */
-    void onMyLocationTrackingModeChange(@MyLocationTracking.Mode int myLocationTrackingMode);
-  }
-
-  /**
-   * Interface definition for a callback to be invoked when the the My Location tracking mode changes.
-   *
-   * @see TrackingSettings#setMyLocationTrackingMode(int)
-   */
-  public interface OnMyBearingTrackingModeChangeListener {
-
-    /**
-     * Called when the tracking mode of My Bearing tracking has changed
-     *
-     * @param myBearingTrackingMode the current active bearing tracking mode
-     */
-    void onMyBearingTrackingModeChange(@MyBearingTracking.Mode int myBearingTrackingMode);
   }
 
   /**

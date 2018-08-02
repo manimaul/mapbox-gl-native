@@ -1,34 +1,27 @@
 apply plugin: 'com.android.library'
 
 dependencies {
-    compile "com.android.support:support-annotations:${supportLibVersion}"
-    compile "com.android.support:support-v4:${supportLibVersion}"
-    compile "com.android.support:design:${supportLibVersion}"
-    compile "io.reactivex.rxjava2:rxjava:${rxJavaVersion}"
-    compile "io.reactivex.rxjava2:rxandroid:${rxAndroidVersion}"
+    implementation "com.android.support:support-annotations:${supportLibVersion}"
+    implementation "com.android.support:support-v4:${supportLibVersion}"
+    implementation "com.android.support:design:${supportLibVersion}"
+    implementation "io.reactivex.rxjava2:rxjava:${rxJavaVersion}"
+    implementation "io.reactivex.rxjava2:rxandroid:${rxAndroidVersion}"
 
-    compile rootProject.ext.dep.timber
-    compile rootProject.ext.dep.okhttp3
-    compile rootProject.ext.dep.lost
+    implementation rootProject.ext.dep.timber
+    implementation rootProject.ext.dep.okhttp3
 
     // Mapbox Android Services (GeoJSON support)
-    compile(rootProject.ext.dep.mapboxJavaGeoJSON) {
-        transitive = true
-    }
-
-    // Mapbox Android Services (Telemetry support)
-    compile(rootProject.ext.dep.mapboxAndroidTelemetry) {
+    implementation(rootProject.ext.dep.mapboxJavaGeoJSON) {
         transitive = true
     }
 }
 
 android {
-    compileSdkVersion rootProject.ext.compileSdkVersion
-    buildToolsVersion rootProject.ext.buildToolsVersion
+    compileSdkVersion rootProject.ext.compileSdkVersion.toInteger()
 
     defaultConfig {
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
+        minSdkVersion rootProject.ext.minSdkVersion.toInteger()
+        targetSdkVersion rootProject.ext.targetSdkVersion.toInteger()
         buildConfigField "String", "GIT_REVISION_SHORT", String.format("\"%s\"", getGitRevision())
         buildConfigField "String", "MAPBOX_VERSION_STRING", String.format("\"Mapbox/%s\"", project.VERSION_NAME)
         buildConfigField "String", "MAPBOX_EVENTS_USER_AGENT", String.format("\"MapboxEventsAndroid/%s\"", project.VERSION_NAME)
@@ -43,8 +36,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_7
-        targetCompatibility JavaVersion.VERSION_1_7
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
 
     lintOptions {
@@ -83,6 +76,6 @@ configurations {
     all*.exclude group: 'commons-collections', module: 'commons-collections'
 }
 
-apply from: 'gradle-javadoc.gradle'
+//apply from: 'gradle-javadoc.gradle'
 apply from: 'gradle-publish.gradle'
 apply from: 'gradle-checkstyle.gradle'

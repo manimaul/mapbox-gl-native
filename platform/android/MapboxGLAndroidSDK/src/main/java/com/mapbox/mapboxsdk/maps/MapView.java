@@ -120,16 +120,12 @@ public class MapView extends FrameLayout {
     RegisterTouchListener registerTouchListener = new RegisterTouchListener();
 
     // callback for zooming in the camera
-    CameraZoomInvalidator zoomInvalidator = new CameraZoomInvalidator();
-
     // Overlays
     mapOverlayDispatch = (MapOverlayDispatch) view.findViewById(R.id.overlayDispatch);
 
     // setup components for MapboxMap creation
     Projection proj = new Projection(nativeMapView);
     UiSettings uiSettings = new UiSettings(proj, focalPoint, getResources());
-//    TrackingSettings trackingSettings = new TrackingSettings(myLocationView, uiSettings, focalPoint, zoomInvalidator);
-//    MyLocationViewSettings myLocationViewSettings = new MyLocationViewSettings(myLocationView, proj, focalPoint);
     MarkerViewManager markerViewManager = new MarkerViewManager((ViewGroup) findViewById(R.id.markerViewContainer));
     AnnotationManager annotations = new AnnotationManager(nativeMapView, this, markerViewManager);
     Transform transform = new Transform(nativeMapView, annotations.getMarkerViewManager());
@@ -848,27 +844,6 @@ public class MapView extends FrameLayout {
       } else {
         PointF centerPoint = new PointF(getMeasuredWidth() / 2, getMeasuredHeight() / 2);
         transform.zoom(zoomIn, centerPoint);
-      }
-    }
-  }
-
-  private class CameraZoomInvalidator implements TrackingSettings.CameraZoomInvalidator {
-
-    @Override
-    public void zoomTo(double zoomLevel) {
-      Transform transform = mapboxMap.getTransform();
-      double currentZoomLevel = transform.getCameraPosition().zoom;
-      if (currentZoomLevel < zoomLevel) {
-        setZoom(zoomLevel, mapGestureDetector.getFocalPoint(), transform);
-      }
-    }
-
-    private void setZoom(double zoomLevel, @Nullable PointF focalPoint, @NonNull Transform transform) {
-      if (focalPoint != null) {
-        transform.setZoom(zoomLevel, focalPoint);
-      } else {
-        PointF centerPoint = new PointF(getMeasuredWidth() / 2, getMeasuredHeight() / 2);
-        transform.setZoom(zoomLevel, centerPoint);
       }
     }
   }

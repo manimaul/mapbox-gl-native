@@ -1,3 +1,1 @@
 include ':MapboxGLAndroidSDK'
-include ':App'
-project(':App').projectDir = new File('mx-mariner/App')
