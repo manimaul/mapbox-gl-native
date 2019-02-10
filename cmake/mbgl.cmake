@@ -7,15 +7,17 @@ if (NOT MBGL_PLATFORM)
 endif()
 
 if(WITH_NODEJS)
-    find_program(NodeJS_EXECUTABLE NAMES nodejs node)
-    if (NOT NodeJS_EXECUTABLE)
-        message(FATAL_ERROR "Could not find Node.js")
-    endif()
-
-    find_program(npm_EXECUTABLE NAMES npm)
-    if (NOT npm_EXECUTABLE)
-        message(FATAL_ERROR "Could not find npm")
-    endif()
+    #find_program(NodeJS_EXECUTABLE NAMES node PATHS /usr/local/Cellar/node/11.9.0/bin)
+    #    if (NOT NodeJS_EXECUTABLE)
+    #        message(FATAL_ERROR "Could not find Node.js")
+    #    endif()
+    #
+    #    find_program(npm_EXECUTABLE NAMES /usr/local/bin/npm)
+    #    if (NOT npm_EXECUTABLE)
+    #        message(FATAL_ERROR "Could not find npm")
+    #    endif()
+    set(NodeJS_EXECUTABLE "/usr/local/bin/node")
+    set(npm_EXECUTABLE "/usr/local/bin/npm")
 
     execute_process(
         COMMAND "${NodeJS_EXECUTABLE}" -e "process.stdout.write(process.versions.node)"
