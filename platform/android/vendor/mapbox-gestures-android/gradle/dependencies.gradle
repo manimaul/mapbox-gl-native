@@ -1,0 +1,53 @@
+ext {
+    androidVersions = [
+            minSdkVersion    : 14,
+            targetSdkVersion : 27,
+            compileSdkVersion: 27,
+    ]
+
+    version = [
+            mapboxSdkVersion : '6.6.2',
+            supportLibVersion: '27.1.1',
+            timber           : '4.7.1',
+            junit            : '4.12',
+            mockito          : '2.18.3',
+            robolectric      : '3.8',
+            testRunnerVersion: '1.0.2',
+            espressoVersion  : '3.0.2',
+    ]
+
+    pluginVersion = [
+            checkstyle: '8.4',
+            gradle    : '3.3.0'
+    ]
+
+    dependenciesList = [
+
+            // mapbox
+            mapboxSdk          : "com.mapbox.mapboxsdk:mapbox-android-sdk:${version.mapboxSdkVersion}",
+
+            // support
+            supportAppcompatV7 : "com.android.support:appcompat-v7:${version.supportLibVersion}",
+            supportCompat      : "com.android.support:support-compat:${version.supportLibVersion}",
+
+            // timber
+            timber             : "com.jakewharton.timber:timber:${version.timber}",
+
+            // instrumentation test
+            testRunner         : "com.android.support.test:runner:${version.testRunnerVersion}",
+            testRules          : "com.android.support.test:rules:${version.testRunnerVersion}",
+            testEspressoCore   : "com.android.support.test.espresso:espresso-core:${version.espressoVersion}",
+            testEspressoIntents: "com.android.support.test.espresso:espresso-intents:${version.espressoVersion}",
+
+            // unit test
+            junit              : "junit:junit:${version.junit}",
+            mockito            : "org.mockito:mockito-core:${version.mockito}",
+            mockitoAndroid     : "org.mockito:mockito-android:${version.mockito}",
+            robolectric        : "org.robolectric:robolectric:${version.robolectric}"
+    ]
+
+    pluginDependencies = [
+            gradle    : "com.android.tools.build:gradle:${pluginVersion.gradle}",
+            checkstyle: "com.puppycrawl.tools:checkstyle:${pluginVersion.checkstyle}"
+    ]
+}

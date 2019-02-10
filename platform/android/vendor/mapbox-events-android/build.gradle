@@ -1,0 +1,35 @@
+buildscript {
+    apply from: "${rootDir}/gradle/dependencies.gradle"
+    repositories {
+        google()
+        jcenter()
+    }
+
+    dependencies {
+        classpath pluginDependencies.gradle
+    }
+}
+
+allprojects {
+    repositories {
+        mavenCentral()
+        google()
+        jcenter()
+    }
+
+    group = GROUP
+}
+
+subprojects {
+    apply plugin: 'idea'
+    apply from: "${rootDir}/gradle/dependencies.gradle"
+
+    afterEvaluate {
+        tasks.findByName('check').dependsOn('checkstyle')
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}
+

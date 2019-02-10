@@ -1,0 +1,22 @@
+apply plugin: 'java-library'
+apply plugin: "com.vanniktech.android.junit.jacoco"
+
+dependencies {
+  api project(":services-core")
+  api project(":services-geojson")
+
+  // Annotations
+  compileOnly dependenciesList.supportAnnotation
+
+  // AutoValue
+  compileOnly dependenciesList.autoValue
+  compileOnly dependenciesList.autoValueGson
+
+  // Test Dependencies
+  testImplementation project(path: ':services-core', configuration: 'testOutput')
+}
+
+apply from: "${rootDir}/gradle/checkstyle.gradle"
+apply from: "${rootDir}/gradle/jacoco.gradle"
+apply from: "${rootDir}/gradle/mvn-push.gradle"
+apply from: "${rootDir}/gradle/dependencies-graph.gradle"

@@ -1,0 +1,48 @@
+apply plugin: 'java-library'
+apply plugin: 'de.fuerstenau.buildconfig'
+apply plugin: "com.vanniktech.android.junit.jacoco"
+
+configurations {
+  testOutput
+}
+
+buildConfig {
+  packageName = 'com.mapbox.core'
+  version = project.VERSION_NAME
+  buildConfigField 'String', 'GIT_REVISION', getGitRevision()
+}
+
+static def getGitRevision() {
+  def cmd = "git rev-parse --short HEAD"
+  def proc = cmd.execute()
+  def ref = proc.text.trim()
+  return ref
+}
+
+dependencies {
+
+  // Gson
+  api dependenciesList.gson
+
+  // Retrofit
+  api dependenciesList.retrofit
+  api dependenciesList.retrofit2Gson
+
+  // Annotations
+  compileOnly dependenciesList.supportAnnotation
+
+  // OkHttp
+  api dependenciesList.okhttp3Logging
+
+  // AutoValue
+  compileOnly dependenciesList.autoValue
+  compileOnly dependenciesList.autoValueGson
+
+  // Test Dependencies
+  testOutput sourceSets.test.output
+}
+
+apply from: "${rootDir}/gradle/checkstyle.gradle"
+apply from: "${rootDir}/gradle/jacoco.gradle"
+apply from: "${rootDir}/gradle/mvn-push.gradle"
+apply from: "${rootDir}/gradle/dependencies-graph.gradle"
