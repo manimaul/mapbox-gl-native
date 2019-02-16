@@ -23,7 +23,7 @@ import com.mapbox.mapboxsdk.constants.GeometryConstants;
  * data automatically, so all data enters in the WGS84 datum.
  * </p>
  */
-public class LatLng implements Parcelable {
+public class LatLng implements ILatLng, Parcelable {
 
   /**
    * Inner class responsible for recreating Parcels into objects.
@@ -128,6 +128,11 @@ public class LatLng implements Parcelable {
       throw new IllegalArgumentException("latitude must be between -90 and 90");
     }
     this.latitude = latitude;
+  }
+
+  public void set(LatLng other) {
+    latitude = other.latitude;
+    longitude = other.longitude;
   }
 
   /**

@@ -36,8 +36,11 @@ import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.constants.MapboxConstants;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.geometry.LatLngBounds;
+import com.mapbox.mapboxsdk.geometry.VisibleRegion;
+import com.mapbox.mapboxsdk.http.OfflineInterceptor;
 import com.mapbox.mapboxsdk.location.LocationComponent;
 import com.mapbox.mapboxsdk.log.Logger;
+import com.mapbox.mapboxsdk.module.http.HttpRequestImpl;
 import com.mapbox.mapboxsdk.offline.OfflineRegionDefinition;
 import com.mapbox.mapboxsdk.style.expressions.Expression;
 
@@ -58,7 +61,9 @@ public final class MapboxMap {
 
   private static final String TAG = "Mbgl-MapboxMap";
 
+  private final MapView mapView;
   private final NativeMapView nativeMapView;
+  private final MapOverlayDispatch mapOverlayDispatch;
   private final UiSettings uiSettings;
   private final Projection projection;
   private final Transform transform;
@@ -77,9 +82,11 @@ public final class MapboxMap {
 
   private boolean debugActive;
 
-  MapboxMap(NativeMapView map, Transform transform, UiSettings ui, Projection projection,
+  MapboxMap(MapView mapView, NativeMapView map, MapOverlayDispatch mapOverlayDispatch, Transform transform, UiSettings ui, Projection projection,
             OnGesturesManagerInteractionListener listener, CameraChangeDispatcher cameraChangeDispatcher) {
+    this.mapView = mapView;
     this.nativeMapView = map;
+    this.mapOverlayDispatch = mapOverlayDispatch;
     this.uiSettings = ui;
     this.projection = projection;
     this.transform = transform;
@@ -218,10 +225,15 @@ public final class MapboxMap {
     annotationManager.update();
   }
 
+  private final LatLng wgsCenter = new LatLng();
+  private final VisibleRegion visibleRegion = VisibleRegion.create();
+
   /**
    * Called when the map frame is fully rendered.
    */
   void onUpdateFullyRendered() {
+    projection.updateMapBounds(visibleRegion, wgsCenter);
+    mapOverlayDispatch.update(visibleRegion, wgsCenter, (float) projection.getBearing(), (float) projection.getZoom());
     CameraPosition cameraPosition = transform.invalidateCameraPosition();
     if (cameraPosition != null) {
       uiSettings.update(cameraPosition);
@@ -343,6 +355,14 @@ public final class MapboxMap {
   @NonNull
   public Projection getProjection() {
     return projection;
+  }
+
+  /**
+   * Triggers an invalidation of the map view.
+   */
+  public void invalidate() {
+    mapView.invalidate();
+    mapOverlayDispatch.invalidate();
   }
 
   //
@@ -790,7 +810,19 @@ public final class MapboxMap {
    * @see Style
    */
   public void setStyle(Style.Builder builder) {
-    this.setStyle(builder, null);
+    this.setStyle(builder, null, null);
+  }
+
+  public void setStyle(Style.Builder builder, OfflineInterceptor interceptor) {
+    setStyle(builder, null, interceptor);
+  }
+
+  public void setStyle(Style.Builder builder, final Style.OnStyleLoaded callback) {
+    setStyle(builder, callback, null);
+  }
+
+  public void addOverlay(Overlay overlay) {
+      mapOverlayDispatch.addOverlay(overlay);
   }
 
   /**
@@ -804,8 +836,9 @@ public final class MapboxMap {
    * @param callback The callback to be invoked when the style has loaded
    * @see Style
    */
-  public void setStyle(Style.Builder builder, final Style.OnStyleLoaded callback) {
+  public void setStyle(Style.Builder builder, final Style.OnStyleLoaded callback, @Nullable OfflineInterceptor offlineInterceptor) {
     locationComponent.onStartLoadingMap();
+    HttpRequestImpl.setOfflineInterceptor(offlineInterceptor);
     if (style != null) {
       style.onWillStartLoadingMap();
     }

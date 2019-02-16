@@ -583,9 +583,77 @@ jni::Local<jni::Object<LatLng>> NativeMapView::latLngForProjectedMeters(JNIEnv& 
     return LatLng::New(env, mbgl::Projection::latLngForProjectedMeters(mbgl::ProjectedMeters(northing, easting)));
 }
 
-jni::Local<jni::Object<PointF>> NativeMapView::pixelForLatLng(JNIEnv& env, jdouble latitude, jdouble longitude) {
+void NativeMapView::pixelForLatLng(JNIEnv& env, jdouble latitude, jdouble longitude, jni::Object<PointF>& jPointF) {
     mbgl::ScreenCoordinate pixel = map->pixelForLatLng(mbgl::LatLng(latitude, longitude));
-    return PointF::New(env, static_cast<float>(pixel.x), static_cast<float>(pixel.y));
+    PointF::setX(env, jPointF, static_cast<float>(pixel.x));
+    PointF::setY(env, jPointF, static_cast<float>(pixel.y));
+}
+
+void NativeMapView::updateMapBounds(JNIEnv& env,
+                                    jni::Object<VisibleRegion>& visibleRegion,
+                                    jni::Object<LatLng>& wgsCenter) {
+
+    mbgl::LatLng center = map->getLatLng();
+    LatLng::setLatitude(env, wgsCenter, center.latitude());
+    LatLng::setLongitude(env, wgsCenter, center.longitude());
+
+    double w = static_cast<double>(width);
+    double h = static_cast<double>(height);
+
+    mbgl::LatLngBounds bounds = mbgl::LatLngBounds::empty();
+
+    mbgl::ScreenCoordinate pixel = {0, 0}; //bottom left
+    {
+        mbgl::LatLng latLng = map->latLngForPixel(pixel);
+        bounds.extend(latLng);
+        auto jLatLng = VisibleRegion::getNearLeft(env, visibleRegion);
+        LatLng::setLatitude(env, jLatLng, latLng.latitude());
+        LatLng::setLongitude(env, jLatLng, latLng.longitude());
+    }
+
+    pixel.x = w; //bottom right
+    {
+        mbgl::LatLng latLng = map->latLngForPixel(pixel);
+        bounds.extend(latLng);
+        auto jLatLng = VisibleRegion::getNearRight(env, visibleRegion);
+        LatLng::setLatitude(env, jLatLng, latLng.latitude());
+        LatLng::setLongitude(env, jLatLng, latLng.longitude());
+    }
+
+    pixel.y = h; //top right
+    {
+        mbgl::LatLng latLng = map->latLngForPixel(pixel);
+        bounds.extend(latLng);
+        auto jLatLng = VisibleRegion::getFarRight(env, visibleRegion);
+        LatLng::setLatitude(env, jLatLng, latLng.latitude());
+        LatLng::setLongitude(env, jLatLng, latLng.longitude());
+    }
+
+    pixel.x = 0; //top left
+    {
+        mbgl::LatLng latLng = map->latLngForPixel(pixel);
+        bounds.extend(latLng);
+        auto jLatLng = VisibleRegion::getFarLeft(env, visibleRegion);
+        LatLng::setLatitude(env, jLatLng, latLng.latitude());
+        LatLng::setLongitude(env, jLatLng, latLng.longitude());
+    }
+
+    double west = bounds.west();
+    double east = bounds.east();
+    if (west < -180.0) {
+        west += 180.0;
+        west = 180.0 + west;
+    }
+    if (east > 180.0) {
+        east -= 180.0;
+        east = -180.0 + east;
+    }
+
+    auto jBounds = VisibleRegion::getBounds(env, visibleRegion);
+    LatLngBounds::setLatitudeNorth(env, jBounds, bounds.north());
+    LatLngBounds::setLatitudeSouth(env, jBounds, bounds.south());
+    LatLngBounds::setLongitudeEast(env, jBounds, east);
+    LatLngBounds::setLongitudeWest(env, jBounds, west);
 }
 
 jni::Local<jni::Object<LatLng>> NativeMapView::latLngForPixel(JNIEnv& env, jfloat x, jfloat y) {
@@ -1074,6 +1142,7 @@ void NativeMapView::registerNative(jni::JNIEnv& env) {
             METHOD(&NativeMapView::getMetersPerPixelAtLatitude, "nativeGetMetersPerPixelAtLatitude"),
             METHOD(&NativeMapView::projectedMetersForLatLng, "nativeProjectedMetersForLatLng"),
             METHOD(&NativeMapView::pixelForLatLng, "nativePixelForLatLng"),
+            METHOD(&NativeMapView::updateMapBounds, "nativeUpdateMapBounds"),
             METHOD(&NativeMapView::latLngForProjectedMeters, "nativeLatLngForProjectedMeters"),
             METHOD(&NativeMapView::latLngForPixel, "nativeLatLngForPixel"),
             METHOD(&NativeMapView::addPolylines, "nativeAddPolylines"),

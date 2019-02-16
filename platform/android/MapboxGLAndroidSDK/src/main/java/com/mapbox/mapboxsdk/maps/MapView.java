@@ -87,6 +87,7 @@ public class MapView extends FrameLayout implements NativeMapView.ViewCallback {
   @Nullable
   private Bundle savedInstanceState;
   private boolean isStarted;
+  private MapOverlayDispatch mapOverlayDispatch;
 
   @UiThread
   public MapView(@NonNull Context context) {
@@ -130,6 +131,7 @@ public class MapView extends FrameLayout implements NativeMapView.ViewCallback {
     compassView = view.findViewById(R.id.compassView);
     attrView = view.findViewById(R.id.attributionView);
     logoView = view.findViewById(R.id.logoView);
+    mapOverlayDispatch = view.findViewById(R.id.overlayDispatch);
 
     // add accessibility support
     setContentDescription(context.getString(R.string.mapbox_mapActionDescription));
@@ -165,12 +167,13 @@ public class MapView extends FrameLayout implements NativeMapView.ViewCallback {
     Transform transform = new Transform(this, nativeMapView, cameraDispatcher);
 
     // MapboxMap
-    mapboxMap = new MapboxMap(nativeMapView, transform, uiSettings, proj, registerTouchListener, cameraDispatcher);
+    mapboxMap = new MapboxMap(this, nativeMapView, mapOverlayDispatch, transform, uiSettings, proj, registerTouchListener, cameraDispatcher);
     mapboxMap.injectAnnotationManager(annotationManager);
+    mapOverlayDispatch.setMapBoxMap(mapboxMap);
 
     // user input
     mapGestureDetector = new MapGestureDetector(context, transform, proj, uiSettings,
-      annotationManager, cameraDispatcher);
+      annotationManager, cameraDispatcher, mapOverlayDispatch);
     mapKeyListener = new MapKeyListener(transform, uiSettings, mapGestureDetector);
 
     // compass
@@ -511,6 +514,7 @@ public class MapView extends FrameLayout implements NativeMapView.ViewCallback {
 
   @Override
   protected void onSizeChanged(int width, int height, int oldw, int oldh) {
+    mapOverlayDispatch.onSizeChanged(width, height);
     if (!isInEditMode() && nativeMapView != null) {
       // null-checking the nativeMapView, see #13277
       nativeMapView.resizeView(width, height);
@@ -775,6 +779,22 @@ public class MapView extends FrameLayout implements NativeMapView.ViewCallback {
    */
   public void removeOnSourceChangedListener(OnSourceChangedListener listener) {
     mapChangeReceiver.removeOnSourceChangedListener(listener);
+  }
+
+  @UiThread
+  public void invalidateOverlay() {
+    mapOverlayDispatch.invalidate();
+  }
+
+
+  @UiThread
+  void addOverlay(Overlay overlay) {
+    mapOverlayDispatch.addOverlay(overlay);
+  }
+
+  @UiThread
+  void removeOverlay(Overlay overlay) {
+    mapOverlayDispatch.removeOverlay(overlay);
   }
 
   /**

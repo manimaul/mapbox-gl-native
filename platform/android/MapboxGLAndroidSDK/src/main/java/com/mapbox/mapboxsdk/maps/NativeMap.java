@@ -192,7 +192,7 @@ interface NativeMap {
   LatLng latLngForProjectedMeters(@NonNull ProjectedMeters projectedMeters);
 
   @NonNull
-  PointF pixelForLatLng(@NonNull LatLng latLng);
+  PointF pixelForLatLng(@NonNull LatLng latLng, @Nullable PointF point);
 
   LatLng latLngForPixel(@NonNull PointF pixel);
 

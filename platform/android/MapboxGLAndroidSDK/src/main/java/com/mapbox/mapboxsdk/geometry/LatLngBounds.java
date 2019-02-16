@@ -36,6 +36,21 @@ public class LatLngBounds implements Parcelable {
   @Keep
   private final double longitudeWest;
 
+  public static LatLngBounds create() {
+    LatLngBounds.Builder builder = new LatLngBounds.Builder();
+
+    LatLng topLeft = new LatLng();
+    LatLng topRight = new LatLng();
+    LatLng bottomRight = new LatLng();
+    LatLng bottomLeft = new LatLng();
+
+    builder.include(topLeft)
+            .include(topRight)
+            .include(bottomRight)
+            .include(bottomLeft);
+    return builder.build();
+  }
+
   /**
    * Construct a new LatLngBounds based on its corners, given in NESW
    * order.
@@ -53,7 +68,7 @@ public class LatLngBounds implements Parcelable {
    * @param westLongitude Western Longitude
    */
   @Keep
-  LatLngBounds(final double northLatitude, final double eastLongitude,
+  public LatLngBounds(final double northLatitude, final double eastLongitude,
                final double southLatitude, final double westLongitude) {
     this.latitudeNorth = northLatitude;
     this.longitudeEast = eastLongitude;
@@ -220,7 +235,7 @@ public class LatLngBounds implements Parcelable {
    * @param latLngs List of LatLng objects
    * @return LatLngBounds
    */
-  static LatLngBounds fromLatLngs(final List<? extends LatLng> latLngs) {
+  public static LatLngBounds fromLatLngs(final List<? extends LatLng> latLngs) {
     double minLat = MAX_LATITUDE;
     double minLon = MAX_LONGITUDE;
     double maxLat = MIN_LATITUDE;

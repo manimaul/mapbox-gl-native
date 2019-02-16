@@ -20,6 +20,11 @@ public:
 
     static mbgl::LatLng getLatLng(jni::JNIEnv&, const jni::Object<LatLng>&);
 
+    static void setLatitude(jni::JNIEnv&, jni::Object<LatLng>&, double);
+
+    static void setLongitude(jni::JNIEnv&, jni::Object<LatLng>&, double);
+
+    static void setAltitude(jni::JNIEnv&, jni::Object<LatLng>, double);
 
     static void registerNative(jni::JNIEnv&);
 };

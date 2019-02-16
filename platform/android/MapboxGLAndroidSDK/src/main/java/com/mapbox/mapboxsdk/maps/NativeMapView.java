@@ -23,6 +23,7 @@ import com.mapbox.mapboxsdk.exceptions.CalledFromWorkerThreadException;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.geometry.LatLngBounds;
 import com.mapbox.mapboxsdk.geometry.ProjectedMeters;
+import com.mapbox.mapboxsdk.geometry.VisibleRegion;
 import com.mapbox.mapboxsdk.log.Logger;
 import com.mapbox.mapboxsdk.maps.renderer.MapRenderer;
 import com.mapbox.mapboxsdk.storage.FileSource;
@@ -653,15 +654,20 @@ final class NativeMapView implements NativeMap {
       projectedMeters.getEasting());
   }
 
+  public PointF pixelForLatLng(@NonNull LatLng latLng) {
+    return pixelForLatLng(latLng, null);
+  }
+
   @Override
   @NonNull
-  public PointF pixelForLatLng(@NonNull LatLng latLng) {
+  public PointF pixelForLatLng(@NonNull LatLng latLng, @Nullable PointF reuse) {
     if (checkState("pixelForLatLng")) {
       return new PointF();
     }
-    PointF pointF = nativePixelForLatLng(latLng.getLatitude(), latLng.getLongitude());
-    pointF.set(pointF.x * pixelRatio, pointF.y * pixelRatio);
-    return pointF;
+    reuse = reuse == null ? new PointF() : reuse;
+    nativePixelForLatLng(latLng.getLatitude(), latLng.getLongitude(), reuse);
+    reuse.set(reuse.x * pixelRatio, reuse.y * pixelRatio);
+    return reuse;
   }
 
   @Override
@@ -670,6 +676,10 @@ final class NativeMapView implements NativeMap {
       return new LatLng();
     }
     return nativeLatLngForPixel(pixel.x / pixelRatio, pixel.y / pixelRatio);
+  }
+
+  void updateMapBounds(VisibleRegion visibleRegion, LatLng latLng) {
+    nativeUpdateMapBounds(visibleRegion, latLng);
   }
 
   @Override
@@ -1238,7 +1248,7 @@ final class NativeMapView implements NativeMap {
 
   @NonNull
   @Keep
-  private native PointF nativePixelForLatLng(double lat, double lon);
+  private native void nativePixelForLatLng(double lat, double lon, PointF point);
 
   @NonNull
   @Keep
@@ -1340,6 +1350,9 @@ final class NativeMapView implements NativeMap {
 
   @Keep
   private native void nativeTakeSnapshot();
+
+  @Keep
+  private native void nativeUpdateMapBounds(VisibleRegion visibleRegion, LatLng latLng);
 
   @NonNull
   @Keep

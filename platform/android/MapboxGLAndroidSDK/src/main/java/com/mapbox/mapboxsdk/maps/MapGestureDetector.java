@@ -47,6 +47,7 @@ final class MapGestureDetector {
   private final UiSettings uiSettings;
   private final AnnotationManager annotationManager;
   private final CameraChangeDispatcher cameraChangeDispatcher;
+  private final MapOverlayDispatch mapOverlayDispatch;
 
   // new map touch API
   private final CopyOnWriteArrayList<MapboxMap.OnMapClickListener> onMapClickListenerList
@@ -91,12 +92,13 @@ final class MapGestureDetector {
   private Handler animationsTimeoutHandler = new Handler();
 
   MapGestureDetector(@Nullable Context context, Transform transform, Projection projection, UiSettings uiSettings,
-                     AnnotationManager annotationManager, CameraChangeDispatcher cameraChangeDispatcher) {
+                     AnnotationManager annotationManager, CameraChangeDispatcher cameraChangeDispatcher, MapOverlayDispatch mapOverlayDispatch) {
     this.annotationManager = annotationManager;
     this.transform = transform;
     this.projection = projection;
     this.uiSettings = uiSettings;
     this.cameraChangeDispatcher = cameraChangeDispatcher;
+    this.mapOverlayDispatch = mapOverlayDispatch;
 
     // Checking for context != null for testing purposes
     if (context != null) {
@@ -207,6 +209,8 @@ final class MapGestureDetector {
     if ((motionEvent.getButtonState() != 0) && (motionEvent.getButtonState() != MotionEvent.BUTTON_PRIMARY)) {
       return false;
     }
+
+    mapOverlayDispatch.onOverlayTouchEvent(motionEvent);
 
     boolean result = gesturesManager.onTouchEvent(motionEvent);
 
@@ -334,6 +338,8 @@ final class MapGestureDetector {
     public boolean onSingleTapConfirmed(MotionEvent motionEvent) {
       PointF tapPoint = new PointF(motionEvent.getX(), motionEvent.getY());
       boolean tapHandled = annotationManager.onTap(tapPoint);
+      LatLng latLng = projection.fromScreenLocation(tapPoint);
+      mapOverlayDispatch.onOverlaySingleTapConfirmed(latLng);
 
       if (!tapHandled) {
         if (uiSettings.isDeselectMarkersOnTap()) {
@@ -341,7 +347,7 @@ final class MapGestureDetector {
           annotationManager.deselectMarkers();
         }
 
-        notifyOnMapClickListeners(tapPoint);
+        notifyOnMapClickListeners(latLng);
       }
 
       sendTelemetryEvent(TelemetryConstants.SINGLE_TAP, new PointF(motionEvent.getX(), motionEvent.getY()));
@@ -385,7 +391,9 @@ final class MapGestureDetector {
     @Override
     public void onLongPress(MotionEvent motionEvent) {
       PointF longClickPoint = new PointF(motionEvent.getX(), motionEvent.getY());
-      notifyOnMapLongClickListeners(longClickPoint);
+      LatLng latLng = projection.fromScreenLocation(longClickPoint);
+      mapOverlayDispatch.onOverlayLongPress(latLng);
+      notifyOnMapLongClickListeners(latLng);
     }
 
     @Override
@@ -917,17 +925,17 @@ final class MapGestureDetector {
     return mapZoom >= MapboxConstants.MINIMUM_ZOOM && mapZoom <= MapboxConstants.MAXIMUM_ZOOM;
   }
 
-  void notifyOnMapClickListeners(@NonNull PointF tapPoint) {
+  void notifyOnMapClickListeners(@NonNull LatLng latLng) {
     for (MapboxMap.OnMapClickListener listener : onMapClickListenerList) {
-      if (listener.onMapClick(projection.fromScreenLocation(tapPoint))) {
+      if (listener.onMapClick(latLng)) {
         return;
       }
     }
   }
 
-  void notifyOnMapLongClickListeners(@NonNull PointF longClickPoint) {
+  void notifyOnMapLongClickListeners(@NonNull LatLng latLng) {
     for (MapboxMap.OnMapLongClickListener listener : onMapLongClickListenerList) {
-      if (listener.onMapLongClick(projection.fromScreenLocation(longClickPoint))) {
+      if (listener.onMapLongClick(latLng)) {
         return;
       }
     }

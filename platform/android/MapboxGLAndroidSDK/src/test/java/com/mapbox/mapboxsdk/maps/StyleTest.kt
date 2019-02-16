@@ -1,6 +1,5 @@
 package com.mapbox.mapboxsdk.maps
 
-import android.graphics.Bitmap
 import com.mapbox.mapboxsdk.constants.MapboxConstants
 import com.mapbox.mapboxsdk.style.layers.SymbolLayer
 import com.mapbox.mapboxsdk.style.layers.TransitionOptions
@@ -26,7 +25,7 @@ class StyleTest {
     @Before
     fun setup() {
         nativeMapView = mockk()
-        mapboxMap = MapboxMap(nativeMapView, null, null, null, null, null)
+        mapboxMap = MapboxMap(this, nativeMapView, mapOverlayDispatch, null, null, null, null, null)
         every { nativeMapView.styleUrl = any() } answers {}
         every { nativeMapView.styleJson = any() } answers {}
         every { nativeMapView.addLayerBelow(any(), any()) } answers {}

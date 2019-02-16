@@ -25,6 +25,7 @@
 #include "geometry/lat_lng_bounds.hpp"
 #include "geometry/lat_lng_quad.hpp"
 #include "geometry/projected_meters.hpp"
+#include "geometry/visible_region.hpp"
 #include "graphics/pointf.hpp"
 #include "graphics/rectf.hpp"
 #include "gson/json_array.hpp"
@@ -137,6 +138,7 @@ void registerNatives(JavaVM *vm) {
     LatLng::registerNative(env);
     LatLngBounds::registerNative(env);
     LatLngQuad::registerNative(env);
+    VisibleRegion::registerNative(env);
     ProjectedMeters::registerNative(env);
 
     // GSon

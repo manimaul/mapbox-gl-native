@@ -27,6 +27,7 @@
         "platform/android/src/geometry/lat_lng.cpp",
         "platform/android/src/geometry/lat_lng_bounds.cpp",
         "platform/android/src/geometry/lat_lng_quad.cpp",
+        "platform/android/src/geometry/visible_region.cpp",
         "platform/android/src/geometry/projected_meters.cpp",
         "platform/android/src/graphics/pointf.cpp",
         "platform/android/src/graphics/rectf.cpp",

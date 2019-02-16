@@ -22,6 +22,30 @@ mbgl::LatLngBounds LatLngBounds::getLatLngBounds(jni::JNIEnv& env, const jni::Ob
     return mbgl::LatLngBounds::hull(sw, ne);
 }
 
+void LatLngBounds::setLatitudeNorth(jni::JNIEnv& env, jni::Object<LatLngBounds>& bounds, double value) {
+    static auto& javaClass = jni::Class<LatLngBounds>::Singleton(env);
+    static auto field = javaClass.GetField<double>(env, "latitudeNorth");
+    bounds.Set(env, field, value);
+}
+
+void LatLngBounds::setLatitudeSouth(jni::JNIEnv& env, jni::Object<LatLngBounds>& bounds, double value) {
+    static auto& javaClass = jni::Class<LatLngBounds>::Singleton(env);
+    static auto field = javaClass.GetField<double>(env, "latitudeSouth");
+    bounds.Set(env, field, value);
+}
+
+void LatLngBounds::setLongitudeEast(jni::JNIEnv& env, jni::Object<LatLngBounds>& bounds, double value) {
+    static auto& javaClass = jni::Class<LatLngBounds>::Singleton(env);
+    static auto field = javaClass.GetField<double>(env, "longitudeEast");
+    bounds.Set(env, field, value);
+}
+
+void LatLngBounds::setLongitudeWest(jni::JNIEnv& env, jni::Object<LatLngBounds>& bounds, double value) {
+    static auto& javaClass = jni::Class<LatLngBounds>::Singleton(env);
+    static auto field = javaClass.GetField<double>(env, "longitudeWest");
+    bounds.Set(env, field, value);
+}
+
 void LatLngBounds::registerNative(jni::JNIEnv& env) {
     jni::Class<LatLngBounds>::Singleton(env);
 }

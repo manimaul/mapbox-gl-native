@@ -90,6 +90,10 @@ public class Projection {
     return nativeMapView.latLngForPixel(point);
   }
 
+  void updateMapBounds(VisibleRegion visibleRegion, LatLng mapCenter) {
+    nativeMapView.updateMapBounds(visibleRegion, mapCenter);
+  }
+
   /**
    * Gets a projection of the viewing frustum for converting between screen coordinates and
    * geo-latitude/longitude coordinates.
@@ -257,12 +261,20 @@ public class Projection {
     return nativeMapView.pixelForLatLng(location);
   }
 
+  public void toScreenLocation(@NonNull LatLng location, @NonNull PointF point) {
+    nativeMapView.pixelForLatLng(location, point);
+  }
+
   float getHeight() {
     return nativeMapView.getHeight();
   }
 
   float getWidth() {
     return nativeMapView.getWidth();
+  }
+
+  public float getPixelRatio() {
+    return nativeMapView.getPixelRatio();
   }
 
   /**
@@ -273,5 +285,22 @@ public class Projection {
    */
   public double calculateZoom(float minScale) {
     return nativeMapView.getZoom() + Math.log(minScale) / Math.log(2);
+  }
+
+  public double getZoom() {
+    return nativeMapView.getZoom();
+  }
+
+  public double getBearing() {
+    double direction = -nativeMapView.getBearing();
+
+    while (direction > 360) {
+      direction -= 360;
+    }
+    while (direction < 0) {
+      direction += 360;
+    }
+
+    return direction;
   }
 }

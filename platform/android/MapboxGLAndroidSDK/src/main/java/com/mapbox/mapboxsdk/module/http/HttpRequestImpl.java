@@ -1,9 +1,13 @@
 package com.mapbox.mapboxsdk.module.http;
 
+import android.net.Uri;
 import android.os.Build;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.text.TextUtils;
+import android.text.format.DateFormat;
+import android.util.Base64;
 import android.util.Log;
 import com.mapbox.mapboxsdk.BuildConfig;
 import com.mapbox.mapboxsdk.constants.MapboxConstants;
@@ -12,6 +16,13 @@ import com.mapbox.mapboxsdk.http.HttpIdentifier;
 import com.mapbox.mapboxsdk.http.HttpLogger;
 import com.mapbox.mapboxsdk.http.HttpResponder;
 import com.mapbox.mapboxsdk.http.HttpRequestUrl;
+import com.mapbox.mapboxsdk.http.OfflineInterceptor;
+
+import io.reactivex.Observable;
+import io.reactivex.Observer;
+import io.reactivex.Scheduler;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.Disposable;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.Dispatcher;
@@ -28,6 +39,9 @@ import java.net.NoRouteToHostException;
 import java.net.ProtocolException;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Locale;
 
 import static com.mapbox.mapboxsdk.module.http.HttpRequestUtil.toHumanReadableAscii;
 
@@ -42,13 +56,120 @@ public class HttpRequestImpl implements HttpRequest {
       Build.CPU_ABI)
   );
 
+  private static final String TAG = HttpRequestImpl.class.getSimpleName();
   private static OkHttpClient client = new OkHttpClient.Builder().dispatcher(getDispatcher()).build();
+  private static OfflineInterceptor interceptor;
+  private static final Handler handler = new Handler();
+  private static final Scheduler scheduler = AndroidSchedulers.from(handler.getLooper());
 
   private Call call;
+
+  public static void setOfflineInterceptor(@Nullable OfflineInterceptor offlineInterceptor) {
+    interceptor = offlineInterceptor;
+  }
+
+  /**
+   * https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control
+   * The Cache-Control general-header field is used to specify directives for caching mechanisms in both,
+   * requests and responses. Caching directives are unidirectional, meaning that a given directive
+   * in a request is not implying that the same directive is to be given in the response.
+   *
+   * Cache-Control: max-age=<seconds>
+   *     Specifies the maximum amount of time a resource will be considered fresh. Contrary to Expires,
+   *     this directive is relative to the time of the request.
+   * Cache-Control: s-maxage=<seconds>
+   *     Overrides max-age or the Expires header, but it only applies to shared caches (e.g., proxies)
+   *     and is ignored by a private cache.
+   */
+  private static final String OFFLINE_RESPONSE_CACHE_CONTROL = String.format(Locale.US, "max-age=%d", 60 * 60 * 24);
+
+  /**
+   * https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Expires
+   * The Expires header contains the date/time after which the response is considered stale.
+   *
+   * Invalid dates, like the value 0, represent a date in the past and mean that the resource is already expired.
+   *
+   * If there is a Cache-Control header with the "max-age" or "s-max-age" directive in the response,
+   * the Expires header is ignored.
+   */
+  private static final String OFFLINE_RESPONSE_CACHE_EXPIRES = null;
+
+  private void initializeOfflineRequest(final HttpResponder httpRequest, Uri uri) {
+    //Log.d(LOG_TAG, "offline request thread: " + Thread.currentThread());
+    Observable<byte[]> responseObservable = interceptor.handleRequest(uri);
+      if (responseObservable != null) {
+          responseObservable
+                  .take(1)
+                  .observeOn(scheduler)
+                  .subscribe(new Observer<byte[]>() {
+                      private Disposable disposable;
+
+                      private void dispose() {
+                          if (disposable != null && !disposable.isDisposed()) {
+                              disposable.dispose();
+                          }
+                      }
+
+                      @Override
+                      public void onError(Throwable e) {
+                          final String message = e.getMessage();
+                          httpRequest.handleFailure(TEMPORARY_ERROR, message == null ? "unknown error" : message);
+                          dispose();
+                      }
+
+                      @Override
+                      public void onSubscribe(Disposable d) {
+                          disposable = d;
+                      }
+
+                      @Override
+                      public void onComplete() {
+                          dispose();
+                      }
+
+                      @Override
+                      public void onNext(byte[] bytes) {
+                          //Log.d(LOG_TAG, "offline request thread: " + Thread.currentThread());
+                          httpRequest.onResponse(200,
+                                  makeEtag(bytes),
+                                  DateFormat.format("EEE, dd MMM yyyy HH:mm:ss zzz", System.currentTimeMillis()).toString(),
+                                  OFFLINE_RESPONSE_CACHE_CONTROL,
+                                  OFFLINE_RESPONSE_CACHE_EXPIRES,
+                                  null,
+                                  null,
+                                  bytes);
+                          dispose();
+                      }
+                  });
+    } else {
+      httpRequest.handleFailure(TEMPORARY_ERROR, "offline interceptor produced a null observable");
+    }
+  }
+
+  private static MessageDigest sMessageDigest;
+  static {
+    try {
+      sMessageDigest = MessageDigest.getInstance("SHA-1");
+    } catch (NoSuchAlgorithmException e) {
+      Log.e(TAG, "", e);
+    }
+  }
+
+
+  private synchronized String makeEtag(byte[] body) {
+    sMessageDigest.reset();
+    return Base64.encodeToString(sMessageDigest.digest(body), Base64.DEFAULT);
+  }
 
   @Override
   public void executeRequest(HttpResponder httpRequest, long nativePtr, @NonNull String resourceUrl,
                              @NonNull String etag, @NonNull String modified) {
+    Uri uri = Uri.parse(resourceUrl);
+    if (uri != null && interceptor != null && interceptor.host().equals(uri.getHost())) {
+      initializeOfflineRequest(httpRequest, uri);
+      return;
+    }
+
     OkHttpCallback callback = new OkHttpCallback(httpRequest);
     try {
       HttpUrl httpUrl = HttpUrl.parse(resourceUrl);

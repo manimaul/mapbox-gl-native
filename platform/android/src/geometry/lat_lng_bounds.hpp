@@ -18,6 +18,14 @@ public:
 
     static mbgl::LatLngBounds getLatLngBounds(jni::JNIEnv&, const jni::Object<LatLngBounds>&);
 
+    static void setLatitudeNorth(jni::JNIEnv&, jni::Object<LatLngBounds>&, double);
+
+    static void setLatitudeSouth(jni::JNIEnv&, jni::Object<LatLngBounds>&, double);
+
+    static void setLongitudeEast(jni::JNIEnv&, jni::Object<LatLngBounds>&, double);
+
+    static void setLongitudeWest(jni::JNIEnv&, jni::Object<LatLngBounds>&, double);
+
     static void registerNative(jni::JNIEnv&);
 };
 

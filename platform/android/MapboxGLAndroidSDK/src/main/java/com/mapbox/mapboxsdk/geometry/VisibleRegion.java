@@ -38,6 +38,21 @@ public class VisibleRegion implements Parcelable {
    */
   public final LatLngBounds latLngBounds;
 
+  public static VisibleRegion create() {
+    LatLngBounds.Builder builder = new LatLngBounds.Builder();
+
+    LatLng topLeft = new LatLng();
+    LatLng topRight = new LatLng();
+    LatLng bottomRight = new LatLng();
+    LatLng bottomLeft = new LatLng();
+
+    builder.include(topLeft)
+            .include(topRight)
+            .include(bottomRight)
+            .include(bottomLeft);
+    return new VisibleRegion(topLeft, topRight, bottomLeft, bottomRight, builder.build());
+  }
+
   /**
    * Creates a VisibleRegion from a Parcel.
    *

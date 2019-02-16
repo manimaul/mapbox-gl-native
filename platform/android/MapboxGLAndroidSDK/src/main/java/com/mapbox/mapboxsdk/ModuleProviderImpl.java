@@ -6,6 +6,7 @@ import com.mapbox.mapboxsdk.http.HttpRequest;
 import com.mapbox.mapboxsdk.maps.TelemetryDefinition;
 import com.mapbox.mapboxsdk.module.http.HttpRequestImpl;
 import com.mapbox.mapboxsdk.module.telemetry.TelemetryImpl;
+import com.mapbox.mapboxsdk.module.telemetry.TelemetryNoopImpl;
 
 public class ModuleProviderImpl implements ModuleProvider {
 
@@ -18,6 +19,6 @@ public class ModuleProviderImpl implements ModuleProvider {
   @Override
   @Nullable
   public TelemetryDefinition obtainTelemetry() {
-    return new TelemetryImpl();
+    return new TelemetryNoopImpl();
   }
 }

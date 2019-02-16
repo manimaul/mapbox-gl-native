@@ -17,6 +17,18 @@ mbgl::ScreenCoordinate PointF::getScreenCoordinate(jni::JNIEnv& env, const jni::
     return mbgl::ScreenCoordinate{point.Get(env, xField), point.Get(env, yField)};
 }
 
+void PointF::setX(jni::JNIEnv& env, jni::Object<PointF>& jPointF, float value) {
+    static auto& javaClass = jni::Class<PointF>::Singleton(env);
+    static auto field = javaClass.GetField<float>(env, "x");
+    jPointF.Set(env, field, value);
+}
+
+void PointF::setY(jni::JNIEnv& env, jni::Object<PointF>& jPointF, float value) {
+    static auto& javaClass = jni::Class<PointF>::Singleton(env);
+    static auto field = javaClass.GetField<float>(env, "y");
+    jPointF.Set(env, field, value);
+}
+
 void PointF::registerNative(jni::JNIEnv& env) {
     jni::Class<PointF>::Singleton(env);
 }

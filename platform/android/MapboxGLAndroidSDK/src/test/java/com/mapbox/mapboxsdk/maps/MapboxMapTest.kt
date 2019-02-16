@@ -29,7 +29,7 @@ class MapboxMapTest {
         val cameraChangeDispatcher = spyk<CameraChangeDispatcher>()
         nativeMapView = mockk()
         transform = mockk()
-        mapboxMap = MapboxMap(nativeMapView, transform, null, null, null, cameraChangeDispatcher)
+        mapboxMap = MapboxMap(this, nativeMapView, mapOverlayDispatch, transform, null, null, null, cameraChangeDispatcher)
         every { nativeMapView.styleUrl = any() } answers {}
         every { nativeMapView.transitionOptions = any() } answers {}
         every { nativeMapView.isDestroyed } returns false

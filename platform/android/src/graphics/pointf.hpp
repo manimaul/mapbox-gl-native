@@ -16,6 +16,10 @@ public:
 
     static mbgl::ScreenCoordinate getScreenCoordinate(jni::JNIEnv&, const jni::Object<PointF>&);
 
+    static void setX(jni::JNIEnv&, jni::Object<PointF>&, float);
+
+    static void setY(jni::JNIEnv&, jni::Object<PointF>&, float);
+
     static void registerNative(jni::JNIEnv&);
 };
 
